@@ -132,8 +132,10 @@ module ann_controller #(
             //--------------------------------------------------------------
             S_IDLE: begin
                 busy = 1'b0;
-                next_state = S_PROGRAM;
-              
+                if(buf_ready)
+                  next_state = S_PROGRAM;
+                else
+                  next_state = S_IDLE;
             end
 
             //--------------------------------------------------------------
