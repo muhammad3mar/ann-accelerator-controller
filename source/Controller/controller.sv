@@ -2,10 +2,6 @@
 // ANN Controller - Phase 1 (SystemVerilog, clean version)
 //------------------------------------------------------------------------------
 // - Parallel interface only moves data into buffers (not shown here).
-// - Higher-level logic (scheduler) raises:
-//      * req_reset
-//      * req_write
-//      * req_compute
 // - Controller:
 //      * drives ANN core control signals
 //      * optionally drives buffer control signals
@@ -24,15 +20,9 @@ module ann_controller #(
     input  logic                     rst_n,
 
     //======================================================================
-    // Requests from higher-level (scheduler / control regs)
+    // Controller <-> Parallel Interface
     //======================================================================
-    input  logic                     req_reset,      // request global reset
-    input  logic                     req_write,      // request write one weight
-    input  logic                     req_compute,    // request one inference
-
-    // Weight info for WRITE
-    input  logic [ADDR_WIDTH-1:0]    weight_addr_in,
-    input  logic [WEIGHT_WIDTH-1:0]  weight_wdata_in,
+     input logic                     valid, // check if the data is valid 
 
     //======================================================================
     // Controller <-> ANN Core
@@ -74,7 +64,7 @@ module ann_controller #(
     typedef enum logic [2:0] {
         S_IDLE     = 3'd0,
         S_RESET    = 3'd1,
-        S_WRITE    = 3'd2,
+        S_PROGRAM    = 3'd2,
         S_COMPUTE  = 3'd3,
         S_RESULT   = 3'd4
     } state_t;
@@ -142,13 +132,10 @@ module ann_controller #(
             //--------------------------------------------------------------
             S_IDLE: begin
                 busy = 1'b0;
-
-                if (req_reset)
-                    next_state = S_RESET;
-                else if (req_write)
-                    next_state = S_WRITE;
-                else if (req_compute)
-                    next_state = S_COMPUTE;
+                if(buf_ready)
+                  next_state = S_PROGRAM;
+                else
+                  next_state = S_IDLE;
             end
 
             //--------------------------------------------------------------
@@ -167,9 +154,9 @@ module ann_controller #(
             end
 
             //--------------------------------------------------------------
-            // WRITE: program one weight
+            // program one weight
             //--------------------------------------------------------------
-            S_WRITE: begin
+            S_PROGRAM: begin
                 busy           = 1'b1;
                 weight_write_en= 1'b1;
                 weight_addr    = weight_addr_q;
@@ -181,7 +168,7 @@ module ann_controller #(
                 if (op_done)
                     next_state = S_IDLE;
                 else
-                    next_state = S_WRITE;
+                    next_state = S_PROGRAM;
             end
 
             //--------------------------------------------------------------
