@@ -143,3 +143,4 @@ Expected result: No compilation errors
 - Add COMPUTE state  
 - Add OUTPUT_RESULT state
 - Connect weight data path from buffer to ANN core
+

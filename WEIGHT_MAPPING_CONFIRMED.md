@@ -67,3 +67,4 @@ weight_addr_reg[2:0]   = col within sub-block (0-7) → Used for buffer lookup +
 - Controller correctly extracts unique weight index from weight address
 - Row/col selectors correctly place weights in all 1024 ANN locations
 - All sub-blocks will use the same 64 weights, enabling correct MNIST classification
+
