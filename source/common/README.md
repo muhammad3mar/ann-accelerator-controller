@@ -98,3 +98,4 @@ Example:
 - Macros are expanded at compile time, so they don't add runtime overhead
 - Use macros for common patterns, but don't overuse them for one-off cases
 - Always verify macro expansion matches your intent
+

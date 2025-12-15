@@ -81,3 +81,4 @@ Therefore:
 4. **Result**: Same weight value programmed to corresponding positions in all sub-blocks
 
 **The implementation is CORRECT for shared weight architecture!** ✅
+
