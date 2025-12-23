@@ -1,5 +1,5 @@
-# vsim -c -do "run -all; quit" work.controller_weight_program_tb 
-# Start time: 15:00:37 on Dec 15,2025
+# vsim -c -do "run -all; run -all; quit" work.controller_weight_program_tb 
+# Start time: 01:33:59 on Dec 24,2025
 # Loading sv_std.std
 # Loading work.input_buffer_pkg
 # Loading work.controller_pkg
@@ -2111,5 +2111,5 @@
 # Weights programmed: 1024 / 1024
 # ** Note: $finish    : verif/Controller/tb/controller_weight_program_tb.sv(725)
 #    Time: 31715 ns  Iteration: 0  Instance: /controller_weight_program_tb
-# End time: 15:00:42 on Dec 15,2025, Elapsed time: 0:00:05
+# End time: 01:34:03 on Dec 24,2025, Elapsed time: 0:00:04
 # Errors: 0, Warnings: 0

@@ -5,13 +5,13 @@
 //------------------------------------------------------------------------------
 
 // Common files
-../../source/common/macros.svh
+source/common/macros.svh
 
 // Input Buffer (dependency)
-../../source/Input_Buffer/input_buffer_pkg.sv
-../../source/Input_Buffer/input_buffer.sv
+source/Input_Buffer/input_buffer_pkg.sv
+source/Input_Buffer/input_buffer.sv
 
 // Controller RTL
-../../source/Controller/controller_pkg.sv
-../../source/Controller/controller.sv
+source/Controller/controller_pkg.sv
+source/Controller/controller.sv
 

@@ -5,9 +5,9 @@
 //------------------------------------------------------------------------------
 
 // Common files
-../../source/common/macros.svh
+source/common/macros.svh
 
 // Parallel Interface RTL
-../../source/Parallel_Interface/parallel_interface_pkg.sv
-../../source/Parallel_Interface/parallel_interface.sv
+source/Parallel_Interface/parallel_interface_pkg.sv
+source/Parallel_Interface/parallel_interface.sv
 
