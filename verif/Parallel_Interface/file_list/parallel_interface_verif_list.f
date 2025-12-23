@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------
 
 // Include RTL files first
--f file_list/parallel_interface_list.f
+-f verif/Parallel_Interface/file_list/parallel_interface_list.f
 
 // Testbench files (add testbench files here when created)
 // tb/parallel_interface_tb.sv

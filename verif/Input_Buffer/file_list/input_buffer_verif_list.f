@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------
 
 // Include RTL files first
--f file_list/input_buffer_list.f
+-f verif/Input_Buffer/file_list/input_buffer_list.f
 
 // Testbench files (add testbench files here when created)
 // tb/input_buffer_tb.sv

@@ -5,8 +5,8 @@
 //------------------------------------------------------------------------------
 
 // Include RTL files first
--f file_list/controller_list.f
+-f verif/Controller/file_list/controller_list.f
 
 // Testbench files
-tb/controller_weight_program_tb.sv
+verif/Controller/tb/controller_weight_program_tb.sv
 

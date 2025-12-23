@@ -5,9 +5,9 @@
 //------------------------------------------------------------------------------
 
 // Common files
-../../source/common/macros.svh
+source/common/macros.svh
 
 // Input Buffer RTL
-../../source/Input_Buffer/input_buffer_pkg.sv
-../../source/Input_Buffer/input_buffer.sv
+source/Input_Buffer/input_buffer_pkg.sv
+source/Input_Buffer/input_buffer.sv
 
