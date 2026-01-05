@@ -6,11 +6,21 @@
 package controller_pkg;
 
     //--------------------------------------------------------------------------
+    // Import parallel interface package for command types
+    //--------------------------------------------------------------------------
+    import parallel_interface_pkg::*;
+
+    //--------------------------------------------------------------------------
     // Controller FSM States
     //--------------------------------------------------------------------------
-    typedef enum logic [1:0] {
-        S_IDLE          = 2'd0,   
-        S_PROGRAM_WEIGHTS = 2'd1  
+    typedef enum logic [2:0] {
+        S_IDLE          = 3'd0,  // Idle state
+        S_RESET         = 3'd1,  // Reset ANN core and buffer
+        S_PROGRAM       = 3'd2,  // Program weights into ANN
+        S_VERIFY        = 3'd3,  // Verify programmed weights
+        S_ERASE         = 3'd4,  // Erase weights if needed
+        S_READ          = 3'd5,  // Read data from ANN
+        S_RESULT        = 3'd6   // Output classification results
     } controller_state_t;
 
     //--------------------------------------------------------------------------
@@ -84,38 +94,70 @@ package controller_pkg;
     // Default Parameters
     //--------------------------------------------------------------------------
     localparam int DEFAULT_ADDR_WIDTH   = 8;   
-    localparam int DEFAULT_WEIGHT_WIDTH = 16;   
+    localparam int DEFAULT_WEIGHT_WIDTH = 16;
+
+    //--------------------------------------------------------------------------
+    // Mux Control Constants
+    //--------------------------------------------------------------------------
+    localparam int MUX_ENABLE_WIDTH = 1;
+    localparam int MUX_MODE_WIDTH = 2;
+    localparam int MUX_CONTROL_WIDTH = 3;  // enable + mode
+    localparam int ROW_MUXES_PER_MATRIX = 8;
+    localparam int COL_MUXES_PER_MATRIX = 8;
+    localparam int MUX_CONTROL_BITS_PER_MATRIX = 48;  // (8+8) * 3
+
+    //--------------------------------------------------------------------------
+    // Mux Mode Encoding
+    //--------------------------------------------------------------------------
+    typedef enum logic [1:0] {
+        MUX_MODE_READ  = 2'b00,
+        MUX_MODE_WRITE = 2'b01,
+        MUX_MODE_ERASE = 2'b10,
+        MUX_MODE_HIZ   = 2'b11
+    } mux_mode_t;
+
+    //--------------------------------------------------------------------------
+    // Programming Sequence Sub-States
+    //--------------------------------------------------------------------------
+    typedef enum logic [2:0] {
+        PROG_HIZ,
+        PROG_SELECT,
+        PROG_ENABLE,
+        PROG_WRITE,
+        PROG_DISABLE,
+        PROG_COMPLETE
+    } prog_sequence_state_t;   
 
     //--------------------------------------------------------------------------
     // Helper Functions
     //--------------------------------------------------------------------------
 
-    // Extract block ID from weight address
+    
     function automatic logic [BLOCK_ID_WIDTH-1:0] get_block_id(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return addr[BLOCK_ID_MSB:BLOCK_ID_LSB];
     endfunction
 
-    // Extract sub-block ID from weight address
+    
     function automatic logic [SUB_BLOCK_ID_WIDTH-1:0] get_sub_block_id(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return addr[SUB_BLOCK_ID_MSB:SUB_BLOCK_ID_LSB];
     endfunction
 
-    // Extract row ID from weight address
+    
     function automatic logic [ROW_ID_WIDTH-1:0] get_row_id(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return addr[ROW_ID_MSB:ROW_ID_LSB];
     endfunction
 
-    // Extract column ID from weight address
+    
     function automatic logic [COL_ID_WIDTH-1:0] get_col_id(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return addr[COL_ID_MSB:COL_ID_LSB];
     endfunction
 
-    // Generate row selector from weight address
+    
     function automatic logic [SELECTOR_WIDTH-1:0] gen_row_selector(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return {get_block_id(addr), get_sub_block_id(addr), get_row_id(addr)};
     endfunction
 
-    // Generate column selector from weight address
+    
     function automatic logic [SELECTOR_WIDTH-1:0] gen_col_selector(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return {get_block_id(addr), get_sub_block_id(addr), get_col_id(addr)};
     endfunction

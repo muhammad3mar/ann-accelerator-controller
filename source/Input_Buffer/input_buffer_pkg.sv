@@ -9,10 +9,10 @@ package input_buffer_pkg;
     // Buffer Size Constants
     //--------------------------------------------------------------------------
     
-    localparam int BUFFER_SIZE       = 64;      // Number of buffer locations
-    localparam int BUFFER_ADDR_WIDTH = 6;      // Address width (0-63)
-    localparam int BUFFER_DATA_WIDTH = 8;      // Data width per location 
-    localparam int BUFFER_MAX_ADDR   = 63;     // Maximum valid address
+    localparam int BUFFER_SIZE       = 64;      
+    localparam int BUFFER_ADDR_WIDTH = 6;      
+    localparam int BUFFER_DATA_WIDTH = 8;      
+    localparam int BUFFER_MAX_ADDR   = 63;     
 
     //--------------------------------------------------------------------------
     // Control Signal Encodings (reg_ctrl)
@@ -76,27 +76,27 @@ package input_buffer_pkg;
     // Helper Functions
     //--------------------------------------------------------------------------
     
-    // Check if address is valid
+    
     function automatic logic is_valid_addr(logic [BUFFER_ADDR_WIDTH-1:0] addr);
         return (addr < BUFFER_SIZE);
     endfunction
 
-    // Get row number from address (for MNIST 8x8 organization)
+    
     function automatic logic [2:0] get_row_from_addr(logic [BUFFER_ADDR_WIDTH-1:0] addr);
         return addr[5:3];  // Upper 3 bits represent row (0-7)
     endfunction
 
-    // Get column offset from address (for MNIST 8x8 organization)
+    
     function automatic logic [2:0] get_col_from_addr(logic [BUFFER_ADDR_WIDTH-1:0] addr);
         return addr[2:0];  // Lower 3 bits represent column offset (0-7)
     endfunction
 
-    // Extract weight[0] from buffer data (bits [3:0])
+    
     function automatic logic [WEIGHT_BITS-1:0] extract_weight0(logic [BUFFER_DATA_WIDTH-1:0] data);
         return data[WEIGHT0_MSB:WEIGHT0_LSB];
     endfunction
 
-    // Extract weight[1] from buffer data (bits [7:4])
+    
     function automatic logic [WEIGHT_BITS-1:0] extract_weight1(logic [BUFFER_DATA_WIDTH-1:0] data);
         return data[WEIGHT1_MSB:WEIGHT1_LSB];
     endfunction
