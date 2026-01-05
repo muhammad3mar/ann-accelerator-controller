@@ -7,6 +7,9 @@
 // Common files
 source/common/macros.svh
 
+// Parallel Interface (dependency)
+source/Parallel_Interface/parallel_interface_pkg.sv
+
 // Input Buffer (dependency)
 source/Input_Buffer/input_buffer_pkg.sv
 source/Input_Buffer/input_buffer.sv
