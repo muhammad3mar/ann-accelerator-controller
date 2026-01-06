@@ -7,7 +7,6 @@
 
 import controller_pkg::*;
 import input_buffer_pkg::*;
-import parallel_interface_pkg::*;
 
 module ann_controller #(
     parameter int ADDR_WIDTH   = controller_pkg::DEFAULT_ADDR_WIDTH,
@@ -22,8 +21,7 @@ module ann_controller #(
     //======================================================================
     // Controller <-> Parallel Interface
     //======================================================================
-    input  logic                     valid,
-    input  logic [CMD_WIDTH-1:0]     cmd,  // Command from parallel interface            
+    input  logic                     valid,            
 
     //======================================================================
     // Controller <-> ANN Core
@@ -32,12 +30,7 @@ module ann_controller #(
     output logic                     weight_write_en,  // write enable for weight programming
     output logic [SELECTOR_WIDTH-1:0] row_selector,     // row selector: block[1:0] + sub_block[1:0] + row[2:0]
     output logic [SELECTOR_WIDTH-1:0] col_selector,     // column selector: block[1:0] + sub_block[1:0] + col[2:0]
-    input  logic                     op_done,
-    
-    // Mux control outputs
-    output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl,
-    output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl,
-    output logic [3:0]               weight_data,  // weight value to write          
+    input  logic                     op_done,          
 
     //======================================================================
     // Controller <-> Input Buffer
@@ -45,8 +38,7 @@ module ann_controller #(
     output logic [5:0]               buf_reg_add,      
     output logic [2:0]               buf_reg_ctrl,     // buffer control signals
     output logic                     buf_read_write,   // 1 = write, 0 = read
-    input  logic                     buf_ready,
-    input  logic [7:0]               buf_data,         // Buffer data (D0) for weight extraction        
+    input  logic                     buf_ready,        
 
     //======================================================================
     // Status to higher-level
@@ -58,12 +50,50 @@ module ann_controller #(
     // FSM States (using package type)
     //--------------------------------------------------------------------------
     controller_state_t state, next_state;
-    prog_sequence_state_t prog_state, next_prog_state;
 
     //--------------------------------------------------------------------------
-    // Command and Data Type Tracking
+    // VERIFY sub-FSM
     //--------------------------------------------------------------------------
-    logic [CMD_WIDTH-1:0] cmd_reg;  // Registered command (data type)
+    typedef enum logic [1:0] {
+        VERIFY_READ,
+        VERIFY_WAIT,
+        VERIFY_CHECK,
+        VERIFY_DONE
+    } verify_state_t;
+
+    verify_state_t verify_state, verify_next;
+
+    //--------------------------------------------------------------------------
+    // ERASE sub-FSM
+    //--------------------------------------------------------------------------
+    typedef enum logic [2:0] {
+        ERASE_HIZ,
+        ERASE_SELECT,
+        ERASE_ENABLE,
+        ERASE_PULSE,
+        ERASE_DISABLE,
+        ERASE_COMPLETE
+    } erase_state_t;
+
+    erase_state_t erase_state, erase_next;
+
+    //--------------------------------------------------------------------------
+    // VERIFY and ERASE sub-FSM Signals
+    //--------------------------------------------------------------------------
+    // Retry counter (counts how many ERASE attempts for current weight)
+    logic [1:0] retry_cnt;     // 0..3
+
+    // Simple "read valid" modeling (timing for verification reads)
+    logic [1:0] verify_wait_cnt;
+
+    // Outputs (or internal signals connected to outputs)
+    logic        weight_read_en;      // enable read in VERIFY
+    logic [3:0]  weight_read_data;    // comes from ADC/quantizer (input in your top)
+    logic [3:0]  expected_weight;     // from buffer/host
+    logic        error_flag;
+
+    // Optional: flag to strengthen program when read > expected
+    logic        program_stronger;
 
     //--------------------------------------------------------------------------
     // Weight Address Mapping (using package constants)
@@ -77,10 +107,7 @@ module ann_controller #(
 
     // Buffer address and weight selection 
     logic [BUF_ADDR_WIDTH-1:0]     buf_addr_reg;          
-    logic                           weight_sel;
-    
-    // Weight data from buffer
-    logic [3:0] weight_from_buffer;             
+    logic                           weight_sel;             
 
     //--------------------------------------------------------------------------
     // Address Decoding: Extract block, sub-block, row, column from weight address
@@ -101,80 +128,6 @@ module ann_controller #(
     )
     
     //--------------------------------------------------------------------------
-    // Mux Control Signal Generation
-    //--------------------------------------------------------------------------
-    // Generate control signals for all row and column muxes
-    // Each mux control: {enable, mode[1:0]}
-    // enable: 1 = enabled, 0 = disabled
-    // mode: 00=READ, 01=WRITE, 10=ERASE, 11=HIZ
-    `comb(
-        // Default: all muxes disabled and in High Z mode
-        for (int b = 0; b < NUM_BLOCKS; b++) begin
-            for (int sb = 0; sb < NUM_SUB_BLOCKS; sb++) begin
-                for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                    row_mux_ctrl[b][sb][r] = {1'b0, MUX_MODE_HIZ};
-                end
-                for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                    col_mux_ctrl[b][sb][c] = {1'b0, MUX_MODE_HIZ};
-                end
-            end
-        end
-        
-        // Generate mux control based on programming sequence state
-        if (state == S_PROGRAM) begin
-            // Check if we're in the target matrix
-            if (prog_state == PROG_SELECT || prog_state == PROG_ENABLE || 
-                prog_state == PROG_WRITE) begin
-                // Target matrix: block_id, sub_block_id
-                // Target row: row_id within matrix
-                // Target column: col_id within matrix
-                
-                // Row muxes
-                for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                    if (r == row_id) begin
-                        // Target row mux: write mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_WRITE};
-                        end else if (prog_state == PROG_SELECT) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_WRITE};
-                        end else begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_HIZ};
-                        end
-                    end else begin
-                        // Other row muxes: High Z mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_HIZ};
-                        end else begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_HIZ};
-                        end
-                    end
-                end
-                
-                // Column muxes
-                for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                    if (c == col_id) begin
-                        // Target column mux: write mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_WRITE};
-                        end else if (prog_state == PROG_SELECT) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_WRITE};
-                        end else begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_HIZ};
-                        end
-                    end else begin
-                        // Other column muxes: High Z mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_HIZ};
-                        end else begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_HIZ};
-                        end
-                    end
-                end
-            end
-        end
-    )
-    
-    //--------------------------------------------------------------------------
     // Buffer Address and Weight Selection Mapping
     //--------------------------------------------------------------------------
    
@@ -184,20 +137,50 @@ module ann_controller #(
         buf_addr_reg = weight_addr_reg[5:1];  // Divide unique weight index by 2
         weight_sel   = weight_addr_reg[0];     // Select weight[0] or weight[1] within location
     )
-    
+
     //--------------------------------------------------------------------------
-    // Weight Data Extraction from Buffer
+    // Mux Control Signal Generation for VERIFY and ERASE
     //--------------------------------------------------------------------------
-    // Buffer location contains 2 weights: weight[0] in [3:0], weight[1] in [7:4]
     `comb(
-        // Extract weight based on weight_sel
-        if (weight_sel == 1'b0)
-            weight_from_buffer = buf_data[3:0];   // weight[0]
-        else
-            weight_from_buffer = buf_data[7:4];   // weight[1]
-        
-        // Output weight data
-        weight_data = weight_from_buffer;
+        // ========== VERIFY state: set muxes to READ mode ==========
+        if (state == S_VERIFY) begin
+            // In VERIFY, select target row/col in READ mode
+            for (int r = 0; r < SUB_BLOCK_ROWS; r++) begin
+                if (r == row_id)
+                    row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_READ};
+                else
+                    row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_HIZ};
+            end
+
+            for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
+                if (c == col_id)
+                    col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_READ};
+                else
+                    col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_HIZ};
+            end
+        end
+
+        // ========== ERASE state: set muxes to ERASE mode ==========
+        if (state == S_ERASE) begin
+            // In ERASE, select target row/col in ERASE mode for relevant sub-states
+            if (erase_state == ERASE_SELECT || erase_state == ERASE_ENABLE ||
+                erase_state == ERASE_PULSE  || erase_state == ERASE_DISABLE) begin
+
+                for (int r = 0; r < SUB_BLOCK_ROWS; r++) begin
+                    if (r == row_id)
+                        row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_ERASE};
+                    else
+                        row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_HIZ};
+                end
+
+                for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
+                    if (c == col_id)
+                        col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_ERASE};
+                    else
+                        col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_HIZ};
+                end
+            end
+        end
     )
 
     //--------------------------------------------------------------------------
@@ -206,35 +189,75 @@ module ann_controller #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state              <= S_IDLE;
-            prog_state         <= PROG_HIZ;
             weight_addr_reg    <= '0;
             weight_prog_done   <= 1'b0;
-            cmd_reg            <= '0;
         end else begin
             state <= next_state;
-            prog_state <= next_prog_state;
             
-            // Register command when valid signal is asserted
-            if (valid && state == S_IDLE) begin
-                cmd_reg <= cmd;
-            end
-            
-            // Reset weight address when entering RESET state (for weight programming)
-            if (state == S_IDLE && next_state == S_RESET && cmd_reg == CMD_WEIGHTS) begin
+            // Reset weight address when entering PROGRAM_WEIGHTS state
+            if (state == S_IDLE && next_state == S_PROGRAM_WEIGHTS) begin
                 weight_addr_reg <= '0;
                 weight_prog_done <= 1'b0;
             end
             
-            // Handle programming sequence sub-states
-            if (state == S_PROGRAM) begin
-                // Advance to next weight when programming sequence completes
-                if (prog_state == PROG_COMPLETE) begin
-                    if (weight_addr_reg < (TOTAL_WEIGHT_LOCATIONS - 1)) begin
-                        weight_addr_reg <= weight_addr_reg + 1'b1;
-                    end else begin
-                        weight_prog_done <= 1'b1;
-                    end
+            // When a programming operation completes, mark if this was the last
+            // programmed weight but do NOT advance the address yet — verification
+            // must occur for the just-programmed location.
+            if (state == S_PROGRAM_WEIGHTS && op_done) begin
+                if (weight_addr_reg >= (TOTAL_WEIGHT_LOCATIONS - 1)) begin
+                    weight_prog_done <= 1'b1;
                 end
+            end
+
+            // Advance the address only after successful verification when
+            // transitioning back into PROGRAM_WEIGHTS.
+            if (state == S_VERIFY && next_state == S_PROGRAM_WEIGHTS) begin
+                if (weight_addr_reg < (TOTAL_WEIGHT_LOCATIONS - 1)) begin
+                    weight_addr_reg <= weight_addr_reg + 1'b1;
+                    // Note: buf_addr_reg and weight_sel are computed from weight_addr_reg
+                    // in combinational logic, so no need to update them here
+                end else begin
+                    weight_prog_done <= 1'b1;
+                end
+            end
+        end
+    end
+
+    //--------------------------------------------------------------------------
+    // VERIFY and ERASE sub-FSM state registers
+    //--------------------------------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            verify_state     <= VERIFY_READ;
+            erase_state      <= ERASE_HIZ;
+            retry_cnt        <= 2'd0;
+            verify_wait_cnt  <= 2'd0;
+            program_stronger <= 1'b0;
+        end else begin
+            verify_state <= verify_next;
+            erase_state  <= erase_next;
+
+            // -------- retry counter: increment on each ERASE cycle completion --------
+            if (state == S_PROGRAM_WEIGHTS) begin
+                // Reset retry counter when starting to program new weight
+                if (op_done && weight_addr_reg < (TOTAL_WEIGHT_LOCATIONS - 1)) begin
+                    retry_cnt <= 2'd0;
+                    program_stronger <= 1'b0;
+                end
+            end
+
+            // Increment retry counter when ERASE cycle completes
+            if (state == S_ERASE && erase_state == ERASE_COMPLETE) begin
+                retry_cnt <= retry_cnt + 1'b1;
+            end
+
+            // -------- verify wait counter (timing for read latency) --------
+            if (state != S_VERIFY) begin
+                verify_wait_cnt <= 2'd0;
+            end else if (verify_state == VERIFY_READ) begin
+                verify_wait_cnt <= 2'd2; // Assume 2 cycles until data is stable
+            end else if (verify_state == VERIFY_WAIT && verify_wait_cnt != 0) begin
+                verify_wait_cnt <= verify_wait_cnt - 1'b1;
             end
         end
     end
@@ -256,7 +279,6 @@ module ann_controller #(
         busy             = 1'b0;
 
         next_state       = state;
-        next_prog_state  = prog_state;
 
         unique case (state)
 
@@ -269,102 +291,34 @@ module ann_controller #(
                 buf_reg_ctrl    = CTRL_IDLE;
                 buf_read_write  = 1'b0;
                 
-                // When valid signal arrives, check command (data type)
-                if (valid) begin
-                    if (cmd == CMD_WEIGHTS) begin
-                        // Weight programming sequence
-                        next_state = S_RESET;
-                    end else if (cmd == CMD_CLASSIFY_DATA) begin
-                        // Classification sequence
-                        next_state = S_READ;
-                    end else begin
-                        next_state = S_IDLE;
-                    end
-                end else begin
+                // When valid signal arrives, start programming weights
+                if (valid)
+                    next_state = S_PROGRAM_WEIGHTS;
+                else
                     next_state = S_IDLE;
-                end
             end
 
             //--------------------------------------------------------------
-            // RESET: Reset ANN core and buffer
+            // PROGRAM_WEIGHTS: program weights into ANN core
             //--------------------------------------------------------------
-            S_RESET: begin
+           
+            S_PROGRAM_WEIGHTS: begin
                 busy            = 1'b1;
-                ann_reset       = 1'b1;
-                buf_reg_ctrl    = CTRL_IDLE;
-                buf_read_write  = 1'b0;
-                
-                // After reset, proceed to programming
-                next_state = S_PROGRAM;
-                next_prog_state = PROG_HIZ;
-            end
-
-            //--------------------------------------------------------------
-            // PROGRAM: Program weights into ANN (with mux sequence sub-states)
-            //--------------------------------------------------------------
-            S_PROGRAM: begin
-                busy            = 1'b1;
+                weight_write_en = 1'b1;  
                 
                 // Buffer control: read weight data from buffer
                 buf_reg_add     = {{(6-BUF_ADDR_WIDTH){1'b0}}, buf_addr_reg};  
                 buf_reg_ctrl    = CTRL_WEIGHT_READ;  
                 buf_read_write  = 1'b0;              // Read from buffer
                 
-                // Programming sequence sub-state machine
-                unique case (prog_state)
-                    PROG_HIZ: begin
-                        // Set all muxes to High Z mode (disabled)
-                        weight_write_en = 1'b0;
-                        next_prog_state = PROG_SELECT;
-                    end
-                    
-                    PROG_SELECT: begin
-                        // Set target row/column mux mode to write (but not enabled yet)
-                        weight_write_en = 1'b0;
-                        next_prog_state = PROG_ENABLE;
-                    end
-                    
-                    PROG_ENABLE: begin
-                        // Enable ALL row and column muxes
-                        // Target mux: enabled + write mode
-                        // Other muxes: enabled + High Z mode
-                        weight_write_en = 1'b0;
-                        next_prog_state = PROG_WRITE;
-                    end
-                    
-                    PROG_WRITE: begin
-                        // Hold write state, wait for op_done
-                        weight_write_en = 1'b1;
-                        if (op_done) begin
-                            next_prog_state = PROG_DISABLE;
-                        end else begin
-                            next_prog_state = PROG_WRITE;
-                        end
-                    end
-                    
-                    PROG_DISABLE: begin
-                        // Disable all muxes (already in default state from mux control logic)
-                        weight_write_en = 1'b0;
-                        next_prog_state = PROG_COMPLETE;
-                    end
-                    
-                    PROG_COMPLETE: begin
-                        // Return to High Z, check if more weights to program
-                        weight_write_en = 1'b0;
-                        if (weight_prog_done) begin
-                            // All weights programmed, proceed to verify
-                            next_state = S_VERIFY;
-                            next_prog_state = PROG_HIZ;
-                        end else begin
-                            // Move to next weight
-                            next_prog_state = PROG_HIZ;
-                        end
-                    end
-                    
-                    default: begin
-                        next_prog_state = PROG_HIZ;
-                    end
-                endcase
+                
+                
+                // After programming current weight, move to VERIFY
+                if (op_done) begin
+                    next_state = S_VERIFY;
+                end else begin
+                    next_state = S_PROGRAM_WEIGHTS;
+                end
             end
 
             //--------------------------------------------------------------
@@ -374,53 +328,119 @@ module ann_controller #(
                 busy            = 1'b1;
                 buf_reg_ctrl    = CTRL_IDLE;
                 buf_read_write  = 1'b0;
+                weight_read_en  = (verify_state == VERIFY_READ) ? 1'b1 : 1'b0;
                 
-                // For now, assume verification passes (can be extended later)
-                next_state = S_IDLE;
+                // VERIFY sub-FSM logic
+                unique case (verify_state)
+                    VERIFY_READ: begin
+                        // Initiate read from current weight location
+                        verify_next = VERIFY_WAIT;
+                    end
+                    
+                    VERIFY_WAIT: begin
+                        // Wait for read data to be valid (verify_wait_cnt counts down)
+                        if (verify_wait_cnt == 0)
+                            verify_next = VERIFY_CHECK;
+                        else
+                            verify_next = VERIFY_WAIT;
+                    end
+                    
+                    VERIFY_CHECK: begin
+                        // Compare read weight with expected weight
+                        // If mismatch, set error_flag and transition to ERASE
+                        if (weight_read_data != expected_weight) begin
+                            error_flag = 1'b1;
+                            // If expected > read, may need stronger programming
+                            if (expected_weight > weight_read_data)
+                                program_stronger = 1'b1;
+                            next_state = S_ERASE;  // Erase and retry
+                            verify_next = VERIFY_READ;
+                        end else begin
+                            verify_next = VERIFY_DONE;  // Match: continue
+                        end
+                    end
+                    
+                    VERIFY_DONE: begin
+                        // Move to next weight or exit verify
+                        if (weight_prog_done) begin
+                            // All weights verified, return to idle
+                            next_state = S_IDLE;
+                            verify_next = VERIFY_READ;
+                        end else begin
+                            // Proceed to program the next weight; the sequential
+                            // block will advance `weight_addr_reg` when entering
+                            // PROGRAM_WEIGHTS from VERIFY.
+                            next_state = S_PROGRAM_WEIGHTS;
+                            verify_next = VERIFY_READ;
+                        end
+                    end
+                    
+                    default: begin
+                        verify_next = VERIFY_READ;
+                    end
+                endcase
             end
 
             //--------------------------------------------------------------
-            // ERASE: Erase weights if needed
+            // ERASE: Erase weights if verification fails
             //--------------------------------------------------------------
             S_ERASE: begin
                 busy            = 1'b1;
                 buf_reg_ctrl    = CTRL_IDLE;
                 buf_read_write  = 1'b0;
                 
-                // After erase, retry programming
-                next_state = S_RESET;
+                // ERASE sub-FSM logic
+                unique case (erase_state)
+                    ERASE_HIZ: begin
+                        // All muxes to High Z mode (disabled)
+                        erase_next = ERASE_SELECT;
+                    end
+                    
+                    ERASE_SELECT: begin
+                        // Set target row/column mux mode to erase (but not enabled yet)
+                        erase_next = ERASE_ENABLE;
+                    end
+                    
+                    ERASE_ENABLE: begin
+                        // Enable target row and column muxes in ERASE mode
+                        erase_next = ERASE_PULSE;
+                    end
+                    
+                    ERASE_PULSE: begin
+                        // Hold erase pulse, wait for op_done (single-cell/row/global ERASE supported)
+                        if (op_done) begin
+                            erase_next = ERASE_DISABLE;
+                        end else begin
+                            erase_next = ERASE_PULSE;
+                        end
+                    end
+                    
+                    ERASE_DISABLE: begin
+                        // Disable all muxes
+                        erase_next = ERASE_COMPLETE;
+                    end
+                    
+                    ERASE_COMPLETE: begin
+                        // Check retry count and decide next action
+                        if (retry_cnt < 3) begin
+                            // Retry: go back to PROGRAM_WEIGHTS (with adaptive voltage if program_stronger set)
+                            next_state = S_PROGRAM_WEIGHTS;
+                            erase_next = ERASE_HIZ;
+                        end else begin
+                            // Max retries exceeded, set error_flag and return to idle
+                            error_flag = 1'b1;
+                            next_state = S_IDLE;
+                            erase_next = ERASE_HIZ;
+                        end
+                    end
+                    
+                    default: begin
+                        erase_next = ERASE_HIZ;
+                    end
+                endcase
             end
 
-            //--------------------------------------------------------------
-            // READ: Read classification data from ANN
-            //--------------------------------------------------------------
-            S_READ: begin
-                busy            = 1'b1;
-                buf_reg_ctrl    = CTRL_COMPUTE;
-                buf_read_write  = 1'b0;
-                
-                // After read complete, proceed to result output
-                // For now, assume read completes immediately (can be extended)
-                next_state = S_RESULT;
-            end
-
-            //--------------------------------------------------------------
-            // RESULT: Output classification results
-            //--------------------------------------------------------------
-            S_RESULT: begin
-                busy            = 1'b1;
-                buf_reg_ctrl    = CTRL_RESULT_OUT;
-                buf_read_write  = 1'b0;
-                
-                // After result output complete, return to idle
-                // For now, assume output completes immediately (can be extended)
-                next_state = S_IDLE;
-            end
-
-            default: begin
-                next_state = S_IDLE;
-                next_prog_state = PROG_HIZ;
-            end
+            default: next_state = S_IDLE;
 
         endcase
     )
