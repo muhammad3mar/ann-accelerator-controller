@@ -52,7 +52,7 @@ MODULES = {
         "verif_list": "verif/Controller/file_list/controller_verif_list.f",
         "rtl_dir": "source/Controller",
         "verif_dir": "verif/Controller",
-        "testbenches": ["controller_weight_program_tb"]
+        "testbenches": ["controller_weight_program_tb", "controller_addr_pulse_tb", "controller_prog_verify_tb"]
     },
     "Input_Buffer": {
         "rtl_list": "source/Input_Buffer/input_buffer_rtl_list.f",

@@ -34,7 +34,7 @@ package input_buffer_pkg;
     localparam int MNIST_COLS        = 8;       
     localparam int MNIST_PIXELS      = 64;      
     localparam int PIXELS_PER_ROW   = 8;       
-    localparam int PIXELS_PER_ADDR  = 8;       // Pixels output per address (D0-D7)
+    localparam int PIXELS_PER_ADDR  = 8;       // Pixels per read; D0-D7 output 1 bit per channel per cycle (bit-serial)
 
     // Address ranges for each row 
     localparam int ROW0_START        = 0;
@@ -69,8 +69,8 @@ package input_buffer_pkg;
     // Output Data Lines
     //--------------------------------------------------------------------------
     
-    localparam int NUM_DATA_LINES    = 8;       
-    localparam int DATA_LINE_WIDTH   = 8;       
+    localparam int NUM_DATA_LINES    = 8;       // D0-D7
+    localparam int DATA_LINE_WIDTH   = 1;       // 1 bit per channel per cycle (bit-serial)       
 
     //--------------------------------------------------------------------------
     // Helper Functions
