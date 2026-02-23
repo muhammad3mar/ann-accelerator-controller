@@ -36,10 +36,17 @@ module ann_controller #(
     output logic [SELECTOR_WIDTH-1:0] col_selector,     // column selector: block[1:0] + sub_block[1:0] + col[2:0]
     input  logic                     op_done,
     
-    // Mux control outputs
+    // Mux control outputs (legacy, kept for compatibility)
     output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl,
     output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl,
     output logic [3:0]               weight_data,    // weight value to write          
+
+    // New outputs to ANN core (32-bit address + 3-bit pulses)
+    output logic [ADDR_OUT_WIDTH-1:0] addr_out,      // PE[23:20], SA[19:16], col[15:8], row[7:0] one-hot
+    output logic [2:0]               pulses,         // Pulse signals: bit i driven when mode[i]==1
+
+    // ADC/quantizer input for verification read (from ANN core)
+    input  logic [3:0]               weight_read_data,  // Read weight from memristor during VERIFY
 
     //======================================================================
     // Controller <-> Input Buffer
@@ -47,9 +54,10 @@ module ann_controller #(
     output logic [5:0]               buf_reg_add,      
     output logic [2:0]               buf_reg_ctrl,     // buffer control signals
     output logic                     buf_read_write,   // 1 = write, 0 = read
+    output logic [2:0]               buf_bit_sel,     // bit index 0-7 for D0-D7 bit-serial output (LSB-first)
     output logic [7:0]               buf_data_out,     // Captured data for buffer write (from parallel interface)
     input  logic                     buf_ready,
-    input  logic [BUFFER_DATA_WIDTH-1:0] buf_data, // Data from input buffer        
+    input  logic [BUFFER_DATA_WIDTH-1:0] buf_data, // Data from input buffer (full byte at current addr)        
 
     //======================================================================
     // Status to higher-level
@@ -95,12 +103,14 @@ module ann_controller #(
     // Retry counter (counts how many ERASE attempts for current weight)
     logic [1:0] retry_cnt;     // 0..3
 
-    // Simple "read valid" modeling (timing for verification reads)
-    logic [1:0] verify_wait_cnt;
+    // Re-program counter (counts PROG retries without ERASE when read < expected)
+    logic [1:0] prog_retry_cnt;  // 0..MAX_PROG_RETRIES
+
+    // Timing for verification read (TREAD*PULSE_NUM_READ cycles)
+    logic [7:0] verify_wait_cnt;
 
     // Outputs (or internal signals connected to outputs)
-    logic        weight_read_en;      // enable read in VERIFY
-    logic [3:0]  weight_read_data;    // comes from ADC/quantizer (input in your top)
+    logic        weight_read_en;      // enable read in VERIFY (internal; use weight_read_data input port)
     logic [3:0]  expected_weight;     // from buffer/host
     logic        error_flag;
 
@@ -126,6 +136,14 @@ module ann_controller #(
     logic [2:0] data_count;    // Counter for pixels within current row (0-7)
     logic [2:0] row_count;     // Counter for current row (0-7)
     logic [5:0] buf_write_addr; // Buffer write address for data collection
+    logic [2:0] bit_count;     // Bit index (0-7) during S_COMPUTE for D0-D7 bit-serial output
+
+    //--------------------------------------------------------------------------
+    // Pulse Timing (per spec: T*N cycles per mode)
+    //--------------------------------------------------------------------------
+    logic [7:0] pulse_cnt;     // Cycle counter for pulse duration
+    logic       pulse_done;    // Asserted when pulse_cnt reaches total for current mode
+    logic [7:0] pulse_total;   // Total cycles for current mode (T*N or max(8, T*N) for INF)
 
     //--------------------------------------------------------------------------
     // Weight Count Detection and Tracking (kept for ERASE/VERIFY compatibility)
@@ -150,24 +168,12 @@ module ann_controller #(
     assign expected_weight = weight_from_buffer;             
 
     //--------------------------------------------------------------------------
-    // Address Parsing: Direct address from parallel interface (for new commands)
+    // Address Parsing: Direct address from parallel interface (all commands)
     //--------------------------------------------------------------------------
     `comb(
-        // For new commands (PROG, ERASE, READ, INF): parse address directly
-        if (state != S_VERIFY && state != S_ERASE) begin
-            // Parse 16-bit address from parallel interface
-            parse_ann_address(address_reg, block_id, sub_block_id, row_id, col_id);
-            
-            // Form 10-bit ANN address: {block_id[1:0], sub_block_id[1:0], row_id[2:0], col_id[2:0]}
-            weight_addr_reg = {block_id, sub_block_id, row_id, col_id};
-        end else begin
-            // For VERIFY and ERASE: keep using mapping algorithm (compatibility)
-            weight_addr_reg = buffer_idx_to_ann_addr(buffer_idx_reg, matrix_rows, matrix_cols);
-            block_id     = get_block_id(weight_addr_reg);
-            sub_block_id = get_sub_block_id(weight_addr_reg);
-            row_id       = get_row_id(weight_addr_reg);
-            col_id       = get_col_id(weight_addr_reg);
-        end
+        // All commands use direct address from host packet
+        parse_ann_address(address_reg, block_id, sub_block_id, row_id, col_id);
+        weight_addr_reg = {block_id, sub_block_id, row_id, col_id};
     )
 
     //--------------------------------------------------------------------------
@@ -177,30 +183,72 @@ module ann_controller #(
         row_selector = gen_row_selector(weight_addr_reg);
         col_selector = gen_col_selector(weight_addr_reg);
     )
+
+    //--------------------------------------------------------------------------
+    // 32-bit Address Output to ANN Core (one-hot format)
+    //--------------------------------------------------------------------------
+    `comb(
+        addr_out = host_addr_to_ann_addr_out(block_id, sub_block_id, row_id, col_id);
+    )
+
+    //--------------------------------------------------------------------------
+    // 3-bit Pulse Output to ANN Core
+    //--------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
+    // Pulse total and done (per spec: T*N cycles per mode)
+    //--------------------------------------------------------------------------
+    `comb(
+        pulse_total = 8'd0;
+        if (state == S_READ)
+            pulse_total = PULSE_TOTAL_READ[7:0];
+        else if (state == S_PROGRAM && prog_state == PROG_WRITE)
+            pulse_total = PULSE_TOTAL_PROG[7:0];
+        else if (state == S_ERASE && erase_state == ERASE_PULSE)
+            pulse_total = PULSE_TOTAL_ERASE[7:0];
+        else if (state == S_COMPUTE)
+            pulse_total = PULSE_TOTAL_INF[7:0];
+
+        pulse_done = (pulse_total > 8'd0) && (pulse_cnt >= pulse_total - 1'b1);
+    )
+
+    //--------------------------------------------------------------------------
+    // 3-bit Pulse Output to ANN Core
+    //--------------------------------------------------------------------------
+    // Drive pulses based on current mode: bit i = 1 when mode[i]==1 and in active state
+    // HIZ(000): all 0 | READ(001): pulse[0] | PROG(010): pulse[1] | ERASE(011): pulse[0,1] | INF(100): pulse[2]
+    `comb(
+        pulses = 3'b000;
+        if (state == S_PROGRAM && (prog_state == PROG_ENABLE || prog_state == PROG_WRITE)) begin
+            pulses = 3'b010;  // PROG mode
+        end else if (state == S_ERASE && (erase_state == ERASE_ENABLE || erase_state == ERASE_PULSE || erase_state == ERASE_DISABLE)) begin
+            pulses = 3'b011;  // ERASE mode
+        end else if (state == S_READ) begin
+            pulses = 3'b001;  // READ mode
+        end else if (state == S_VERIFY && (verify_state == VERIFY_READ || verify_state == VERIFY_WAIT)) begin
+            pulses = 3'b001;  // READ mode for verify
+        end else if (state == S_COMPUTE) begin
+            pulses = 3'b100;  // INF mode
+        end
+    )
     
     //--------------------------------------------------------------------------
     // Buffer Address and Weight Selection Mapping
     //--------------------------------------------------------------------------
-    // For new PROG command: use direct address (data stored as 8-bit in buffer)
-    // For old mapping: use buffer_idx_reg (2 weights per location)
     `comb(
-        // Buffer address: divide buffer index by 2 (since 2 weights per location)
-        buf_addr_reg = buffer_idx_reg[WEIGHT_COUNT_WIDTH-1:1];  // Divide by 2 (shift right 1)
-        weight_sel   = buffer_idx_reg[0];  // LSB selects which weight in the pair
+        // For PROG/VERIFY: use address_reg[5:0]; else use buffer_idx for legacy
+        buf_addr_reg = (state == S_PROGRAM || state == S_VERIFY) ? address_reg[5:0] : buffer_idx_reg[WEIGHT_COUNT_WIDTH-1:1];
+        weight_sel   = buffer_idx_reg[0];
         
         // Extract weight data from buffer
-        // For new PROG command: data is stored as 8-bit in buffer[address_reg[5:0]]
-        //   - Lower 4 bits [3:0] contain the weight
-        // For old mapping: use weight_sel to choose between lower/upper 4 bits
-        if (state == S_PROGRAM) begin
-            // New PROG command: extract weight from lower 4 bits of buf_data
+        // For PROG and VERIFY (direct address): weight in buf_data[3:0] at address_reg[5:0]
+        if (state == S_PROGRAM || state == S_VERIFY) begin
             weight_from_buffer = buf_data[3:0];
         end else begin
-            // Old mapping: use weight_sel
+            // Legacy: use weight_sel for buffer_idx mapping
             if (weight_sel == 1'b0) begin
-                weight_from_buffer = buf_data[3:0];   // Weight[0] in lower 4 bits
+                weight_from_buffer = buf_data[3:0];
             end else begin
-                weight_from_buffer = buf_data[7:4];   // Weight[1] in upper 4 bits
+                weight_from_buffer = buf_data[7:4];
             end
         end
         
@@ -359,7 +407,9 @@ module ann_controller #(
             data_count         <= '0;
             row_count          <= '0;
             buf_write_addr     <= '0;
-            
+            bit_count          <= '0;
+            pulse_cnt          <= '0;
+
             // Keep these for ERASE/VERIFY compatibility
             buffer_idx_reg     <= '0;
             weight_count_reg   <= DEFAULT_NUM_WEIGHTS;  // Default: 640 weights
@@ -395,8 +445,26 @@ module ann_controller #(
                 data_count <= '0;
                 row_count <= '0;
                 buf_write_addr <= '0;
+            end else if (state == S_COMPUTE) begin
+                // Advance bit index for D0-D7 bit-serial output (LSB-first, wrap after 8 cycles)
+                bit_count <= (bit_count == 3'd7) ? 3'd0 : bit_count + 1'b1;
+            end else if (state != S_COMPUTE && next_state == S_COMPUTE) begin
+                bit_count <= '0;
             end
-            
+
+            // Pulse timing counter: reset on enter, increment until done
+            if ((state != S_READ && next_state == S_READ) ||
+                (state == S_PROGRAM && prog_state != PROG_WRITE && next_prog_state == PROG_WRITE) ||
+                (state == S_ERASE && erase_state != ERASE_PULSE && erase_next == ERASE_PULSE) ||
+                (state != S_COMPUTE && next_state == S_COMPUTE)) begin
+                pulse_cnt <= 8'd0;
+            end else if (((state == S_READ && next_state == S_READ) ||
+                         (state == S_PROGRAM && prog_state == PROG_WRITE && next_prog_state == PROG_WRITE) ||
+                         (state == S_ERASE && erase_state == ERASE_PULSE && erase_next == ERASE_PULSE) ||
+                         (state == S_COMPUTE && next_state == S_COMPUTE)) && !pulse_done) begin
+                pulse_cnt <= pulse_cnt + 1'b1;
+            end
+
             // Keep ERASE/VERIFY logic for compatibility (unchanged)
             // Weight count detection: For now, use default 640 weights
             // TODO: In the future, can count buffer writes or use explicit count signal
@@ -425,11 +493,9 @@ module ann_controller #(
                 end
             end
             
-            // Check completion during programming
+            // Check completion during programming (direct address: one weight per PROG command)
             if (state == S_PROGRAM && prog_state == PROG_COMPLETE) begin
-                if (buffer_idx_reg >= (weight_count_reg - 1)) begin
-                    weight_prog_done <= 1'b1;
-                end
+                weight_prog_done <= 1'b1;  // Direct address flow: one weight per command
             end
         end
     end
@@ -442,6 +508,7 @@ module ann_controller #(
             verify_state     <= VERIFY_READ;
             erase_state      <= ERASE_HIZ;
             retry_cnt        <= 2'd0;
+            prog_retry_cnt   <= 2'd0;
             verify_wait_cnt  <= 2'd0;
             program_stronger <= 1'b0;
         end else begin
@@ -449,25 +516,36 @@ module ann_controller #(
             erase_state  <= erase_next;
             // prog_state is updated in the main state register block above
 
-            // -------- retry counter: increment on each ERASE cycle completion --------
-            if (state == S_PROGRAM) begin
-                // Reset retry counter when starting to program new weight
-                if (prog_state == PROG_COMPLETE && buffer_idx_reg < (weight_count_reg - 1)) begin
-                    retry_cnt <= 2'd0;
-                    program_stronger <= 1'b0;
-                end
+            // -------- retry_cnt and prog_retry_cnt: reset on success (VERIFY_DONE) --------
+            if (state == S_VERIFY && verify_state == VERIFY_DONE) begin
+                retry_cnt      <= 2'd0;
+                prog_retry_cnt <= 2'd0;
+                program_stronger <= 1'b0;
+            end
+            // -------- prog_retry_cnt: increment when re-progging without ERASE --------
+            else if (state == S_VERIFY && verify_state == VERIFY_CHECK && weight_read_data < expected_weight && prog_retry_cnt < controller_pkg::MAX_PROG_RETRIES) begin
+                prog_retry_cnt <= prog_retry_cnt + 1'b1;
+            end
+            // -------- prog_retry_cnt: reset when going to ERASE (over-programmed or max re-prog exceeded) --------
+            else if (state == S_VERIFY && verify_state == VERIFY_CHECK && (weight_read_data > expected_weight || prog_retry_cnt >= controller_pkg::MAX_PROG_RETRIES)) begin
+                prog_retry_cnt <= 2'd0;
+            end
+            // -------- retry_cnt: increment on ERASE_COMPLETE; prog_retry_cnt reset --------
+            else if (state == S_ERASE && erase_state == ERASE_COMPLETE) begin
+                retry_cnt      <= retry_cnt + 1'b1;
+                prog_retry_cnt <= 2'd0;
+            end
+            // -------- retry_cnt: legacy reset when advancing buffer index --------
+            else if (state == S_PROGRAM && prog_state == PROG_COMPLETE && buffer_idx_reg < (weight_count_reg - 1)) begin
+                retry_cnt <= 2'd0;
+                program_stronger <= 1'b0;
             end
 
-            // Increment retry counter when ERASE cycle completes
-            if (state == S_ERASE && erase_state == ERASE_COMPLETE) begin
-                retry_cnt <= retry_cnt + 1'b1;
-            end
-
-            // -------- verify wait counter (timing for read latency) --------
+            // -------- verify wait counter (TREAD*PULSE_NUM_READ per spec) --------
             if (state != S_VERIFY) begin
-                verify_wait_cnt <= 2'd0;
+                verify_wait_cnt <= 8'd0;
             end else if (verify_state == VERIFY_READ) begin
-                verify_wait_cnt <= 2'd2; // Assume 2 cycles until data is stable
+                verify_wait_cnt <= PULSE_TOTAL_READ[7:0];
             end else if (verify_state == VERIFY_WAIT && verify_wait_cnt != 0) begin
                 verify_wait_cnt <= verify_wait_cnt - 1'b1;
             end
@@ -491,11 +569,11 @@ module ann_controller #(
 
         
         // Default buffer address (will be overridden in each state)
-        buf_reg_add      = {{(6-BUF_ADDR_WIDTH){1'b0}}, buf_addr_reg};  
+        buf_reg_add      = {{(6-BUF_ADDR_WIDTH){1'b0}}, buf_addr_reg};
         buf_reg_ctrl     = CTRL_IDLE;
         buf_read_write   = 1'b0;   // 0 = read, 1 = write
+        buf_bit_sel      = (state == S_COMPUTE) ? bit_count : 3'd0;
 
-        
         busy             = 1'b0;
 
         next_state       = state;
@@ -601,9 +679,9 @@ module ann_controller #(
                     end
                     
                     PROG_WRITE: begin
-                        // Hold write state, wait for op_done
+                        // Hold write state for Tprog*Pulse_num_prog cycles (per spec)
                         weight_write_en = 1'b1;
-                        if (op_done) begin
+                        if (pulse_done) begin
                             next_prog_state = PROG_DISABLE;
                         end else begin
                             next_prog_state = PROG_WRITE;
@@ -630,12 +708,13 @@ module ann_controller #(
             end
 
             //--------------------------------------------------------------
-            // VERIFY: Verify programmed weights
+            // VERIFY: Verify programmed weights (uses direct address)
             //--------------------------------------------------------------
             S_VERIFY: begin
                 busy            = 1'b1;
-                buf_reg_ctrl    = CTRL_IDLE;
-                buf_read_write  = 1'b0;
+                buf_reg_add     = address_reg[5:0];   // Read expected weight from buffer
+                buf_reg_ctrl    = CTRL_WEIGHT_READ;
+                buf_read_write  = 1'b0;               // Read from buffer
                 weight_read_en  = (verify_state == VERIFY_READ) ? 1'b1 : 1'b0;
                 
                 // VERIFY sub-FSM logic
@@ -655,31 +734,31 @@ module ann_controller #(
                     
                     VERIFY_CHECK: begin
                         // Compare read weight with expected weight
-                        // If mismatch, set error_flag and transition to ERASE
-                        if (weight_read_data != expected_weight) begin
-                            error_flag = 1'b1;
-                            // If expected > read, may need stronger programming
-                            // Note: program_stronger is set in sequential block
-                            next_state = S_ERASE;  // Erase and retry
+                        if (weight_read_data == expected_weight) begin
+                            verify_next = VERIFY_DONE;  // Match: continue to next weight
+                        end else if (weight_read_data < expected_weight) begin
+                            // Under-programmed: re-apply PROG pulses (no ERASE)
+                            if (prog_retry_cnt < controller_pkg::MAX_PROG_RETRIES) begin
+                                next_state = S_PROGRAM;
+                                next_prog_state = PROG_HIZ;
+                            end else begin
+                                // Max re-prog attempts exceeded, fall back to ERASE
+                                error_flag = 1'b1;
+                                next_state = S_ERASE;
+                            end
                             verify_next = VERIFY_READ;
                         end else begin
-                            verify_next = VERIFY_DONE;  // Match: continue
+                            // Over-programmed: ERASE then retry
+                            error_flag = 1'b1;
+                            next_state = S_ERASE;
+                            verify_next = VERIFY_READ;
                         end
                     end
                     
                     VERIFY_DONE: begin
-                        // Move to next weight or exit verify
-                        if (weight_prog_done) begin
-                            // All weights verified, return to idle
-                            next_state = S_IDLE;
-                            verify_next = VERIFY_READ;
-                        end else begin
-                            // Proceed to program the next weight; the sequential
-                            // block will advance `buffer_idx_reg` when entering
-                            // PROGRAM from VERIFY.
-                            next_state = S_PROGRAM;
-                            verify_next = VERIFY_READ;
-                        end
+                        // Direct address flow: one weight per PROG command, return to idle
+                        next_state = S_IDLE;
+                        verify_next = VERIFY_READ;
                     end
                     
                     default: begin
@@ -714,8 +793,8 @@ module ann_controller #(
                     end
                     
                     ERASE_PULSE: begin
-                        // Hold erase pulse, wait for op_done (single-cell/row/global ERASE supported)
-                        if (op_done) begin
+                        // Hold erase pulse for Terase*Pulse_num_erase cycles (per spec)
+                        if (pulse_done) begin
                             erase_next = ERASE_DISABLE;
                         end else begin
                             erase_next = ERASE_PULSE;
@@ -758,9 +837,8 @@ module ann_controller #(
                 buf_read_write  = 1'b0;
                 
                 // Set muxes to READ mode for target row/column (handled in mux control logic)
-                // Read value comes from weight_read_data (ADC/quantizer output)
-                // After read complete, return to idle
-                if (op_done) begin
+                // Pulses held for Tread*Pulse_num_read cycles (per spec)
+                if (pulse_done) begin
                     next_state = S_IDLE;
                 end else begin
                     next_state = S_READ;
@@ -797,13 +875,14 @@ module ann_controller #(
             //--------------------------------------------------------------
             S_COMPUTE: begin
                 busy            = 1'b1;
+                buf_reg_add     = '0;                 // Read first 8 pixels (addr 0..7) for bit-serial D0-D7
                 buf_reg_ctrl    = CTRL_COMPUTE;
                 buf_read_write  = 1'b0;              // Read from buffer
-                
+                buf_bit_sel     = bit_count;         // LSB-first bit index 0..7 each cycle
+
                 // Set muxes to INF mode for computation (handled in mux control logic)
-                // INF mode enables matrix multiplication: input_data × stored_weights
-                // Wait for op_done indicating computation complete
-                if (op_done) begin
+                // Pulses held for max(8, Tinf*Pulse_num_inf) cycles (per spec; min 8 for bit-serial)
+                if (pulse_done) begin
                     next_state = S_RESULT;
                 end else begin
                     next_state = S_COMPUTE;

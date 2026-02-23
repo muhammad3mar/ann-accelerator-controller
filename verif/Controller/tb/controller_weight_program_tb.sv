@@ -2,15 +2,12 @@
 // Controller Weight Programming Testbench
 //------------------------------------------------------------------------------
 // This testbench:
-// 1. Loads quantized 4-bit weights from weight_matrix.txt (8x8 = 64 weights)
-// 2. Stores weights in input buffer via parallel interface simulation
-// 3. Triggers controller to program weights into ANN
+// 1. Loads quantized 4-bit weights from weight_matrix.txt (10×64 = 640 weights)
+// 2. Sends weights to controller via parallel interface using 32-bit packet format
+// 3. Controller programs weights into ANN core using direct address mapping
 // 4. Monitors weight programming and dumps ANN matrix state after each weight
 // 5. Verifies weight mapping correctness
-// 6. Tests reset behavior when receiving new CMD_WEIGHTS command:
-//    - Verifies ann_reset is asserted when new CMD_WEIGHTS is received
-//    - Verifies weight address counter resets to 0
-//    - Verifies controller enters S_RESET state before programming
+// 6. Uses new architecture: 32-bit packets with CMD_PROG command
 //------------------------------------------------------------------------------
 
 `timescale 1ns/1ps
@@ -38,10 +35,18 @@ module controller_weight_program_tb;
     logic rst_n;
 
     //--------------------------------------------------------------------------
+    // Parallel Interface Signals
+    //--------------------------------------------------------------------------
+    logic                     reset;  // Active high reset for parallel interface
+    logic [31:0]              host_data;  // 32-bit packet from host
+    logic                     valid;
+    logic [7:0]               data;  // Extracted data from parallel interface
+    logic [15:0]              address;  // Extracted address from parallel interface
+    logic [CMD_WIDTH-1:0]     cmd;  // Extracted command from parallel interface
+    
+    //--------------------------------------------------------------------------
     // Controller Signals
     //--------------------------------------------------------------------------
-    logic                     valid;
-    logic [CMD_WIDTH-1:0]     cmd;
     logic                     ann_reset;
     logic                     weight_write_en;
     logic [SELECTOR_WIDTH-1:0] row_selector;
@@ -69,16 +74,15 @@ module controller_weight_program_tb;
     logic [5:0]               buf_reg_add_tb;  // From testbench
     logic [5:0]               buf_reg_add;      // Muxed to buffer
     logic                     tb_control_buffer;  // Testbench takes control
-    logic [7:0]               D0, D1, D2, D3, D4, D5, D6, D7;
-    logic [7:0]               buf_data;  // Buffer data input to controller (D0)
+    logic                     D0, D1, D2, D3, D4, D5, D6, D7;
+    logic [7:0]               buf_data;  // Buffer data (full byte at current addr) to controller
+    logic [2:0]               buf_bit_sel_dut;  // From controller for bit-serial D0-D7
+    logic [7:0]               buf_data_out;  // Captured data from controller for buffer write
     
     // Mux between controller and testbench control
     assign buf_reg_ctrl = tb_control_buffer ? buf_reg_ctrl_tb : buf_reg_ctrl_dut;
     assign buf_read_write = tb_control_buffer ? buf_read_write_tb : buf_read_write_dut;
     assign buf_reg_add = tb_control_buffer ? buf_reg_add_tb : buf_reg_add_dut;
-    
-    // Connect buffer data to controller (D0 contains the weight data)
-    assign buf_data = D0;
 
     //--------------------------------------------------------------------------
     // Mock ANN Core - Captures weight programming
@@ -102,16 +106,42 @@ module controller_weight_program_tb;
     logic weight_programming_done = 0;
     logic dump_file_initialized = 0;
 
-    // Weight storage (64 weights from file)
-    logic [3:0] weight_matrix [0:63];
+    // Weight storage (640 weights from file: 10 rows × 64 columns)
+    logic [3:0] weight_matrix [0:639];
 
     //--------------------------------------------------------------------------
     // DUT Instantiation
     //--------------------------------------------------------------------------
+    parallel_interface u_parallel_interface (
+        .clk        (clk),
+        .reset      (reset),
+        .host_data  (host_data),
+        .valid      (valid),
+        .data       (data),
+        .address    (address),
+        .cmd        (cmd)
+    );
+    
+    // Connect parallel interface data to input buffer
+    // Use buf_data_out from controller for PROG (captured data), otherwise use data from parallel interface
+    assign data_in = buf_data_out;
+    
+    // New controller outputs (32-bit addr, 3-bit pulses)
+    logic [ADDR_OUT_WIDTH-1:0] addr_out;
+    logic [2:0]               pulses;
+
+    // Mock ADC output for VERIFY: return programmed weight from mock ANN
+    logic [3:0] weight_read_data_mock;
+    always_comb begin
+        weight_read_data_mock = ann_weight_matrix[row_selector[6:5]][row_selector[4:3]][row_selector[2:0]][col_selector[2:0]];
+    end
+
     ann_controller dut (
         .clk            (clk),
-        .rst_n          (rst_n),
+        .rst_n          (~reset),  // Controller uses active low reset
         .valid          (valid),
+        .data           (data),
+        .address        (address),
         .cmd            (cmd),
         .ann_reset      (ann_reset),
         .weight_write_en(weight_write_en),
@@ -121,9 +151,14 @@ module controller_weight_program_tb;
         .row_mux_ctrl   (row_mux_ctrl),
         .col_mux_ctrl   (col_mux_ctrl),
         .weight_data    (weight_data),
+        .addr_out       (addr_out),
+        .pulses         (pulses),
+        .weight_read_data(weight_read_data_mock),  // Mock ADC: programmed weight for VERIFY
         .buf_reg_add    (buf_reg_add_dut),   // Controller-driven buffer address
         .buf_reg_ctrl   (buf_reg_ctrl_dut),  // Controller-driven buffer control
         .buf_read_write (buf_read_write_dut),// Controller-driven read/write
+        .buf_bit_sel    (buf_bit_sel_dut),
+        .buf_data_out   (buf_data_out),      // Captured data from controller for buffer write
         .buf_ready      (buf_ready),
         .buf_data       (buf_data),
         .busy           (busy)
@@ -137,6 +172,8 @@ module controller_weight_program_tb;
         .reg_ctrl       (buf_reg_ctrl),
         .buf_read_write(buf_read_write),
         .buf_reg_add    (buf_reg_add),
+        .bit_sel        (tb_control_buffer ? 3'd0 : buf_bit_sel_dut),
+        .buf_data       (buf_data),
         .D0             (D0),
         .D1             (D1),
         .D2             (D2),
@@ -171,8 +208,8 @@ module controller_weight_program_tb;
     logic weight_sel;
     logic [3:0] weight0_from_buffer, weight1_from_buffer;
     
-    assign weight0_from_buffer = D0[3:0];   // weight[0] from buffer
-    assign weight1_from_buffer = D0[7:4];   // weight[1] from buffer
+    assign weight0_from_buffer = buf_data[3:0];   // weight[0] from buffer (full byte at addr)
+    assign weight1_from_buffer = buf_data[7:4];   // weight[1] from buffer
     
     // Reconstruct full weight address from selectors
     always_comb begin
@@ -207,9 +244,9 @@ module controller_weight_program_tb;
                 end
             end
         end else begin
-            // Capture weight when weight_write_en is asserted and op_done indicates completion
-            // Use weight_data from controller instead of extracting from buffer
-            if (weight_write_en && buf_reg_ctrl == CTRL_WEIGHT_READ && op_done) begin
+            // Capture weight when weight_write_en is asserted
+            // Use weight_data from controller (extracted from buffer)
+            if (weight_write_en) begin
                 // Extract block, sub-block, row, col from selectors
                 logic [1:0] block_id;
                 logic [1:0] sub_block_id;
@@ -309,9 +346,9 @@ module controller_weight_program_tb;
                      $time, reset_deassert_time - reset_assert_time);
         end
         
-        // Monitor when new CMD_WEIGHTS is received while controller is busy or idle
-        if (valid && !prev_valid && cmd == CMD_WEIGHTS) begin
-            $display("[%0t] NEW CMD_WEIGHTS received: valid=1, cmd=CMD_WEIGHTS, busy=%0d", $time, busy);
+        // Monitor when new CMD_PROG is received while controller is busy or idle
+        if (valid && !prev_valid && cmd == CMD_PROG) begin
+            $display("[%0t] NEW CMD_PROG received: valid=1, cmd=CMD_PROG, busy=%0d", $time, busy);
             $display("[%0t]   Previous weight address: 0x%03X", $time, prev_reconstructed_addr);
         end
         
@@ -386,6 +423,125 @@ module controller_weight_program_tb;
     end
 
     //--------------------------------------------------------------------------
+    // Function to convert matrix coordinates to ANN address
+    //--------------------------------------------------------------------------
+    function automatic logic [15:0] matrix_coords_to_address(
+        input int matrix_row,   // 0-9
+        input int matrix_col    // 0-63
+    );
+        logic [BLOCK_ID_WIDTH-1:0] block_id;
+        logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id;
+        logic [ROW_ID_WIDTH-1:0] row_id;
+        logic [COL_ID_WIDTH-1:0] col_id;
+        logic [3:0] col_within_block;
+        
+        // Block selection: each block handles 16 columns
+        block_id = matrix_col[5:4];  // Divide by 16
+        
+        // Column within block (0-15)
+        col_within_block = matrix_col[3:0];
+        
+        // Sub-block and row selection
+        if (matrix_row < 8) begin
+            // First 8 rows: sub-block 0 or 1
+            sub_block_id = col_within_block[3] ? 2'd1 : 2'd0;
+            row_id = matrix_row[2:0];
+        end else begin
+            // Rows 8-9: sub-block 2 or 3
+            sub_block_id = col_within_block[3] ? 2'd3 : 2'd2;
+            row_id = {2'b0, matrix_row[0]};  // row 8 → 0, row 9 → 1
+        end
+        
+        // Column within sub-block (0-7)
+        col_id = col_within_block[2:0];
+        
+        // Form 16-bit address: {reserved[15:10], block_id[9:8], sub_block_id[7:6], col_id[5:3], row_id[2:0]}
+        return {6'b0, block_id, sub_block_id, col_id, row_id};
+    endfunction
+    
+    // Address mapping for each weight
+    logic [15:0] weight_addresses [0:639];  // Store address for each weight
+    
+    //--------------------------------------------------------------------------
+    // Track current weight index and address for dump (declared before tasks that use it)
+    //--------------------------------------------------------------------------
+    int current_weight_idx_reg = -1;
+    logic [15:0] current_weight_16bit_addr_reg;
+    logic [9:0] current_weight_10bit_addr_reg;
+    
+    // Function to convert 16-bit address to 10-bit ANN address
+    function automatic logic [9:0] convert_16bit_to_10bit_addr(logic [15:0] addr_16bit);
+        logic [BLOCK_ID_WIDTH-1:0] block_id_f;
+        logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id_f;
+        logic [ROW_ID_WIDTH-1:0] row_id_f;
+        logic [COL_ID_WIDTH-1:0] col_id_f;
+        parse_ann_address(addr_16bit, block_id_f, sub_block_id_f, row_id_f, col_id_f);
+        return {block_id_f, sub_block_id_f, row_id_f, col_id_f};
+    endfunction
+    
+    //--------------------------------------------------------------------------
+    // Send Weight Programming Command (32-bit packet format)
+    //--------------------------------------------------------------------------
+    task send_prog_command(int weight_idx);
+        logic [31:0] packet;
+        logic [7:0] weight_val;
+        logic [15:0] addr;
+        int wait_cycles;
+        
+        weight_val = {4'b0, weight_matrix[weight_idx]};  // Pack 4-bit weight into 8-bit
+        addr = weight_addresses[weight_idx];
+        
+        // Store weight index and address for dump (before sending packet)
+        current_weight_idx_reg = weight_idx;
+        current_weight_16bit_addr_reg = addr;
+        current_weight_10bit_addr_reg = convert_16bit_to_10bit_addr(addr);
+        
+        // Construct 32-bit packet: {reserved[31:27], cmd[26:24], address[23:8], data[7:0]}
+        packet = {5'b0, CMD_PROG, addr, weight_val};
+        
+        // Clear host_data first to reset valid
+        @(posedge clk);
+        host_data = 32'b0;
+        @(posedge clk);
+        
+        // Send packet
+        host_data = packet;
+        
+        // Wait for controller to start processing (busy goes high)
+        wait_cycles = 0;
+        while (!busy && wait_cycles < 10) begin
+            @(posedge clk);
+            wait_cycles++;
+        end
+        
+        if (wait_cycles >= 10) begin
+            $error("Controller did not start processing weight %0d", weight_idx);
+            return;
+        end
+        
+        // Wait for weight to be programmed (weight_write_en and op_done)
+        wait_cycles = 0;
+        while (!(weight_write_en && op_done) && wait_cycles < 200) begin
+            @(posedge clk);
+            wait_cycles++;
+        end
+        
+        // Wait for controller to finish (busy goes low)
+        wait_cycles = 0;
+        while (busy && wait_cycles < 100) begin
+            @(posedge clk);
+            wait_cycles++;
+        end
+        
+        if (wait_cycles >= 100) begin
+            $warning("Timeout waiting for weight %0d programming to complete", weight_idx);
+        end
+        
+        // Small delay between weights
+        repeat(2) @(posedge clk);
+    endtask
+    
+    //--------------------------------------------------------------------------
     // Load weights from file
     //--------------------------------------------------------------------------
     // Supports binary bracket format: [ [0010 0010 ...] [0010 0011 ...] ... ]
@@ -420,7 +576,7 @@ module controller_weight_program_tb;
         // Parse binary bracket format
         $display("[%0t] Parsing binary bracket format...", $time);
         
-        while (!$feof(file_handle) && weight_count < 64) begin
+        while (!$feof(file_handle) && weight_count < 640) begin
             scan_result = $fgets(line, file_handle);
             line_num++;
             
@@ -456,7 +612,7 @@ module controller_weight_program_tb;
                     pos = content_start;
                     weight_in_row = 0;
                     
-                    while (pos <= content_end && weight_in_row < 8 && weight_count < 64) begin
+                    while (pos <= content_end && weight_in_row < 64 && weight_count < 640) begin
                         // Skip spaces
                         while (pos <= content_end && (line[pos] == " " || line[pos] == "\t")) begin
                             pos++;
@@ -499,12 +655,20 @@ module controller_weight_program_tb;
         
         $fclose(file_handle);
         
-        if (weight_count != 64) begin
-            $error("Expected 64 weights, found %0d", weight_count);
+        if (weight_count != 640) begin
+            $error("Expected 640 weights (10×64 matrix), found %0d", weight_count);
             $finish;
         end
         
         $display("[%0t] Successfully loaded %0d weights from file", $time, weight_count);
+        
+        // Calculate addresses for each weight (10 rows × 64 columns)
+        for (int row = 0; row < 10; row++) begin
+            for (int col = 0; col < 64; col++) begin
+                int idx = row * 64 + col;
+                weight_addresses[idx] = matrix_coords_to_address(row, col);
+            end
+        end
         
         // Display first few weights for verification
         $display("[%0t] First 8 weights: %0d %0d %0d %0d %0d %0d %0d %0d", 
@@ -515,165 +679,13 @@ module controller_weight_program_tb;
 
     //--------------------------------------------------------------------------
     // Store weights into input buffer via parallel interface simulation
+    // NOTE: This task is no longer used with the new architecture.
+    // The controller automatically stores weights in the buffer when receiving CMD_PROG.
     //--------------------------------------------------------------------------
     task store_weights_to_buffer();
-        int buf_addr;
-        logic [7:0] buffer_data;
-        int buf_dump_fd;
-        int addr_idx;
-        int bit_idx2;
-        int byte_val;
-        
-        $display("[%0t] Storing weights into input buffer...", $time);
-        
-        // Open buffer dump file and write header
-        buf_dump_fd = $fopen(BUF_DUMP_FILE, "w");
-        if (buf_dump_fd == 0) begin
-            $error("Failed to open buffer dump file: %s", BUF_DUMP_FILE);
-        end else begin
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "// Input Buffer Programming - Initial Weight Load");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "// Each line shows how the external parallel interface writes");
-            $fdisplay(buf_dump_fd, "// into the input buffer before ANN weight programming starts.");
-            $fdisplay(buf_dump_fd, "// Format per write:");
-            $fdisplay(buf_dump_fd, "//   time  addr  data_in  weight_low  weight_high");
-            $fdisplay(buf_dump_fd, "//   where data_in = {weight_high[3:0], weight_low[3:0]}");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "");
-        end
-        
-        // Take control of buffer signals
-        tb_control_buffer = 1'b1;
-        
-        // Store weights in buffer: 2 weights per location (32 locations total)
-        for (int i = 0; i < 32; i++) begin
-            buf_addr = i;
-            // Pack 2 weights into one byte: weight[2*i] in [3:0], weight[2*i+1] in [7:4]
-            buffer_data = {weight_matrix[2*i+1][3:0], weight_matrix[2*i][3:0]};
-            
-            @(posedge clk);
-            
-            // Set buffer control signals (testbench controlled)
-            buf_reg_ctrl_tb   = CTRL_DATA_LOAD;
-            buf_read_write_tb = 1'b1;  // Write mode
-            buf_reg_add_tb    = buf_addr[5:0];
-            data_in           = buffer_data;
-            
-            // Wait for buffer to be ready (should be immediate for writes)
-            @(posedge clk);
-            #1;  // Small delay for combinational logic
-            
-            // Console log
-            $display("[%0t] Stored buffer[%0d] = 0x%02X (weights[%0d]=%0d, weights[%0d]=%0d)", 
-                     $time, buf_addr, buffer_data, 2*i, weight_matrix[2*i], 2*i+1, weight_matrix[2*i+1]);
-            
-            // File log
-            if (buf_dump_fd != 0) begin
-                $fdisplay(buf_dump_fd,
-                          "%0t  addr=%0d  data_in=0x%02X  weight_low=%0d  weight_high=%0d",
-                          $time, buf_addr, buffer_data,
-                          int'(weight_matrix[2*i]), int'(weight_matrix[2*i+1]));
-            end
-        end
-        
-        // Also dump input buffer as 64 rows x 8 bits matrix
-        // Each row = one buffer address, showing 8 bits (2 weights of 4 bits each)
-        if (buf_dump_fd != 0) begin
-            $fdisplay(buf_dump_fd, "");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "// Input Buffer Matrix View (64 rows x 8 bits)");
-            $fdisplay(buf_dump_fd, "// Each row represents one buffer address (0-63)");
-            $fdisplay(buf_dump_fd, "// Each row contains 8 bits: [7:4] = weight_high, [3:0] = weight_low");
-            $fdisplay(buf_dump_fd, "// Format: addr | bit[7:4] | bit[3:0] | binary[7:0] | hex | weight_high | weight_low");
-            $fdisplay(buf_dump_fd, "// Note: addresses 32-63 are unused for weights and remain 0");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "");
-
-            // Header
-            $fdisplay(buf_dump_fd, "addr | bits[7:4] | bits[3:0] | binary[7:0]    | hex  | weight_high | weight_low");
-            $fdisplay(buf_dump_fd, "-----+-----------+----------+----------------+------+-------------+------------");
-
-            // For each buffer address (0-63), show the 8-bit value
-            for (addr_idx = 0; addr_idx < 64; addr_idx++) begin
-                if (addr_idx < 32) begin
-                    // Reconstruct the byte we wrote to this buffer address
-                    byte_val = {weight_matrix[2*addr_idx+1][3:0], weight_matrix[2*addr_idx][3:0]};
-                    $fwrite(buf_dump_fd, "%4d | ", addr_idx);
-                    // Show bits [7:4] (weight_high)
-                    for (bit_idx2 = 7; bit_idx2 >= 4; bit_idx2--) begin
-                        $fwrite(buf_dump_fd, "%0d", (byte_val >> bit_idx2) & 1);
-                    end
-                    $fwrite(buf_dump_fd, "        | ");
-                    // Show bits [3:0] (weight_low)
-                    for (bit_idx2 = 3; bit_idx2 >= 0; bit_idx2--) begin
-                        $fwrite(buf_dump_fd, "%0d", (byte_val >> bit_idx2) & 1);
-                    end
-                    $fwrite(buf_dump_fd, "        | ");
-                    // Show full binary [7:0]
-                    for (bit_idx2 = 7; bit_idx2 >= 0; bit_idx2--) begin
-                        $fwrite(buf_dump_fd, "%0d", (byte_val >> bit_idx2) & 1);
-                    end
-                    $fwrite(buf_dump_fd, " | 0x%02X | ", byte_val);
-                    $fwrite(buf_dump_fd, "     %2d     | ", int'(weight_matrix[2*addr_idx+1]));
-                    $fdisplay(buf_dump_fd, "     %2d", int'(weight_matrix[2*addr_idx]));
-                end else begin
-                    // Unused addresses (32-63) are all zeros
-                    $fwrite(buf_dump_fd, "%4d | ", addr_idx);
-                    $fwrite(buf_dump_fd, "0000      | ");
-                    $fwrite(buf_dump_fd, "0000      | ");
-                    $fwrite(buf_dump_fd, "00000000 | ");
-                    $fwrite(buf_dump_fd, "0x00 | ");
-                    $fwrite(buf_dump_fd, "      0      | ");
-                    $fdisplay(buf_dump_fd, "      0");
-                end
-            end
-
-            $fdisplay(buf_dump_fd, "");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "// Alternative View: 64 rows showing binary representation");
-            $fdisplay(buf_dump_fd, "// Each row = buffer[addr] as 8-bit binary with separator");
-            $fdisplay(buf_dump_fd, "//==============================================================");
-            $fdisplay(buf_dump_fd, "");
-
-            // Alternative compact view: just the binary with separator
-            for (addr_idx = 0; addr_idx < 64; addr_idx++) begin
-                if (addr_idx < 32) begin
-                    byte_val = {weight_matrix[2*addr_idx+1][3:0], weight_matrix[2*addr_idx][3:0]};
-                    $fwrite(buf_dump_fd, "buffer[%2d] = ", addr_idx);
-                    // Show bits [7:4] (weight_high)
-                    for (bit_idx2 = 7; bit_idx2 >= 4; bit_idx2--) begin
-                        $fwrite(buf_dump_fd, "%0d", (byte_val >> bit_idx2) & 1);
-                    end
-                    $fwrite(buf_dump_fd, "_");
-                    // Show bits [3:0] (weight_low)
-                    for (bit_idx2 = 3; bit_idx2 >= 0; bit_idx2--) begin
-                        $fwrite(buf_dump_fd, "%0d", (byte_val >> bit_idx2) & 1);
-                    end
-                    $fdisplay(buf_dump_fd, "  (weight[%2d]=%2d, weight[%2d]=%2d)", 
-                            2*addr_idx+1, int'(weight_matrix[2*addr_idx+1]),
-                            2*addr_idx, int'(weight_matrix[2*addr_idx]));
-                end else begin
-                    $fdisplay(buf_dump_fd, "buffer[%2d] = 0000_0000  (unused)", addr_idx);
-                end
-            end
-
-            $fdisplay(buf_dump_fd, "");
-            $fdisplay(buf_dump_fd, "// End of initial input buffer programming");
-            $fclose(buf_dump_fd);
-            $display("[%0t] Input buffer write log dumped to %s", $time, BUF_DUMP_FILE);
-        end
-        
-        // Release control back to controller
-        @(posedge clk);
-        tb_control_buffer   = 1'b0;
-        buf_reg_ctrl_tb     = CTRL_IDLE;
-        buf_read_write_tb   = 1'b0;
-        
-        weight_loading_done = 1;
-        $display("[%0t] Weight loading complete", $time);
+        // This task is deprecated - controller handles buffer writes automatically
+        $display("[%0t] NOTE: store_weights_to_buffer() is not used with new architecture", $time);
     endtask
-
     //--------------------------------------------------------------------------
     // Mux Control Snapshot Storage
     //--------------------------------------------------------------------------
@@ -989,27 +1001,52 @@ module controller_weight_program_tb;
         end
     end
     
+    // Trigger dump when programming is complete (op_done) - use stored address from send_prog_command
     always_ff @(posedge clk) begin
-        if (weight_write_en && buf_reg_ctrl == CTRL_WEIGHT_READ && op_done) begin
-            logic [1:0] block_id, sub_block_id;
-            logic [2:0] row_id, col_id;
+        if (valid && cmd == CMD_PROG && busy && !prev_busy) begin
+            // Controller just started processing a new PROG command - capture the address
+            logic [BLOCK_ID_WIDTH-1:0] block_id_parsed;
+            logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id_parsed;
+            logic [ROW_ID_WIDTH-1:0] row_id_parsed;
+            logic [COL_ID_WIDTH-1:0] col_id_parsed;
             
-            block_id = row_selector[6:5];
-            sub_block_id = row_selector[4:3];
-            row_id = row_selector[2:0];
-            col_id = col_selector[2:0];
+            // Parse 16-bit address from parallel interface to get ANN address components
+            parse_ann_address(address, block_id_parsed, sub_block_id_parsed, row_id_parsed, col_id_parsed);
             
-            // Track current weight address (reconstructed from selectors)
+            // Store captured address components
+            dump_block_id <= block_id_parsed;
+            dump_sub_block_id <= sub_block_id_parsed;
+            dump_row_id <= row_id_parsed;
+            dump_col_id <= col_id_parsed;
+            
+            // Construct 10-bit ANN address from parsed components
+            dump_weight_addr <= {block_id_parsed, sub_block_id_parsed, row_id_parsed, col_id_parsed};
+            
+            // Store 16-bit address for reference
+            current_weight_16bit_addr_reg <= address;
+        end
+    end
+    
+    // Capture address when weight_write_en is first asserted
+    logic [9:0] captured_addr_when_write_en;
+    
+    always_ff @(posedge clk) begin
+        if (weight_write_en && !prev_weight_write_en) begin
+            // Capture the address at the moment weight_write_en goes high
+            captured_addr_when_write_en <= current_weight_10bit_addr_reg;
+        end
+    end
+    
+    // Trigger dump when programming is complete (op_done) - use captured address
+    always_ff @(posedge clk) begin
+        if (weight_write_en && op_done) begin
+            // Track current weight address (use address captured when weight_write_en first asserted)
             weights_programmed++;
-            current_weight_addr = reconstructed_weight_addr;
+            current_weight_addr = captured_addr_when_write_en;
+            dump_weight_addr <= captured_addr_when_write_en;
             
             // Trigger dump on next clock cycle (after weight is written)
             dump_trigger <= 1'b1;
-            dump_weight_addr <= reconstructed_weight_addr;
-            dump_block_id <= block_id;
-            dump_sub_block_id <= sub_block_id;
-            dump_row_id <= row_id;
-            dump_col_id <= col_id;
         end else begin
             dump_trigger <= 1'b0;
         end
@@ -1034,10 +1071,9 @@ module controller_weight_program_tb;
         $display("========================================");
         
         // Initialize
-        rst_n = 0;
-        valid = 0;
-        cmd = CMD_WEIGHTS;  // Set command to weights for programming
-        data_in = 0;
+        reset = 1'b1;  // Active high reset for parallel interface
+        host_data = 32'b0;
+        rst_n = 0;  // Active low reset for controller
         tb_control_buffer = 0;
         buf_reg_ctrl_tb = CTRL_IDLE;
         buf_read_write_tb = 0;
@@ -1045,149 +1081,48 @@ module controller_weight_program_tb;
         
         // Reset
         #(CLK_PERIOD * 5);
+        reset = 1'b0;
         rst_n = 1;
         #(CLK_PERIOD * 2);
         
-        // Load weights from file
+        // Load weights from file (also calculates addresses)
         load_weights_from_file();
         
-        // Store weights into buffer
-        store_weights_to_buffer();
+        // Initialize dump file
+        initialize_dump_file();
         
         // Wait a few cycles
         #(CLK_PERIOD * 5);
         
         //============================================================
-        // Test 1: First weight programming sequence
+        // Test: Weight Programming Sequence (640 weights)
         //============================================================
         $display("\n========================================");
-        $display("TEST 1: First Weight Programming Sequence");
+        $display("Weight Programming Sequence");
         $display("========================================");
+        $display("[%0t] Starting weight programming...", $time);
         
-        // Trigger weight programming by asserting valid with CMD_WEIGHTS
-        $display("[%0t] Triggering first weight programming with CMD_WEIGHTS...", $time);
-        cmd = CMD_WEIGHTS;
-        valid = 1;
-        
-        // Wait for reset to be asserted (should happen when entering S_RESET)
-        #(CLK_PERIOD * 2);
-        if (ann_reset) begin
-            $display("[%0t] ✓ RESET VERIFIED: ann_reset asserted during first programming sequence", $time);
-        end else begin
-            $warning("[%0t] WARNING: ann_reset not asserted during first programming sequence", $time);
+        // Program all 640 weights one at a time
+        for (int i = 0; i < 640; i++) begin
+            send_prog_command(i);
         end
         
-        // Wait for programming to start
-        wait(busy == 1);
-        $display("[%0t] Weight programming started", $time);
-        
-        // Wait for reset to deassert (should happen when leaving S_RESET)
-        wait(ann_reset == 0 || busy == 0);
-        if (!ann_reset && reset_observed) begin
-            $display("[%0t] ✓ RESET VERIFIED: ann_reset deasserted, entering programming phase", $time);
-        end
-        
-        // Wait for programming to complete
-        wait(busy == 0);
-        $display("[%0t] First weight programming completed", $time);
-        
-        valid = 0;
-        
-        // Wait a few cycles
-        #(CLK_PERIOD * 10);
-        
-        //============================================================
-        // Test 2: Reset behavior when receiving new CMD_WEIGHTS
-        //============================================================
         $display("\n========================================");
-        $display("TEST 2: Reset Behavior with New CMD_WEIGHTS");
+        $display("Weight Programming Complete!");
+        $display("Total weights programmed: %0d", weights_programmed);
         $display("========================================");
         
-        // Store some weights in buffer again (can reuse same weights or load new ones)
-        $display("[%0t] Preparing for second weight programming sequence...", $time);
-        
-        // Wait for controller to be idle
+        // Wait for final programming to complete
         wait(busy == 0);
-        #(CLK_PERIOD * 5);
-        
-        // Note: Reset monitoring variables are managed in always_ff block
-        // They will be reset automatically when new reset events occur
-        
-        // Trigger new weight programming with CMD_WEIGHTS
-        $display("[%0t] Triggering NEW CMD_WEIGHTS command (should trigger RESET)...", $time);
-        $display("[%0t] Controller state before new command: busy=%0d", $time, busy);
-        
-        cmd = CMD_WEIGHTS;
-        valid = 1;
-        
-        // Monitor reset assertion (should happen within a few cycles)
-        #(CLK_PERIOD * 3);
-        
-        if (ann_reset) begin
-            $display("[%0t] ✓ RESET VERIFIED: ann_reset asserted when receiving new CMD_WEIGHTS", $time);
-            $display("[%0t]   Reset assertion count: %0d", $time, reset_assert_count);
-        end else begin
-            $error("[%0t] ERROR: ann_reset NOT asserted when receiving new CMD_WEIGHTS", $time);
-        end
-        
-        // Wait for reset to deassert and programming to start
-        wait(ann_reset == 0 || (busy == 1 && !ann_reset));
-        
-        if (!ann_reset) begin
-            $display("[%0t] ✓ RESET VERIFIED: ann_reset deasserted, entering programming phase", $time);
-            $display("[%0t]   Reset deassertion count: %0d", $time, reset_deassert_count);
-        end
-        
-        // Wait a cycle for address to update after reset
-        @(posedge clk);
-        
-        // Verify weight address is reset to 0
-        if (reconstructed_weight_addr == 0) begin
-            $display("[%0t] ✓ ADDRESS RESET VERIFIED: Weight address is 0x000 after reset", $time);
-        end else begin
-            $warning("[%0t] WARNING: Weight address not reset to 0 (current: 0x%03X)", 
-                     $time, reconstructed_weight_addr);
-        end
-        
-        // Verify controller is busy (programming)
-        if (busy) begin
-            $display("[%0t] ✓ Controller is busy (programming weights)", $time);
-        end else begin
-            $warning("[%0t] WARNING: Controller not busy after reset", $time);
-        end
-        
-        // Wait for second programming to complete
-        wait(busy == 0);
-        $display("[%0t] Second weight programming completed", $time);
-        
-        valid = 0;
-        
-        // Wait a few cycles
-        #(CLK_PERIOD * 10);
-        
-        //============================================================
-        // Test Summary
-        //============================================================
-        $display("\n========================================");
-        $display("Reset Behavior Test Summary");
-        $display("========================================");
-        $display("Reset assertions observed: %0d", reset_assert_count);
-        $display("Reset deassertions observed: %0d", reset_deassert_count);
-        
-        if (reset_assert_count >= 2) begin
-            $display("✓ PASS: Reset was asserted for both programming sequences");
-        end else begin
-            $error("✗ FAIL: Reset was not asserted for all programming sequences");
-        end
         
         // Final dump
         $display("\n[%0t] Final ANN matrix state:", $time);
-        dump_ann_matrix(TOTAL_WEIGHT_LOCATIONS - 1);
+        dump_ann_matrix(reconstructed_weight_addr);
         
         $display("\n========================================");
         $display("Test Complete");
         $display("========================================");
-        $display("Weights programmed: %0d / %0d", weights_programmed, TOTAL_WEIGHT_LOCATIONS);
+        $display("Weights programmed: %0d / %0d", weights_programmed, 640);
         
         #(CLK_PERIOD * 10);
         $finish;

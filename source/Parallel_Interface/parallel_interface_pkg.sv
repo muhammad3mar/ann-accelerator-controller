@@ -5,23 +5,24 @@
 package parallel_interface_pkg;
 
     //--------------------------------------------------------------------------
-    // Command Signal Definitions
+    // Command Signal Definitions (5 commands, 3 bits)
     //--------------------------------------------------------------------------
-    localparam int CMD_WIDTH = 2;
+    localparam int CMD_WIDTH = 3;
     
-    typedef enum logic [1:0] {
-        CMD_READ  = 2'b00,  // Read weight value from memristor at specified address
-        CMD_PROG  = 2'b01,  // Program weight at specified address
-        CMD_ERASE = 2'b10,  // Erase weight at specified address
-        CMD_INF   = 2'b11   // Inference/classification - apply input data for matrix multiplication
+    typedef enum logic [2:0] {
+        CMD_HIZ   = 3'b000,  // High-Z (idle, no pulses)
+        CMD_READ  = 3'b001,  // Read weight value from memristor (verification read)
+        CMD_PROG  = 3'b010,  // Program weight at specified address
+        CMD_ERASE = 3'b011,  // Erase weight at specified address
+        CMD_INF   = 3'b100   // Inference/classification - apply input data for matrix multiplication
     } cmd_t;
 
     //--------------------------------------------------------------------------
     // Address Field Definitions
     //--------------------------------------------------------------------------
     // 32-bit host signal layout:
-    //   [31:26] = empty (reserved, 6 bits)
-    //   [25:24] = cmd (2 bits)
+    //   [31:27] = reserved (5 bits)
+    //   [26:24] = cmd (3 bits)
     //   [23:8]  = address (16 bits)
     //   [7:0]   = data (8 bits)
     //
@@ -54,9 +55,9 @@ package parallel_interface_pkg;
         return host_data[23:8];
     endfunction
     
-    // Extract command field from 32-bit host signal (bits [25:24])
-    function automatic logic [1:0] extract_cmd(logic [31:0] host_data);
-        return host_data[25:24];
+    // Extract command field from 32-bit host signal (bits [26:24])
+    function automatic logic [2:0] extract_cmd(logic [31:0] host_data);
+        return host_data[26:24];
     endfunction
 
 endpackage

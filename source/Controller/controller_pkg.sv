@@ -106,6 +106,9 @@ package controller_pkg;
     localparam int MIN_WEIGHT_COUNT = 1;
     localparam int MAX_WEIGHT_COUNT = TOTAL_WEIGHT_LOCATIONS;  // 1024     
 
+    // Max re-program attempts without ERASE (when read < expected)
+    localparam int MAX_PROG_RETRIES = 3;
+
     //--------------------------------------------------------------------------
     // Default Parameters
     //--------------------------------------------------------------------------
@@ -136,6 +139,64 @@ package controller_pkg;
     
     // INF mode constant (same value as HIZ, different usage context)
     localparam logic [1:0] MUX_MODE_INF = MUX_MODE_HIZ;
+
+    //--------------------------------------------------------------------------
+    // Pulse Mode Encoding (5 modes, 3 bits) - matches host cmd_t
+    //--------------------------------------------------------------------------
+    // Used for pulse output: each bit that is 1 in the mode drives a pulse
+    typedef enum logic [2:0] {
+        PULSE_MODE_HIZ   = 3'b000,
+        PULSE_MODE_READ  = 3'b001,
+        PULSE_MODE_PROG  = 3'b010,
+        PULSE_MODE_ERASE = 3'b011,
+        PULSE_MODE_INF   = 3'b100
+    } pulse_mode_t;
+
+    //--------------------------------------------------------------------------
+    // Pulse Generator Parameters
+    //--------------------------------------------------------------------------
+    localparam int TREAD         = 2;    // Read pulse width (clock cycles)
+    localparam int PULSE_NUM_READ  = 1;  // Number of read pulses
+    localparam int TPROG         = 2;    // Program pulse width
+    localparam int PULSE_NUM_PROG  = 1;  // Number of program pulses
+    localparam int TERASE        = 2;    // Erase pulse width
+    localparam int PULSE_NUM_ERASE = 1;  // Number of erase pulses
+    localparam int TINF          = 2;    // Inference pulse width
+    localparam int PULSE_NUM_INF   = 1;  // Number of inference pulses
+
+    // Total pulse cycles per mode (T * N); controller generates pulses for this duration
+    localparam int PULSE_TOTAL_READ  = TREAD  * PULSE_NUM_READ;
+    localparam int PULSE_TOTAL_PROG  = TPROG  * PULSE_NUM_PROG;
+    localparam int PULSE_TOTAL_ERASE = TERASE * PULSE_NUM_ERASE;
+    localparam int PULSE_TOTAL_INF   = (TINF * PULSE_NUM_INF >= 8) ? (TINF * PULSE_NUM_INF) : 8;  // min 8 for bit-serial
+
+    // Output address widths for ANN core interface
+    localparam int PE_WIDTH  = 4;   // One-hot PE select
+    localparam int SA_WIDTH  = 4;   // One-hot Sub-Array select
+    localparam int ROW_WIDTH = 8;   // Row select mask (one-hot)
+    localparam int COL_WIDTH = 8;   // Column select mask (one-hot)
+    localparam int ADDR_OUT_WIDTH = 32;  // PE[23:20], SA[19:16], col[15:8], row[7:0]
+
+    //--------------------------------------------------------------------------
+    // Convert 16-bit host address to 32-bit ANN core output address
+    //--------------------------------------------------------------------------
+    // Output format: [7:0] row (one-hot), [15:8] col (one-hot), [19:16] SA (one-hot), [23:20] PE (one-hot)
+    function automatic logic [ADDR_OUT_WIDTH-1:0] host_addr_to_ann_addr_out(
+        input logic [BLOCK_ID_WIDTH-1:0] block_id,
+        input logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id,
+        input logic [ROW_ID_WIDTH-1:0] row_id,
+        input logic [COL_ID_WIDTH-1:0] col_id
+    );
+        logic [PE_WIDTH-1:0]  pe_onehot;
+        logic [SA_WIDTH-1:0]  sa_onehot;
+        logic [ROW_WIDTH-1:0] row_onehot;
+        logic [COL_WIDTH-1:0] col_onehot;
+        pe_onehot  = (1 << block_id);
+        sa_onehot  = (1 << sub_block_id);
+        row_onehot = (1 << row_id);
+        col_onehot = (1 << col_id);
+        return {pe_onehot, sa_onehot, col_onehot, row_onehot};
+    endfunction
 
     //--------------------------------------------------------------------------
     // Programming Sequence Sub-States
