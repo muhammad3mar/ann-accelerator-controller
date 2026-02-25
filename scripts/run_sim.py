@@ -10,6 +10,7 @@ Usage:
 Commands:
     compile    - Compile RTL or verification files
     sim        - Run simulation
+    run_all    - Run all testbenches for module(s), save logs to target/
     clean      - Clean work directories and generated files
     list       - List available modules and testbenches
     wave       - Open waveform viewer (if GUI available)
@@ -59,14 +60,14 @@ MODULES = {
         "verif_list": "verif/Input_Buffer/file_list/input_buffer_verif_list.f",
         "rtl_dir": "source/Input_Buffer",
         "verif_dir": "verif/Input_Buffer",
-        "testbenches": []
+        "testbenches": ["input_buffer_write_read_tb", "input_buffer_bit_serial_tb"]
     },
     "Parallel_Interface": {
         "rtl_list": "source/Parallel_Interface/parallel_interface_rtl_list.f",
         "verif_list": "verif/Parallel_Interface/file_list/parallel_interface_verif_list.f",
         "rtl_dir": "source/Parallel_Interface",
         "verif_dir": "verif/Parallel_Interface",
-        "testbenches": []
+        "testbenches": ["parallel_interface_extract_tb", "parallel_interface_valid_tb", "parallel_interface_commands_tb"]
     }
 }
 
@@ -118,9 +119,9 @@ def compile_rtl(module_name, file_list):
     success = run_command(cmd, cwd=PROJECT_ROOT)
     
     if success:
-        print(f"\n✓ Successfully compiled {module_name} RTL")
+        print(f"\n[OK] Successfully compiled {module_name} RTL")
     else:
-        print(f"\n✗ Failed to compile {module_name} RTL")
+        print(f"\n[X] Failed to compile {module_name} RTL")
     
     return success
 
@@ -138,17 +139,19 @@ def compile_verif(module_name, file_list):
     success = run_command(cmd, cwd=PROJECT_ROOT)
     
     if success:
-        print(f"\n✓ Successfully compiled {module_name} verification")
+        print(f"\n[OK] Successfully compiled {module_name} verification")
     else:
-        print(f"\n✗ Failed to compile {module_name} verification")
+        print(f"\n[X] Failed to compile {module_name} verification")
     
     return success
 
 
-def run_simulation(module_name, testbench_name, gui=False, duration=None):
-    """Run a simulation"""
+def run_simulation(module_name, testbench_name, gui=False, duration=None, log_file=None):
+    """Run a simulation. If log_file is set, capture output to that path."""
     print(f"\n{'='*60}")
     print(f"Running Simulation: {testbench_name}")
+    if log_file:
+        print(f"Output -> {log_file}")
     print(f"{'='*60}")
     
     work_name = f"work.{testbench_name}"
@@ -163,12 +166,27 @@ def run_simulation(module_name, testbench_name, gui=False, duration=None):
             do_script = f"run {duration}; quit"
         cmd = [VSIM_CMD, "-c", "-do", do_script, work_name]
     
-    success = run_command(cmd, cwd=PROJECT_ROOT)
+    if log_file:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, 'w', encoding='utf-8') as f:
+            try:
+                result = subprocess.run(cmd, cwd=PROJECT_ROOT, check=True,
+                                       stdout=f, stderr=subprocess.STDOUT)
+                success = result.returncode == 0
+            except subprocess.CalledProcessError as e:
+                f.write(f"Command failed with return code {e.returncode}\n")
+                success = False
+            except FileNotFoundError:
+                f.write(f"Error: {VSIM_CMD} not found in PATH\n")
+                success = False
+    else:
+        success = run_command(cmd, cwd=PROJECT_ROOT)
     
     if success:
-        print(f"\n✓ Simulation completed: {testbench_name}")
+        print(f"\n[OK] Simulation completed: {testbench_name}")
     else:
-        print(f"\n✗ Simulation failed: {testbench_name}")
+        print(f"\n[X] Simulation failed: {testbench_name}")
     
     return success
 
@@ -182,9 +200,9 @@ def clean_work():
     if WORK_DIR.exists():
         try:
             shutil.rmtree(WORK_DIR)
-            print("✓ Removed work/ directory")
+            print("[OK] Removed work/ directory")
         except Exception as e:
-            print(f"✗ Error removing work/: {e}")
+            print(f"[X] Error removing work/: {e}")
             return False
     
     # Recreate empty work directory
@@ -203,9 +221,9 @@ def clean_target(module_name=None):
         if target_module_dir.exists():
             try:
                 shutil.rmtree(target_module_dir)
-                print(f"✓ Removed target/{module_name}/")
+                print(f"[OK] Removed target/{module_name}/")
             except Exception as e:
-                print(f"✗ Error removing target/{module_name}/: {e}")
+                print(f"[X] Error removing target/{module_name}/: {e}")
                 return False
     else:
         # Clean all target files except weight_matrix.txt
@@ -216,9 +234,9 @@ def clean_target(module_name=None):
                         try:
                             if subitem.is_file():
                                 subitem.unlink()
-                                print(f"✓ Removed {subitem}")
+                                print(f"[OK] Removed {subitem}")
                         except Exception as e:
-                            print(f"✗ Error removing {subitem}: {e}")
+                            print(f"[X] Error removing {subitem}: {e}")
     
     return True
 
@@ -262,7 +280,7 @@ def generate_report(module_name, testbench_name):
         for dump_file in dump_files:
             f.write(f"  - {dump_file.name}\n")
     
-    print(f"✓ Report generated: {report_file}")
+    print(f"[OK] Report generated: {report_file}")
     return True
 
 
@@ -319,6 +337,13 @@ def main():
     # List command
     list_parser = subparsers.add_parser('list', help='List available modules and testbenches')
     
+    # Run-all command (all testbenches for module, output to target/)
+    run_all_parser = subparsers.add_parser('run_all', help='Run all testbenches, save logs to target/')
+    run_all_parser.add_argument('-m', '--module',
+                               choices=list(MODULES.keys()),
+                               action='append',
+                               help='Module(s) to run (repeat for multiple)')
+    
     # Report command
     report_parser = subparsers.add_parser('report', help='Generate simulation report')
     report_parser.add_argument('-m', '--module',
@@ -363,6 +388,25 @@ def main():
         success = run_simulation(args.module, args.testbench, 
                                gui=args.gui, duration=args.duration)
         return 0 if success else 1
+    
+    elif args.command == 'run_all':
+        modules = args.module if args.module else ['Input_Buffer', 'Parallel_Interface']
+        all_success = True
+        for module_name in modules:
+            if module_name not in MODULES:
+                print(f"Unknown module: {module_name}")
+                continue
+            cfg = MODULES[module_name]
+            print(f"\n>>> Compiling {module_name} verification...")
+            compile_verif(module_name, cfg['verif_list'])
+            for tb in cfg['testbenches']:
+                log_path = TARGET_DIR / module_name / f"{tb}_log.txt"
+                ok = run_simulation(module_name, tb, log_file=str(log_path))
+                all_success = all_success and ok
+        print(f"\n{'='*60}")
+        print(f"Logs saved under target/<module>/<testbench>_log.txt")
+        print(f"{'='*60}")
+        return 0 if all_success else 1
     
     elif args.command == 'clean':
         success = True

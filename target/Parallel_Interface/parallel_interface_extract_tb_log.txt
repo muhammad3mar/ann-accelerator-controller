@@ -1,0 +1,31 @@
+Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
+
+# 10.5b
+
+# vsim -c -do "run -all; quit" work.parallel_interface_extract_tb 
+# Start time: 01:38:33 on Feb 26,2026
+# Loading sv_std.std
+# Loading work.parallel_interface_pkg
+# Loading work.parallel_interface_extract_tb_sv_unit
+# Loading work.parallel_interface_extract_tb
+# Loading work.parallel_interface_sv_unit
+# Loading work.parallel_interface
+# run -all
+# ----------------------------------------
+# Parallel Interface Field Extraction Tests
+# Summary: Tests extraction of data=host_data[7:0], address=host_data[23:8],
+#          cmd=host_data[26:24] for various host_data patterns.
+# ----------------------------------------
+#   Test: host_data=0 | Expected: data=0 addr=0 cmd=000 | Actual: data=0x00 addr=0x0000 cmd=000 | PASS
+#   Test: data field 0xA5 | Expected: 0xA5 | Actual: 0xa5 | PASS
+#   Test: address field 0x1234 | Expected: 0x1234 | Actual: 0x1234 | PASS
+#   Test: cmd field 101 | Expected: 101 | Actual: 101 | PASS
+#   Test: host_data=all_ones | Expected: data=0xFF addr=0xFFFF cmd=111 | Actual: data=0xff addr=0xffff cmd=111 | PASS
+#   Test: cmd=PROG addr=0xFF00 data=0x0F | Expected: data=0x0F addr=0xFF00 cmd=010 | Actual: data=0x0f addr=0xff00 cmd=010 | PASS
+# ----------------------------------------
+# SUMMARY: 6 passed, 0 failed
+# RESULT: PASS (all 6 checks passed)
+# ** Note: $finish    : verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv(94)
+#    Time: 36 ns  Iteration: 0  Instance: /parallel_interface_extract_tb
+# End time: 01:38:35 on Feb 26,2026, Elapsed time: 0:00:02
+# Errors: 0, Warnings: 0

@@ -27,14 +27,14 @@ Z5 dC:/Users/Asus X415/Desktop/ann-accelerator-controller
 Z6 w1771811711
 Z7 8source/Controller/controller.sv
 Z8 Fsource/Controller/controller.sv
-L0 12
-Z9 OV;L;10.5b;63
-Z10 !s108 1771814590.000000
-Z11 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/controller_prog_verify_tb.sv|verif/Controller/tb/controller_addr_pulse_tb.sv|verif/Controller/tb/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
-Z12 !s90 -sv|-work|work|-f|verif/Controller/file_list/controller_verif_list.f|
+Z9 L0 12
+Z10 OV;L;10.5b;63
+Z11 !s108 1771814590.000000
+Z12 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/controller_prog_verify_tb.sv|verif/Controller/tb/controller_addr_pulse_tb.sv|verif/Controller/tb/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+Z13 !s90 -sv|-work|work|-f|verif/Controller/file_list/controller_verif_list.f|
 !i113 1
-Z13 o-sv -work work
-Z14 tCvgOpt 0
+Z14 o-sv -work work
+Z15 tCvgOpt 0
 vcontroller_addr_pulse_tb
 R0
 R1
@@ -51,17 +51,17 @@ I?LBGFjic_n8k?WOT2ML8=0
 !s105 controller_addr_pulse_tb_sv_unit
 S1
 R5
-Z15 w1771808789
-Z16 8verif/Controller/tb/controller_addr_pulse_tb.sv
-Z17 Fverif/Controller/tb/controller_addr_pulse_tb.sv
-Z18 L0 21
-R9
+Z16 w1771808789
+Z17 8verif/Controller/tb/controller_addr_pulse_tb.sv
+Z18 Fverif/Controller/tb/controller_addr_pulse_tb.sv
+Z19 L0 21
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 Xcontroller_addr_pulse_tb_sv_unit
 R0
 R1
@@ -77,22 +77,22 @@ IKz0ZRP;96KbYZ3I9]K]m52
 !i103 1
 S1
 R5
-R15
 R16
 R17
-Z19 Fverif\Controller\tb\..\..\..\source\common\macros.svh
-Z20 L0 17
-R9
+R18
+Z20 Fverif\Controller\tb\..\..\..\source\common\macros.svh
+Z21 L0 17
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 Xcontroller_pkg
 R0
 R1
-Z21 !s110 1771814591
+!s110 1771814591
 !i10b 1
 !s100 G3SJWQn@1<L`h_PzlOfD01
 I[Sh0S>MADYET;1`_Ti:>m3
@@ -103,16 +103,16 @@ w1771811633
 8source/Controller/controller_pkg.sv
 Fsource/Controller/controller_pkg.sv
 L0 6
-R9
+R10
 r1
 !s85 0
 31
-R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 vcontroller_prog_new_arch_tb
 R0
 Z22 DXx4 work 22 parallel_interface_pkg 0 22 nQhaB7a>a82[J=IV392=K2
@@ -133,13 +133,13 @@ Z25 w1768750394
 Z26 8verif/Controller/tb/controller_prog_new_arch_tb.sv
 Z27 Fverif/Controller/tb/controller_prog_new_arch_tb.sv
 L0 19
-R9
+R10
 Z28 !s108 1768750864.000000
 Z29 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/controller_prog_new_arch_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 Z30 !s90 -f|verif/Controller/file_list/controller_verif_list.f|-work|work|
 !i113 1
 Z31 o-work work
-R14
+R15
 Xcontroller_prog_new_arch_tb_sv_unit
 R0
 R22
@@ -158,15 +158,15 @@ R5
 R25
 R26
 R27
-R19
+R20
 Z32 L0 15
-R9
+R10
 R28
 R29
 R30
 !i113 1
 R31
-R14
+R15
 vcontroller_prog_verify_tb
 R0
 R1
@@ -187,13 +187,13 @@ Z33 w1771814566
 Z34 8verif/Controller/tb/controller_prog_verify_tb.sv
 Z35 Fverif/Controller/tb/controller_prog_verify_tb.sv
 L0 20
-R9
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 Xcontroller_prog_verify_tb_sv_unit
 R0
 R1
@@ -212,15 +212,15 @@ R5
 R33
 R34
 R35
-R19
+R20
 L0 16
-R9
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 Xcontroller_sv_unit
 R0
 R1
@@ -241,13 +241,13 @@ R7
 R8
 Fsource\Controller\..\common\macros.svh
 L0 8
-R9
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 vcontroller_weight_program_tb
 R0
 R1
@@ -267,14 +267,14 @@ R5
 Z36 w1771808795
 Z37 8verif/Controller/tb/controller_weight_program_tb.sv
 Z38 Fverif/Controller/tb/controller_weight_program_tb.sv
-R18
-R9
+R19
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 Xcontroller_weight_program_tb_sv_unit
 R0
 R1
@@ -293,88 +293,188 @@ R5
 R36
 R37
 R38
-R19
 R20
-R9
+R21
 R10
 R11
 R12
-!i113 1
 R13
+!i113 1
 R14
+R15
 vinput_buffer
 R0
-R3
-DXx4 work 20 input_buffer_sv_unit 0 22 EKh:[BLU^DC<=NCY22=`63
+Z39 DXx4 work 16 input_buffer_pkg 0 22 cDl3P=f92bWJVf=z<8he00
+DXx4 work 20 input_buffer_sv_unit 0 22 QD?ZS7SI?4h`K^33Noa;S1
 R4
 r1
 !s85 0
 31
 !i10b 1
-!s100 Aof0LQhTJc>;Fd^aKoT7n2
-ITnn>jIYfSHBegC@Q5:XH^2
+!s100 =0;B]Ok1H<e3c<SNam=YT2
+IkooF_VREcj=]<l@;:dDlo2
 !s105 input_buffer_sv_unit
 S1
 R5
-Z39 w1766534150
-Z40 8source/Input_Buffer/input_buffer.sv
-Z41 Fsource/Input_Buffer/input_buffer.sv
+Z40 w1771853111
+Z41 8source/Input_Buffer/input_buffer.sv
+Z42 Fsource/Input_Buffer/input_buffer.sv
 L0 10
-R9
 R10
-R11
-R12
+Z43 !s108 1772062705.000000
+Z44 !s107 verif\Input_Buffer\tb\..\..\..\source\common\macros.svh|source\Input_Buffer\..\common\macros.svh|verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv|verif/Input_Buffer/tb/input_buffer_write_read_tb.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/common/macros.svh|
+Z45 !s90 -sv|-work|work|-f|verif/Input_Buffer/file_list/input_buffer_verif_list.f|
 !i113 1
-R13
 R14
-Xinput_buffer_pkg
+R15
+vinput_buffer_bit_serial_tb
 R0
-R21
+R39
+DXx4 work 34 input_buffer_bit_serial_tb_sv_unit 0 22 @Zd6kl<H]Uc=S:<LXjKU[0
+R4
+r1
+!s85 0
+31
 !i10b 1
-!s100 h=370CdPMa4=[0;=8:S]51
-IFebJzYlRSk4zI;IB]SOUO2
-VFebJzYlRSk4zI;IB]SOUO2
+!s100 ncI5=mkmS[a?VN:h93hF_2
+Iim6F6e11RXnT3TfDK8NhO2
+!s105 input_buffer_bit_serial_tb_sv_unit
 S1
 R5
-w1766533971
-8source/Input_Buffer/input_buffer_pkg.sv
-Fsource/Input_Buffer/input_buffer_pkg.sv
-L0 6
-R9
-r1
-!s85 0
-31
+Z46 w1772062686
+Z47 8verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
+Z48 Fverif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
+Z49 L0 14
 R10
-R11
-R12
+R43
+R44
+R45
 !i113 1
-R13
 R14
-Xinput_buffer_sv_unit
+R15
+Xinput_buffer_bit_serial_tb_sv_unit
 R0
-R3
-VEKh:[BLU^DC<=NCY22=`63
+R39
+V@Zd6kl<H]Uc=S:<LXjKU[0
 r1
 !s85 0
 31
 !i10b 1
-!s100 dZ9fWY[Kk4Fgno6<=]i3U0
-IEKh:[BLU^DC<=NCY22=`63
+!s100 N`3Z_X^=R=@e:XWhgSnkI3
+I@Zd6kl<H]Uc=S:<LXjKU[0
 !i103 1
 S1
 R5
-R39
-R40
-R41
-Fsource\Input_Buffer\..\common\macros.svh
-L0 8
+R46
+R47
+R48
+Z50 Fverif\Input_Buffer\tb\..\..\..\source\common\macros.svh
 R9
 R10
-R11
-R12
+R43
+R44
+R45
 !i113 1
-R13
 R14
+R15
+Xinput_buffer_pkg
+R0
+!s110 1772062705
+!i10b 1
+!s100 GPb>JTR0NN]E@b=aW61gM0
+IcDl3P=f92bWJVf=z<8he00
+VcDl3P=f92bWJVf=z<8he00
+S1
+R5
+w1771853183
+8source/Input_Buffer/input_buffer_pkg.sv
+Fsource/Input_Buffer/input_buffer_pkg.sv
+L0 6
+R10
+r1
+!s85 0
+31
+R43
+R44
+R45
+!i113 1
+R14
+R15
+Xinput_buffer_sv_unit
+R0
+R39
+VQD?ZS7SI?4h`K^33Noa;S1
+r1
+!s85 0
+31
+!i10b 1
+!s100 @jP=04e:dIm0EzP2il5QX2
+IQD?ZS7SI?4h`K^33Noa;S1
+!i103 1
+S1
+R5
+R40
+R41
+R42
+Fsource\Input_Buffer\..\common\macros.svh
+L0 8
+R10
+R43
+R44
+R45
+!i113 1
+R14
+R15
+vinput_buffer_write_read_tb
+R0
+R39
+DXx4 work 34 input_buffer_write_read_tb_sv_unit 0 22 @77>oUfkK2:GWQCNI6a[B0
+R4
+r1
+!s85 0
+31
+!i10b 1
+!s100 0_Mj@PiF[`:`LBmHPXQYB1
+I95AGVk^]i3QgeV`7DOeZ23
+!s105 input_buffer_write_read_tb_sv_unit
+S1
+R5
+Z51 w1772062684
+Z52 8verif/Input_Buffer/tb/input_buffer_write_read_tb.sv
+Z53 Fverif/Input_Buffer/tb/input_buffer_write_read_tb.sv
+R49
+R10
+R43
+R44
+R45
+!i113 1
+R14
+R15
+Xinput_buffer_write_read_tb_sv_unit
+R0
+R39
+V@77>oUfkK2:GWQCNI6a[B0
+r1
+!s85 0
+31
+!i10b 1
+!s100 EI@UU9B:MQj5PXhjYE=n?2
+I@77>oUfkK2:GWQCNI6a[B0
+!i103 1
+S1
+R5
+R51
+R52
+R53
+R50
+R9
+R10
+R43
+R44
+R45
+!i113 1
+R14
+R15
 vparallel_interface
 R0
 R1
@@ -389,40 +489,140 @@ INX52UZ7I5>MQ8b>i?Q:9Y0
 !s105 parallel_interface_sv_unit
 S1
 R5
-Z42 w1771805814
-Z43 8source/Parallel_Interface/parallel_interface.sv
-Z44 Fsource/Parallel_Interface/parallel_interface.sv
-R20
+Z54 w1772031025
+Z55 8source/Parallel_Interface/parallel_interface.sv
+Z56 Fsource/Parallel_Interface/parallel_interface.sv
+R21
+R10
+Z57 !s108 1772062712.000000
+Z58 !s107 verif\Parallel_Interface\tb\..\..\..\source\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv|verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv|verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+Z59 !s90 -sv|-work|work|-f|verif/Parallel_Interface/file_list/parallel_interface_verif_list.f|
+!i113 1
+R14
+R15
+vparallel_interface_commands_tb
+R0
+R1
+DXx4 work 38 parallel_interface_commands_tb_sv_unit 0 22 _873k;0IYAj7TldmR]cK01
+R4
+r1
+!s85 0
+31
+!i10b 1
+!s100 Xdz>MC>L5eNieHehJ>2M[2
+IfN0VVlk;V]aCDBMRJ8CR:3
+!s105 parallel_interface_commands_tb_sv_unit
+S1
+R5
+R51
+Z60 8verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
+Z61 Fverif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
+R49
+R10
+R57
+R58
+R59
+!i113 1
+R14
+R15
+Xparallel_interface_commands_tb_sv_unit
+R0
+R1
+V_873k;0IYAj7TldmR]cK01
+r1
+!s85 0
+31
+!i10b 1
+!s100 8bS7@dAg]kH6b6_lIkEIC3
+I_873k;0IYAj7TldmR]cK01
+!i103 1
+S1
+R5
+R51
+R60
+R61
+Z62 Fverif\Parallel_Interface\tb\..\..\..\source\common\macros.svh
 R9
 R10
-R11
-R12
+R57
+R58
+R59
 !i113 1
-R13
 R14
+R15
+vparallel_interface_extract_tb
+R0
+R1
+DXx4 work 37 parallel_interface_extract_tb_sv_unit 0 22 Mo2FDHMaNii?9T[U4mZ:40
+R4
+r1
+!s85 0
+31
+!i10b 1
+!s100 Q_4mH]=NO^dWG^3HaOE=F1
+In5nTUP<]4U2gUibQjEQ;;2
+!s105 parallel_interface_extract_tb_sv_unit
+S1
+R5
+R51
+Z63 8verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
+Z64 Fverif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
+R49
+R10
+R57
+R58
+R59
+!i113 1
+R14
+R15
+Xparallel_interface_extract_tb_sv_unit
+R0
+R1
+VMo2FDHMaNii?9T[U4mZ:40
+r1
+!s85 0
+31
+!i10b 1
+!s100 Lh1?AQfG58RK@WmFD^[7]0
+IMo2FDHMaNii?9T[U4mZ:40
+!i103 1
+S1
+R5
+R51
+R63
+R64
+R62
+R9
+R10
+R57
+R58
+R59
+!i113 1
+R14
+R15
 Xparallel_interface_pkg
 R0
-R21
+!s110 1772062712
 !i10b 1
 !s100 e4zlbbRBUaSE<ej]cUXGW3
 I^lWQC@;Z7[iMK7:<fi58W2
 V^lWQC@;Z7[iMK7:<fi58W2
 S1
 R5
-w1771805799
+R54
 8source/Parallel_Interface/parallel_interface_pkg.sv
 Fsource/Parallel_Interface/parallel_interface_pkg.sv
 L0 5
-R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R57
+R58
+R59
 !i113 1
-R13
 R14
+R15
 Xparallel_interface_sv_unit
 R0
 R1
@@ -436,15 +636,65 @@ IYSAB99QPNX?QFocMgK<G41
 !i103 1
 S1
 R5
-R42
-R43
-R44
+R54
+R55
+R56
 Fsource\Parallel_Interface\..\common\macros.svh
 R32
+R10
+R57
+R58
+R59
+!i113 1
+R14
+R15
+vparallel_interface_valid_tb
+R0
+R1
+DXx4 work 35 parallel_interface_valid_tb_sv_unit 0 22 3N6SNJ<7MnX<Q;MCi:0dU0
+R4
+r1
+!s85 0
+31
+!i10b 1
+!s100 S>Mc]=5STT;]C<`;Yo^733
+Ih:ZNNH5Sji@Ve1gD3Y^PD3
+!s105 parallel_interface_valid_tb_sv_unit
+S1
+R5
+R51
+Z65 8verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
+Z66 Fverif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
+R49
+R10
+R57
+R58
+R59
+!i113 1
+R14
+R15
+Xparallel_interface_valid_tb_sv_unit
+R0
+R1
+V3N6SNJ<7MnX<Q;MCi:0dU0
+r1
+!s85 0
+31
+!i10b 1
+!s100 ZlP0jo1nmfB6P]P0I@NSA1
+I3N6SNJ<7MnX<Q;MCi:0dU0
+!i103 1
+S1
+R5
+R51
+R65
+R66
+R62
 R9
 R10
-R11
-R12
+R57
+R58
+R59
 !i113 1
-R13
 R14
+R15

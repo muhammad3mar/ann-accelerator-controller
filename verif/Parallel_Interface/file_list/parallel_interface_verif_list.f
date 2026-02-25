@@ -7,6 +7,8 @@
 // Include RTL files first
 -f verif/Parallel_Interface/file_list/parallel_interface_list.f
 
-// Testbench files (add testbench files here when created)
-// tb/parallel_interface_tb.sv
+// Testbench files
+verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
+verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
+verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
 
