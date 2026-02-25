@@ -1,0 +1,30 @@
+Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
+
+# 10.5b
+
+# vsim -c -do "run -all; quit" work.input_buffer_write_read_tb 
+# Start time: 01:38:27 on Feb 26,2026
+# Loading sv_std.std
+# Loading work.input_buffer_pkg
+# Loading work.input_buffer_write_read_tb_sv_unit
+# Loading work.input_buffer_write_read_tb
+# Loading work.input_buffer_sv_unit
+# Loading work.input_buffer
+# run -all
+# ----------------------------------------
+# Input Buffer Write/Read Tests
+# Summary: Tests write path (CTRL_DATA_LOAD), full-byte read (buf_data),
+#          and ready signal for multiple addresses (0, 7, 63).
+# ----------------------------------------
+#   Test: Read addr 0 | Expected: 0xA5 | Actual: 0xa5 | PASS
+#   Test: Read addr 7 | Expected: 0x3C | Actual: 0x3c | PASS
+#   Test: Read addr 63 | Expected: 0xF0 | Actual: 0xf0 | PASS
+#   Test: ready during DATA_LOAD write | Expected: 1 | Actual: 1 | PASS
+#   Test: ready during WEIGHT_READ | Expected: 1 | Actual: 1 | PASS
+# ----------------------------------------
+# SUMMARY: 5 passed, 0 failed
+# RESULT: PASS (all 5 checks passed)
+# ** Note: $finish    : verif/Input_Buffer/tb/input_buffer_write_read_tb.sv(131)
+#    Time: 165 ns  Iteration: 0  Instance: /input_buffer_write_read_tb
+# End time: 01:38:29 on Feb 26,2026, Elapsed time: 0:00:02
+# Errors: 0, Warnings: 0

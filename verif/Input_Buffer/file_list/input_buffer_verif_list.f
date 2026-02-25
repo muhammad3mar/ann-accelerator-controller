@@ -7,6 +7,7 @@
 // Include RTL files first
 -f verif/Input_Buffer/file_list/input_buffer_list.f
 
-// Testbench files (add testbench files here when created)
-// tb/input_buffer_tb.sv
+// Testbench files
+verif/Input_Buffer/tb/input_buffer_write_read_tb.sv
+verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
 
