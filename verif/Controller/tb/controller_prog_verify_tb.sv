@@ -19,22 +19,19 @@ import parallel_interface_pkg::*;
 
 module controller_prog_verify_tb;
 
-    localparam int CLK_PERIOD = 10;
+    localparam int CLK_PERIOD = 5;
     localparam string WEIGHT_FILE  = "target/Controller/weight_matrix.txt";
     localparam string REPORT_FILE  = "target/Controller/prog_verify_report.txt";
 
     logic clk, rst_n, reset;
     logic [31:0] host_data;
+    logic [2:0]  host_cmd;
     logic valid;
     logic [7:0] data;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
-    logic ann_reset, weight_write_en, op_done, busy;
-    logic [SELECTOR_WIDTH-1:0] row_selector, col_selector;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl;
-    logic [3:0] weight_data;
-    logic [ADDR_OUT_WIDTH-1:0] addr_out;
+    logic ann_reset, op_done, busy;
+    logic [31:0] ann_core_word;
     logic [2:0] pulses;
     logic [5:0] buf_reg_add;
     logic [2:0] buf_reg_ctrl;
@@ -48,7 +45,13 @@ module controller_prog_verify_tb;
     logic [3:0] ann_weight_matrix [0:NUM_BLOCKS-1][0:NUM_SUB_BLOCKS-1][0:SUB_BLOCK_ROWS-1][0:SUB_BLOCK_COLS-1];
     logic [3:0] weight_read_data_mock;
     logic [3:0] actual_from_ann;
-    assign actual_from_ann = ann_weight_matrix[row_selector[6:5]][row_selector[4:3]][row_selector[2:0]][col_selector[2:0]];
+    logic [1:0] dec_blk, dec_sb;
+    logic [2:0] dec_row, dec_col;
+
+    always_comb begin
+        ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
+        actual_from_ann = ann_weight_matrix[dec_blk][dec_sb][dec_row][dec_col];
+    end
 
     // Weight storage from file (declared early for inject logic)
     logic [3:0] weight_matrix [0:639];
@@ -71,12 +74,18 @@ module controller_prog_verify_tb;
     logic in_verify_phase;
     assign in_verify_phase = busy && (pulses == 3'b001 || pulses == 3'b000);
 
-    // Inject read<expected (re-PROG) for these indices; read>expected (ERASE) for those
+    // Inject read<expected (re-PROG) for these indices; read>expected (ERASE) for those.
+    // Early indices stress the start of the 640-weight sweep; high indices (~380+) stress the tail
+    // so prog_verify_report.txt shows ERASE/re-PROG near the end, not only at the beginning.
     function automatic bit is_inject_read_lt(int idx);
-        return (idx == 5 || idx == 15 || idx == 25 || idx == 50 || idx == 100 || idx == 200);
+        return (idx == 5 || idx == 15 || idx == 25 || idx == 50 || idx == 100 || idx == 200
+             || idx == 385 || idx == 420 || idx == 455 || idx == 490 || idx == 535 || idx == 580
+             || idx == 605 || idx == 625);
     endfunction
     function automatic bit is_inject_read_gt(int idx);
-        return (idx == 10 || idx == 30 || idx == 70 || idx == 150 || idx == 250 || idx == 350);
+        return (idx == 10 || idx == 30 || idx == 70 || idx == 150 || idx == 250 || idx == 350
+             || idx == 395 || idx == 440 || idx == 475 || idx == 510 || idx == 555 || idx == 600
+             || idx == 615 || idx == 635);
     endfunction
 
     always_comb begin
@@ -89,15 +98,13 @@ module controller_prog_verify_tb;
         end
     end
 
-    parallel_interface u_pi (.clk(clk), .reset(reset), .host_data(host_data),
+    parallel_interface u_pi (.clk(clk), .reset(reset), .host_data(host_data), .host_cmd(host_cmd),
         .valid(valid), .data(data), .address(address), .cmd(cmd));
 
     ann_controller dut (
         .clk(clk), .rst_n(rst_n), .valid(valid), .data(data), .address(address), .cmd(cmd),
-        .ann_reset(ann_reset), .weight_write_en(weight_write_en),
-        .row_selector(row_selector), .col_selector(col_selector),
-        .op_done(op_done), .row_mux_ctrl(row_mux_ctrl), .col_mux_ctrl(col_mux_ctrl),
-        .weight_data(weight_data), .addr_out(addr_out), .pulses(pulses),
+        .ann_reset(ann_reset),
+        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
         .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
@@ -112,6 +119,9 @@ module controller_prog_verify_tb;
     initial clk = 0;
     always #(CLK_PERIOD/2) clk = ~clk;
 
+    logic in_prog_core_phase;
+    assign in_prog_core_phase = (pulses == PULSE_MODE_PROG) && (buf_reg_ctrl == CTRL_WEIGHT_READ);
+
     // op_done mock
     int op_done_cnt;
     always_ff @(posedge clk or negedge rst_n) begin
@@ -119,7 +129,7 @@ module controller_prog_verify_tb;
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (weight_write_en) begin
+            if (in_prog_core_phase) begin
                 if (op_done_cnt >= controller_pkg::TPROG - 1) begin
                     op_done <= 1;
                     op_done_cnt <= 0;
@@ -150,8 +160,11 @@ module controller_prog_verify_tb;
                     for (int r = 0; r < SUB_BLOCK_ROWS; r++)
                         for (int c = 0; c < SUB_BLOCK_COLS; c++)
                             ann_weight_matrix[b][sb][r][c] <= 4'b0;
-        end else if (weight_write_en) begin
-            ann_weight_matrix[row_selector[6:5]][row_selector[4:3]][row_selector[2:0]][col_selector[2:0]] <= weight_data;
+        end else if (in_prog_core_phase) begin
+            automatic logic [1:0] lb, lsb;
+            automatic logic [2:0] lr, lc;
+            ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
+            ann_weight_matrix[lb][lsb][lr][lc] <= ann_core_word[27:24];
         end
     end
 
@@ -241,7 +254,7 @@ module controller_prog_verify_tb;
     //--------------------------------------------------------------------------
     string phase_str;
     logic [2:0] prev_pulses;
-    logic prev_weight_write_en, prev_busy;
+    logic prev_busy;
     int prog_count, verify_count, erase_count;
     logic [15:0] current_addr;
     int retry_count_per_weight [0:639];
@@ -250,7 +263,6 @@ module controller_prog_verify_tb;
 
     always_ff @(posedge clk) begin
         prev_pulses <= pulses;
-        prev_weight_write_en <= weight_write_en;
         prev_busy <= busy;
     end
 
@@ -266,10 +278,16 @@ module controller_prog_verify_tb;
         current_weight_idx = weight_idx;
         wval = {4'b0, weight_matrix[weight_idx]};
         addr = weight_addresses[weight_idx];
-        packet = {5'b0, CMD_PROG, addr, wval};
+        packet = build_host_ann_word(wval, addr);
 
+        host_cmd = CMD_HIZ;
         host_data = 0; @(posedge clk); @(posedge clk);
-        host_data = packet; @(posedge clk);
+        host_data = packet;
+        host_cmd = CMD_PROG;
+        @(posedge clk);
+        host_cmd = CMD_HIZ;
+        host_data = 0;
+        @(posedge clk);
 
         timeout = 0;
         while (busy && timeout < 5000) begin
@@ -291,7 +309,7 @@ module controller_prog_verify_tb;
     logic [2:0] row_id, col_id;
 
     initial begin
-        rst_n = 0; reset = 1; host_data = 0;
+        rst_n = 0; reset = 1; host_cmd = CMD_HIZ; host_data = 0;
         repeat(5) @(posedge clk);
         rst_n = 1; reset = 0;
         repeat(5) @(posedge clk);
@@ -381,9 +399,9 @@ module controller_prog_verify_tb;
 
         // Assert both retry paths were exercised by inject
         if (erase_phase_count == 0)
-            $error("Expected ERASE path (read>expected) to be exercised; inject for weights 10,30,70,150,250,350");
+            $error("Expected ERASE path (read>expected); check is_inject_read_gt (early + high indices)");
         if (reprog_retry_count == 0)
-            $error("Expected re-PROG path (read<expected) to be exercised; inject for weights 5,15,25,50,100,200");
+            $error("Expected re-PROG path (read<expected); check is_inject_read_lt (early + high indices)");
 
         $display("[%0t] Verification complete: %0d errors", $time, errs);
         $display("[%0t] Report: %s", $time, REPORT_FILE);
@@ -392,23 +410,61 @@ module controller_prog_verify_tb;
     end
 
     //--------------------------------------------------------------------------
-    // Cycle logger: log PROG/VERIFY/ERASE to report (sample on phase changes)
+    // Cycle logger: log only PROG / REPROG / VERIFY / ERASE transactions (sample on phase changes).
+    // Internal substates (PROG_PREP, CHECK_DONE, COMPUTE) update last_phase but do not print.
     //--------------------------------------------------------------------------
     string last_phase = "";
     int weights_logged = 0;
     logic saw_idle = 1;  // 1 when we just came from idle (don't count first PROG as retry)
+    logic reprog_seq_active = 0;  // 1 between re-PROG START and END (avoids duplicate titles during PROG_PREP↔PROG)
 
     always_ff @(posedge clk) begin
         if (busy && fd != 0) begin
-            if (weight_write_en) phase_str = "PROG";
+            if (in_prog_core_phase) phase_str = "PROG";
             else if (pulses == 3'b001) phase_str = "VERIFY";
             else if (pulses == 3'b011) phase_str = "ERASE";
-            else if (pulses == 3'b010) phase_str = "PROG_PREP";   // PROG_ENABLE, muxes on, not yet writing
+            else if (pulses == 3'b010) phase_str = "PROG_PREP";
             else if (pulses == 3'b100) phase_str = "COMPUTE";
-            else phase_str = "CHECK_DONE";  // pulses=000: VERIFY_CHECK/VERIFY_DONE or PROG HIZ/SELECT/DISABLE/COMPLETE
+            else phase_str = "CHECK_DONE";
             if (phase_str != last_phase) begin
-                $fdisplay(fd, "[%0t] Phase: %s  addr_out=0x%08X  row_sel=0x%02X col_sel=0x%02X wdata=%0d",
-                    $time, phase_str, addr_out, row_selector, col_selector, weight_data);
+                if (last_phase == "ERASE" && phase_str != "ERASE") begin
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    $fdisplay(fd, "// ERASE sequence END   [%0t]  (next phase: %s)", $time, phase_str);
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                end
+                if (last_phase == "PROG" && reprog_seq_active &&
+                    (phase_str == "VERIFY" || phase_str == "ERASE")) begin
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    $fdisplay(fd, "// re-PROG sequence END [%0t]  (next phase: %s)", $time, phase_str);
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    reprog_seq_active = 0;
+                end
+                if (phase_str == "ERASE" && last_phase != "ERASE") begin
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    $fdisplay(fd, "// ERASE sequence START [%0t]", $time);
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                end
+                if (phase_str == "PROG" && !reprog_seq_active && !saw_idle &&
+                    (last_phase == "VERIFY" || last_phase == "CHECK_DONE" ||
+                     last_phase == "PROG_PREP" || last_phase == "COMPUTE" || last_phase == "ERASE")) begin
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    $fdisplay(fd, "// re-PROG sequence START [%0t]  (after phase: %s)", $time, last_phase);
+                    $fdisplay(fd, "//------------------------------------------------------------------------------");
+                    reprog_seq_active = 1;
+                end
+
+                if (phase_str == "PROG" || phase_str == "ERASE" || phase_str == "VERIFY") begin
+                    automatic string phase_log;
+                    if (phase_str == "ERASE" || phase_str == "VERIFY")
+                        phase_log = phase_str;
+                    else if (!saw_idle && (last_phase == "VERIFY" || last_phase == "CHECK_DONE" ||
+                             last_phase == "PROG_PREP" || last_phase == "COMPUTE" || last_phase == "ERASE"))
+                        phase_log = "REPROG";
+                    else
+                        phase_log = "PROG";
+                    $fdisplay(fd, "[%0t] Phase: %s  ann_core_word=0x%08X  programmed_weight=%0d",
+                        $time, phase_log, ann_core_word, int'(ann_core_word[27:24]));
+                end
                 if (phase_str == "PROG") begin
                     weights_logged++;
                     // re-PROG: PROG after VERIFY or CHECK_DONE/PROG_PREP (retry path), and we didn't just come from idle
@@ -420,6 +476,17 @@ module controller_prog_verify_tb;
                 last_phase = phase_str;
             end
         end else if (!busy) begin
+            if (fd != 0 && last_phase == "ERASE") begin
+                $fdisplay(fd, "//------------------------------------------------------------------------------");
+                $fdisplay(fd, "// ERASE sequence END   [%0t]  (DUT idle)", $time);
+                $fdisplay(fd, "//------------------------------------------------------------------------------");
+            end
+            if (fd != 0 && reprog_seq_active) begin
+                $fdisplay(fd, "//------------------------------------------------------------------------------");
+                $fdisplay(fd, "// re-PROG sequence END [%0t]  (DUT idle)", $time);
+                $fdisplay(fd, "//------------------------------------------------------------------------------");
+                reprog_seq_active = 0;
+            end
             last_phase = "";
             saw_idle = 1;
         end

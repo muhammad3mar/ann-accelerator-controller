@@ -1,13 +1,12 @@
 //------------------------------------------------------------------------------
 // Parallel Interface Module
 //------------------------------------------------------------------------------
-// Parses 32-bit host signal and forwards data, address, and command to controller
+// Host presents the same 32-bit layout as ann_core_word:
+//   host_data[31:24] = data byte
+//   host_data[23:0]  = one-hot {PE, SA, col, row}
 //
-// Signal Layout (32-bit from host):
-//   [31:27] = reserved (5 bits)
-//   [26:24] = cmd (3 bits)
-//   [23:8]  = address (16 bits)
-//   [7:0]   = data (8 bits)
+// Command is a separate synchronous input host_cmd[2:0] (parallel_interface_pkg::cmd_t).
+// Decoded outputs match what ann_controller expects: data[7:0], address[15:0], cmd.
 //------------------------------------------------------------------------------
 
 `include "../common/macros.svh"
@@ -24,36 +23,22 @@ module parallel_interface(
     //======================================================================
     // Host Interface
     //======================================================================
-    input  logic [31:0]     host_data,  // 32-bit signal from host
+    input  logic [31:0]     host_data,  // ann_core_word format
+    input  logic [2:0]      host_cmd,   // command (HIZ when idle / no transaction)
 
     //======================================================================
     // Controller Interface
     //======================================================================
     output logic            valid,      // Valid command/data ready
-    output logic [7:0]      data,       // Extracted 8-bit data
-    output logic [15:0]     address,    // Extracted 16-bit address
-    output logic [2:0]      cmd         // Extracted 3-bit command
+    output logic [7:0]      data,       // host_data[31:24]
+    output logic [15:0]     address,    // decoded from host_data[23:0]
+    output logic [2:0]      cmd         // host_cmd
 );
 
-    //--------------------------------------------------------------------------
-    // Parse 32-bit host signal into component fields
-    //--------------------------------------------------------------------------
-    assign data    = extract_data(host_data);     // bits [7:0]
-    assign address = extract_address(host_data);  // bits [23:8]
-    assign cmd     = extract_cmd(host_data);      // bits [26:24]
+    assign data    = host_data[31:24];
+    assign address = ann_tail_to_parallel_addr(host_data[23:0]);
+    assign cmd     = host_cmd;
 
-    //--------------------------------------------------------------------------
-    // Valid signal generation
-    //--------------------------------------------------------------------------
-    // Valid is asserted when host_data contains a valid command
-    // CMD_HIZ (000) with no address/data is idle; other commands or non-zero data/address are valid
-    logic [2:0] cmd_field;
-    assign cmd_field = extract_cmd(host_data);
-    
-    always_comb begin
-        // Valid when host_data has non-zero command (not HIZ) or non-zero data/address
-        valid = (cmd_field != 3'b000 || host_data[7:0] != 8'b0 || host_data[23:8] != 16'b0) ? 1'b1 : 1'b0;
-    end
+    assign valid = (host_cmd != CMD_HIZ);
 
 endmodule
-

@@ -2,7 +2,7 @@
 // Controller Address and Pulse Verification Testbench
 //------------------------------------------------------------------------------
 // Verifies:
-// 1. Address translation: 16-bit host address -> 32-bit ANN addr_out (one-hot)
+// 1. Packed bus: ann_core_word = {host_data[7:0], one_hot[23:0]}
 // 2. Pulse output (pulses[2:0]) for each command: READ, PROG, ERASE, INF
 // 3. Controller behavior per command type
 //
@@ -23,7 +23,7 @@ module controller_addr_pulse_tb;
     //--------------------------------------------------------------------------
     // Parameters
     //--------------------------------------------------------------------------
-    localparam int CLK_PERIOD = 10;
+    localparam int CLK_PERIOD = 5;
     localparam string RESULT_FILE = "target/Controller/controller_addr_pulse_verify.txt";
 
     // Pulse parameters from controller_pkg (TREAD, TPROG, TERASE, TINF, etc.)
@@ -33,16 +33,13 @@ module controller_addr_pulse_tb;
     //--------------------------------------------------------------------------
     logic clk, rst_n, reset;
     logic [31:0] host_data;
+    logic [2:0]  host_cmd;
     logic valid;
     logic [7:0] pi_data;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
-    logic ann_reset, weight_write_en, op_done, busy;
-    logic [SELECTOR_WIDTH-1:0] row_selector, col_selector;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl;
-    logic [3:0] weight_data;
-    logic [ADDR_OUT_WIDTH-1:0] addr_out;
+    logic ann_reset, op_done, busy;
+    logic [31:0] ann_core_word;
     logic [2:0] pulses;
     logic [5:0] buf_reg_add;
     logic [2:0] buf_reg_ctrl;
@@ -53,35 +50,32 @@ module controller_addr_pulse_tb;
     logic buf_ready;
 
     //--------------------------------------------------------------------------
-    // Expected addr_out: {PE[23:20], SA[19:16], col[15:8], row[7:0]} one-hot
+    // Expected ann_core_word = pack_ann_core_word(data, block, sub, row, col)
     //--------------------------------------------------------------------------
-    function automatic logic [ADDR_OUT_WIDTH-1:0] expected_addr_out(logic [15:0] addr_16);
+    function automatic logic [31:0] expected_ann_core_word(logic [15:0] addr_16, logic [7:0] data_val);
         logic [1:0] blk, sb;
         logic [2:0] rw, cl;
         blk = addr_16[9:8];
         sb  = addr_16[7:6];
         cl  = addr_16[5:3];
         rw  = addr_16[2:0];
-        // Format: {PE[23:20], SA[19:16], col[15:8], row[7:0]} - 4,4,8,8 bits one-hot
-        return {4'(1 << blk), 4'(1 << sb), 8'(1 << cl), 8'(1 << rw)};
+        return pack_ann_core_word(data_val, blk, sb, rw, cl);
     endfunction
 
     //--------------------------------------------------------------------------
     // DUT
     //--------------------------------------------------------------------------
     parallel_interface u_parallel_interface (
-        .clk(clk), .reset(reset), .host_data(host_data),
+        .clk(clk), .reset(reset), .host_data(host_data), .host_cmd(host_cmd),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd)
     );
 
     ann_controller dut (
         .clk(clk), .rst_n(rst_n),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
-        .ann_reset(ann_reset), .weight_write_en(weight_write_en),
-        .row_selector(row_selector), .col_selector(col_selector),
-        .op_done(op_done), .row_mux_ctrl(row_mux_ctrl), .col_mux_ctrl(col_mux_ctrl),
-        .weight_data(weight_data), .addr_out(addr_out), .pulses(pulses),
-        .weight_read_data(buf_data[3:0]),  // Expected weight during VERIFY (simulate perfect programming)
+        .ann_reset(ann_reset),
+        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .weight_read_data(buf_data[3:0]),  // VERIFY path tie-off
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
         .buf_data_out(buf_data_out), .buf_ready(buf_ready), .buf_data(buf_data), .busy(busy)
@@ -94,8 +88,11 @@ module controller_addr_pulse_tb;
         .D0(D0), .D1(D1), .D2(D2), .D3(D3), .D4(D4), .D5(D5), .D6(D6), .D7(D7)
     );
 
+    logic in_prog_core_phase;
+    assign in_prog_core_phase = (pulses == PULSE_MODE_PROG) && (buf_reg_ctrl == CTRL_WEIGHT_READ);
+
     //--------------------------------------------------------------------------
-    // op_done: assert after TPROG cycles when weight_write_en, else after 3 cycles when busy
+    // op_done: assert after TPROG cycles in program pulse phase, else after 3 cycles when busy
     //--------------------------------------------------------------------------
     int op_done_cnt;
     always_ff @(posedge clk or negedge rst_n) begin
@@ -103,7 +100,7 @@ module controller_addr_pulse_tb;
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (weight_write_en) begin
+            if (in_prog_core_phase) begin
                 if (op_done_cnt >= controller_pkg::TPROG - 1) begin
                     op_done <= 1;
                     op_done_cnt <= 0;
@@ -133,14 +130,14 @@ module controller_addr_pulse_tb;
     always #(CLK_PERIOD/2) clk = ~clk;
 
     initial begin
-        rst_n = 0; reset = 1; host_data = 0;
+        rst_n = 0; reset = 1; host_data = 0; host_cmd = CMD_HIZ;
         repeat(5) @(posedge clk);
         rst_n = 1; reset = 0;
         repeat(2) @(posedge clk);
     end
 
     //--------------------------------------------------------------------------
-    // Task: Run command test and verify addr_out
+    // Task: Run command test and verify ann_core_word
     //--------------------------------------------------------------------------
     task automatic run_cmd_test(
         input int test_num,
@@ -149,21 +146,37 @@ module controller_addr_pulse_tb;
         input logic [7:0] data_val,
         input string desc
     );
-        logic [31:0] pkt;
-        logic [ADDR_OUT_WIDTH-1:0] exp;
-        pkt = {5'b0, cmd_code, addr, data_val};
-        exp = expected_addr_out(addr);
+        logic [31:0] exp;
+        exp = expected_ann_core_word(addr, data_val);
         $fdisplay(fd, "=== Test %0d: %s at addr 0x%04X ===", test_num, desc, addr);
 
-        host_data = 0; @(posedge clk); @(posedge clk);
-        host_data = pkt; @(posedge clk);
+        host_data = 0;
+        host_cmd  = CMD_HIZ;
+        @(posedge clk);
+        @(posedge clk);
+        host_data = build_host_ann_word(data_val, addr);
+        host_cmd  = cmd_code;
+        @(posedge clk);
         wait(busy);
-        repeat(3) @(posedge clk);
-        if (addr_out !== exp)
-            $fdisplay(fd, "  ERROR: addr_out 0x%08X != expected 0x%08X", addr_out, exp);
-        else
-            $fdisplay(fd, "  PASS: addr_out 0x%08X", addr_out);
-        wait(!busy);
+        // Sample while busy: READ finishes in few cycles (TREAD*PULSE_NUM_READ) and ann_core_word
+        // is 0 in S_IDLE; a fixed delay after wait(busy) often misses READ and only sees idle.
+        begin
+            automatic bit saw_match = 1'b0;
+            automatic logic [31:0] last_word = ann_core_word;
+            while (busy) begin
+                last_word = ann_core_word;
+                if (ann_core_word === exp)
+                    saw_match = 1'b1;
+                @(posedge clk);
+            end
+            if (!saw_match)
+                $fdisplay(fd, "  ERROR: ann_core_word never matched expected 0x%08X (last while busy: 0x%08X)",
+                    exp, last_word);
+            else
+                $fdisplay(fd, "  PASS: ann_core_word 0x%08X", exp);
+        end
+        host_data = 0;
+        host_cmd  = CMD_HIZ;
         $fdisplay(fd, "");
     endtask
 
@@ -178,7 +191,7 @@ module controller_addr_pulse_tb;
         $fdisplay(fd, "// Controller Address and Pulse Verification");
         $fdisplay(fd, "// Parameters: TREAD=%0d, PULSE_NUM_READ=%0d, TPROG=%0d, PULSE_NUM_PROG=%0d", controller_pkg::TREAD, controller_pkg::PULSE_NUM_READ, controller_pkg::TPROG, controller_pkg::PULSE_NUM_PROG);
         $fdisplay(fd, "//            TERASE=%0d, PULSE_NUM_ERASE=%0d, TINF=%0d, PULSE_NUM_INF=%0d", controller_pkg::TERASE, controller_pkg::PULSE_NUM_ERASE, controller_pkg::TINF, controller_pkg::PULSE_NUM_INF);
-        $fdisplay(fd, "// Expected: addr_out = {PE_onehot[23:20], SA_onehot[19:16], col_onehot[15:8], row_onehot[7:0]}");
+        $fdisplay(fd, "// Expected: ann_core_word = {data[7:0], PE|SA|col|row one-hot[23:0]}");
         $fdisplay(fd, "// Expected: READ->pulses=001, PROG->pulses=010, ERASE->pulses=011, INF->pulses=100");
         $fdisplay(fd, "");
 

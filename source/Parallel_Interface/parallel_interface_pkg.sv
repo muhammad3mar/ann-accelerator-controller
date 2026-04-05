@@ -18,46 +18,85 @@ package parallel_interface_pkg;
     } cmd_t;
 
     //--------------------------------------------------------------------------
-    // Address Field Definitions
+    // Host data word = same layout as controller ann_core_word
     //--------------------------------------------------------------------------
-    // 32-bit host signal layout:
-    //   [31:27] = reserved (5 bits)
-    //   [26:24] = cmd (3 bits)
-    //   [23:8]  = address (16 bits)
-    //   [7:0]   = data (8 bits)
+    //   host_data[31:24] = data byte (weight / payload byte toward ANN core)
+    //   host_data[23:0]  = {PE[3:0], SA[3:0], col one-hot[7:0], row one-hot[7:0]}
     //
-    // Address field [23:8] (16 bits) breakdown:
-    //   [23:18] = empty[15:10] (reserved, 6 bits)
-    //   [17:16] = PE/matrix[9:8] → block_id (2 bits)
-    //   [15:14] = sub-array[7:6] → sub_block_id (2 bits)
-    //   [13:11] = column[5:3] → col_id (3 bits)
-    //   [10:8]  = row[2:0] → row_id (3 bits)
+    // Command is not inside the 32-bit word (would not fit with full ann format);
+    // parallel_interface exposes an explicit host_cmd[2:0] port.
     //
-    // When extracted from host_data[23:8], internally treated as address[15:0]:
-    //   address[15:10] = reserved (6 bits)
-    //   address[9:8]   = block_id (2 bits) - PE/matrix
-    //   address[7:6]   = sub_block_id (2 bits) - sub-array
-    //   address[5:3]   = col_id (3 bits) - column
-    //   address[2:0]   = row_id (3 bits) - row
+    // Internal controller still receives decoded parallel-style address[15:0]:
+    //   address[15:10]=0, address[9:8]=block, [7:6]=sub_block, [5:3]=col_id, [2:0]=row_id
     //--------------------------------------------------------------------------
-    
-    //--------------------------------------------------------------------------
-    // Helper Functions for Address Extraction
-    //--------------------------------------------------------------------------
-    
-    // Extract data field from 32-bit host signal
+
+    function automatic logic [1:0] pi_onehot4_to_idx(input logic [3:0] oh);
+        unique case (oh)
+            4'b0001: return 2'd0;
+            4'b0010: return 2'd1;
+            4'b0100: return 2'd2;
+            4'b1000: return 2'd3;
+            default: return 2'd0;
+        endcase
+    endfunction
+
+    function automatic logic [2:0] pi_onehot8_to_idx(input logic [7:0] oh);
+        unique case (oh)
+            8'b00000001: return 3'd0;
+            8'b00000010: return 3'd1;
+            8'b00000100: return 3'd2;
+            8'b00001000: return 3'd3;
+            8'b00010000: return 3'd4;
+            8'b00100000: return 3'd5;
+            8'b01000000: return 3'd6;
+            8'b10000000: return 3'd7;
+            default: return 3'd0;
+        endcase
+    endfunction
+
+    // Decode ann_core_word-style tail → 16-bit address field (parse_ann_address layout)
+    function automatic logic [15:0] ann_tail_to_parallel_addr(logic [23:0] tail);
+        logic [1:0] blk, sb;
+        logic [2:0] rid, cid;
+        blk = pi_onehot4_to_idx(tail[23:20]);
+        sb  = pi_onehot4_to_idx(tail[19:16]);
+        cid = pi_onehot8_to_idx(tail[15:8]);
+        rid = pi_onehot8_to_idx(tail[7:0]);
+        return {6'b0, blk, sb, cid, rid};
+    endfunction
+
+    // Build host_data word from legacy 16-bit parallel address + 8-bit data byte (TB / software)
+    function automatic logic [31:0] build_host_ann_word(
+        input logic [7:0] data_byte,
+        input logic [15:0] parallel_addr
+    );
+        logic [1:0] blk, sb;
+        logic [2:0] rid, cid;
+        logic [3:0] pe_oh, sa_oh;
+        logic [7:0] col_oh, row_oh;
+        blk = parallel_addr[9:8];
+        sb  = parallel_addr[7:6];
+        cid = parallel_addr[5:3];
+        rid = parallel_addr[2:0];
+        pe_oh  = 4'(1 << blk);
+        sa_oh  = 4'(1 << sb);
+        col_oh = 8'(1 << cid);
+        row_oh = 8'(1 << rid);
+        return {data_byte, pe_oh, sa_oh, col_oh, row_oh};
+    endfunction
+
+    // Legacy names used by older TB sources (map to ann layout)
     function automatic logic [7:0] extract_data(logic [31:0] host_data);
-        return host_data[7:0];
+        return host_data[31:24];
     endfunction
-    
-    // Extract address field from 32-bit host signal (bits [23:8])
+
     function automatic logic [15:0] extract_address(logic [31:0] host_data);
-        return host_data[23:8];
+        return ann_tail_to_parallel_addr(host_data[23:0]);
     endfunction
-    
-    // Extract command field from 32-bit host signal (bits [26:24])
+
+    // extract_cmd(host_data) deprecated — cmd comes from host_cmd port; stub returns HIZ
     function automatic logic [2:0] extract_cmd(logic [31:0] host_data);
-        return host_data[26:24];
+        return CMD_HIZ;
     endfunction
 
 endpackage

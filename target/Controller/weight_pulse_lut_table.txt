@@ -1,0 +1,21 @@
+# weight_pulse_lut_table.txt — human-readable copy of weight_pulse_lut.mem
+# PROG_WRITE pulse cycles for first program attempt (weights 0..15).
+# Reprogram (prog_retry_cnt > 0) always uses 1 cycle when USE_WEIGHT_PULSE_LUT is enabled.
+#
+# weight -> cycles (decimal)
+0  -> 2
+1  -> 2
+2  -> 3
+3  -> 2
+4  -> 7
+5  -> 2
+6  -> 2
+7  -> 2
+8  -> 4
+9  -> 2
+10 -> 2
+11 -> 2
+12 -> 2
+13 -> 2
+14 -> 2
+15 -> 2

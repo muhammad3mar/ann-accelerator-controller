@@ -1,0 +1,18 @@
+//------------------------------------------------------------------------------
+// Controller programming-state / READ / ERASE wave stimulus report
+//------------------------------------------------------------------------------
+TB CLK_PERIOD (ns): 5  HOST_BUS_HOLD_CYCLES: 6
+
+controller_pkg timing (cycles): TREAD=2 TPROG=2 TERASE=2  MAX_PROG_RETRIES=3
+  PULSE_TOTAL_READ=2 PULSE_TOTAL_PROG=2 PULSE_TOTAL_ERASE=2
+//------------------------------------------------------------------------------
+
+A multi_prog_sweep: PASS (3 addresses)
+B prog_then_host_read: PASS  s_read_edges=3
+C prog_then_host_erase: PASS  erase_pulse_cycles_total=2
+D inject_regular: PASS  prog_bursts=1
+E inject_under: PASS  prog_bursts=2
+F inject_over: PASS  prog_bursts=2 erase_pulse_cycles=2
+
+Summary: all sections PASS  total_transactions=10
+//------------------------------------------------------------------------------

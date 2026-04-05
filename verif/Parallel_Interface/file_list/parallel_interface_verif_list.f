@@ -12,3 +12,8 @@ verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
 verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
 verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
 
+// Wave wrapper testbenches
+verif/Parallel_Interface/tb/waves/parallel_interface_extract_tb_waves_tb.sv
+verif/Parallel_Interface/tb/waves/parallel_interface_valid_tb_waves_tb.sv
+verif/Parallel_Interface/tb/waves/parallel_interface_commands_tb_waves_tb.sv
+

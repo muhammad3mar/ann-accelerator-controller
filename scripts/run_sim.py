@@ -23,6 +23,9 @@ Examples:
     # Run Controller testbench
     python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb
 
+    # ModelSim GUI + waves (--do-file implies GUI; path is relative to project root)
+    python scripts/run_sim.py sim -m Controller -tb controller_program_state_waves_tb --do-file verif/Controller/do/controller_program_state_waves.do
+
     # Clean all generated files
     python scripts/run_sim.py clean -a
 
@@ -53,7 +56,7 @@ MODULES = {
         "verif_list": "verif/Controller/file_list/controller_verif_list.f",
         "rtl_dir": "source/Controller",
         "verif_dir": "verif/Controller",
-        "testbenches": ["controller_weight_program_tb", "controller_addr_pulse_tb", "controller_prog_verify_tb"]
+        "testbenches": ["controller_weight_program_tb", "controller_addr_pulse_tb", "controller_prog_verify_tb", "controller_prog_verify_lut_tb", "controller_program_state_waves_tb", "ann_controller_unit_tb", "parallel_interface_controller_integration_tb", "controller_buffer_integration_tb", "controller_integration_smoke_tb"]
     },
     "Input_Buffer": {
         "rtl_list": "source/Input_Buffer/input_buffer_rtl_list.f",
@@ -103,6 +106,14 @@ def run_command(cmd, cwd=None, check=True):
         return False
 
 
+def normalize_testbench_name(name: str) -> str:
+    """Strip whitespace and a trailing '~' (common typo when pasting names)."""
+    n = name.strip()
+    if n.endswith("~"):
+        n = n[:-1].strip()
+    return n
+
+
 def compile_rtl(module_name, file_list):
     """Compile RTL files for a module"""
     print(f"\n{'='*60}")
@@ -146,19 +157,27 @@ def compile_verif(module_name, file_list):
     return success
 
 
-def run_simulation(module_name, testbench_name, gui=False, duration=None, log_file=None):
-    """Run a simulation. If log_file is set, capture output to that path."""
+def run_simulation(module_name, testbench_name, gui=False, duration=None, log_file=None, do_file=None):
+    """Run a simulation. If log_file is set, capture output to that path.
+    If do_file is set (path to a .tcl/.do script), vsim is launched with -do after resolving
+    the path; use with gui=True so the Wave window opens (recommended)."""
     print(f"\n{'='*60}")
     print(f"Running Simulation: {testbench_name}")
     if log_file:
         print(f"Output -> {log_file}")
+    if do_file:
+        print(f"ModelSim -do: {do_file}")
     print(f"{'='*60}")
     
     work_name = f"work.{testbench_name}"
     
     # Build vsim command
     if gui:
-        cmd = [VSIM_CMD, work_name]
+        cmd = [VSIM_CMD]
+        if do_file:
+            do_norm = str(do_file).replace("\\", "/")
+            cmd.extend(["-do", do_norm])
+        cmd.append(work_name)
     else:
         # Batch mode
         do_script = "run -all; quit"
@@ -315,7 +334,12 @@ def main():
                            help='Testbench name (e.g., controller_weight_program_tb)')
     sim_parser.add_argument('-g', '--gui',
                            action='store_true',
-                           help='Open GUI waveform viewer')
+                           help='Open ModelSim GUI (vsim without -c)')
+    sim_parser.add_argument('--do-file',
+                           default=None,
+                           metavar='PATH',
+                           help='Optional ModelSim DO/TCL script (e.g. verif/Controller/do/controller_program_state_waves.do). '
+                                'Implies GUI. Path is relative to project root.')
     sim_parser.add_argument('-d', '--duration',
                            help='Simulation duration (e.g., 1000ns)')
     
@@ -381,12 +405,35 @@ def main():
     elif args.command == 'sim':
         # First compile if needed
         module_config = MODULES[args.module]
+        tb_name = normalize_testbench_name(args.testbench)
+        if tb_name != args.testbench.strip():
+            print(f"Note: normalized testbench name to '{tb_name}' (removed stray characters).\n")
+
         print("Compiling verification files first...")
         compile_verif(args.module, module_config['verif_list'])
-        
+
+        do_path = None
+        if getattr(args, 'do_file', None):
+            do_path = Path(args.do_file)
+            if not do_path.is_absolute():
+                do_path = PROJECT_ROOT / do_path
+            if not do_path.is_file():
+                print(f"Error: --do-file not found: {do_path}")
+                return 1
+            do_path = do_path.resolve()
+
+        use_gui = args.gui or do_path is not None
+        if do_path and not args.gui:
+            print("Note: --do-file opens ModelSim GUI (wave window).")
+
         # Then run simulation
-        success = run_simulation(args.module, args.testbench, 
-                               gui=args.gui, duration=args.duration)
+        success = run_simulation(
+            args.module,
+            tb_name,
+            gui=use_gui,
+            duration=args.duration,
+            do_file=str(do_path) if do_path else None,
+        )
         return 0 if success else 1
     
     elif args.command == 'run_all':
@@ -425,7 +472,7 @@ def main():
         return 0
     
     elif args.command == 'report':
-        success = generate_report(args.module, args.testbench)
+        success = generate_report(args.module, normalize_testbench_name(args.testbench))
         return 0 if success else 1
     
     return 0

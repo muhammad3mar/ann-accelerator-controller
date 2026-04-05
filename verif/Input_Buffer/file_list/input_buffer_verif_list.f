@@ -11,3 +11,7 @@
 verif/Input_Buffer/tb/input_buffer_write_read_tb.sv
 verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
 
+// Wave wrapper testbenches
+verif/Input_Buffer/tb/waves/input_buffer_write_read_tb_waves_tb.sv
+verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv
+

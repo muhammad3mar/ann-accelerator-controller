@@ -1,0 +1,18 @@
+// ann_controller unit TB (behavioral buffer)
+
+PASS 01_READ_0249: ann_core_word=00420202
+PASS 02_PROG_0180: ann_core_word=0a240101
+PASS 03_ERASE_0307: ann_core_word=00810180
+PASS 04_READ_0000: ann_core_word=00110101
+PASS 05_PROG_0000: ann_core_word=05110101
+PASS 06_READ_01E7: ann_core_word=00281080
+PASS 07_PROG_01E7: ann_core_word=0b281080
+PASS 08_ERASE_01E7: ann_core_word=00281080
+PASS 09_PROG_2000: ann_core_word=03110101
+PASS 10_READ_2000: ann_core_word=00110101
+PASS 11_ERASE_00FF: ann_core_word=00188080
+PASS 12_PROG_0FFF: ann_core_word=0f888080
+PASS 13_READ_0FFF: ann_core_word=00888080
+PASS 14_PROG_0068: ann_core_word=07122001
+PASS 15_ERASE_0180: ann_core_word=00240101
+// Summary: PASS=15 FAIL=0

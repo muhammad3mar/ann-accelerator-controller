@@ -67,24 +67,6 @@ package controller_pkg;
     localparam int COL_ID_WIDTH       = 3;     
 
     //--------------------------------------------------------------------------
-    // Row/Column Selector Definitions
-    //--------------------------------------------------------------------------
-    // Row/Column Selector encoding (7 bits each):
-    //   [6:5]   = block_id
-    //   [4:3]   = sub_block_id
-    //   [2:0]   = row/column within sub-block
-    //--------------------------------------------------------------------------
-    localparam int SELECTOR_WIDTH    = 7;      // Row/column selector width
-    
-    // Selector bit field positions
-    localparam int SEL_BLOCK_ID_MSB  = 6;
-    localparam int SEL_BLOCK_ID_LSB  = 5;
-    localparam int SEL_SUB_BLOCK_ID_MSB = 4;
-    localparam int SEL_SUB_BLOCK_ID_LSB = 3;
-    localparam int SEL_ROW_COL_MSB   = 2;
-    localparam int SEL_ROW_COL_LSB   = 0;
-
-    //--------------------------------------------------------------------------
     // Buffer Address Constants
     //--------------------------------------------------------------------------
     
@@ -115,30 +97,8 @@ package controller_pkg;
     localparam int DEFAULT_ADDR_WIDTH   = 8;   
     localparam int DEFAULT_WEIGHT_WIDTH = 16;
 
-    //--------------------------------------------------------------------------
-    // Mux Control Constants
-    //--------------------------------------------------------------------------
-    localparam int MUX_ENABLE_WIDTH = 1;
-    localparam int MUX_MODE_WIDTH = 2;
-    localparam int MUX_CONTROL_WIDTH = 3;  // enable + mode
     localparam int ROW_MUXES_PER_MATRIX = 8;
     localparam int COL_MUXES_PER_MATRIX = 8;
-    localparam int MUX_CONTROL_BITS_PER_MATRIX = 48;  // (8+8) * 3
-
-    //--------------------------------------------------------------------------
-    // Mux Mode Encoding
-    //--------------------------------------------------------------------------
-    // Note: INF mode uses same encoding as HIZ (2'b11) during computation
-    // HIZ is used for idle/disabled muxes, INF is used during inference computation
-    typedef enum logic [1:0] {
-        MUX_MODE_READ  = 2'b00,
-        MUX_MODE_WRITE = 2'b01,
-        MUX_MODE_ERASE = 2'b10,
-        MUX_MODE_HIZ   = 2'b11  // Also used as MUX_MODE_INF during computation
-    } mux_mode_t;
-    
-    // INF mode constant (same value as HIZ, different usage context)
-    localparam logic [1:0] MUX_MODE_INF = MUX_MODE_HIZ;
 
     //--------------------------------------------------------------------------
     // Pulse Mode Encoding (5 modes, 3 bits) - matches host cmd_t
@@ -198,6 +158,57 @@ package controller_pkg;
         return {pe_onehot, sa_onehot, col_onehot, row_onehot};
     endfunction
 
+    function automatic logic [1:0] onehot4_to_idx(input logic [3:0] oh);
+        unique case (oh)
+            4'b0001: return 2'd0;
+            4'b0010: return 2'd1;
+            4'b0100: return 2'd2;
+            4'b1000: return 2'd3;
+            default: return 2'd0;
+        endcase
+    endfunction
+
+    function automatic logic [2:0] onehot8_to_idx(input logic [7:0] oh);
+        unique case (oh)
+            8'b00000001: return 3'd0;
+            8'b00000010: return 3'd1;
+            8'b00000100: return 3'd2;
+            8'b00001000: return 3'd3;
+            8'b00010000: return 3'd4;
+            8'b00100000: return 3'd5;
+            8'b01000000: return 3'd6;
+            8'b10000000: return 3'd7;
+            default: return 3'd0;
+        endcase
+    endfunction
+
+    // Decode {PE, SA, col, row} one-hot tail from ann_core_word[23:0]
+    function automatic void ann_core_word_decode(
+        input logic [31:0] word,
+        output logic [BLOCK_ID_WIDTH-1:0] o_block_id,
+        output logic [SUB_BLOCK_ID_WIDTH-1:0] o_sub_block_id,
+        output logic [ROW_ID_WIDTH-1:0] o_row_id,
+        output logic [COL_ID_WIDTH-1:0] o_col_id
+    );
+        o_block_id     = onehot4_to_idx(word[23:20]);
+        o_sub_block_id = onehot4_to_idx(word[19:16]);
+        o_col_id       = onehot8_to_idx(word[15:8]);
+        o_row_id       = onehot8_to_idx(word[7:0]);
+    endfunction
+
+    // Pack host data byte [31:24] with one-hot address [23:0] for ANN core
+    function automatic logic [31:0] pack_ann_core_word(
+        input logic [7:0] data_byte,
+        input logic [BLOCK_ID_WIDTH-1:0] block_id,
+        input logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id,
+        input logic [ROW_ID_WIDTH-1:0] row_id,
+        input logic [COL_ID_WIDTH-1:0] col_id
+    );
+        logic [ADDR_OUT_WIDTH-1:0] tail;
+        tail = host_addr_to_ann_addr_out(block_id, sub_block_id, row_id, col_id);
+        return {data_byte, tail[23:0]};
+    endfunction
+
     //--------------------------------------------------------------------------
     // Programming Sequence Sub-States
     //--------------------------------------------------------------------------
@@ -232,16 +243,6 @@ package controller_pkg;
     
     function automatic logic [COL_ID_WIDTH-1:0] get_col_id(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
         return addr[COL_ID_MSB:COL_ID_LSB];
-    endfunction
-
-    
-    function automatic logic [SELECTOR_WIDTH-1:0] gen_row_selector(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
-        return {get_block_id(addr), get_sub_block_id(addr), get_row_id(addr)};
-    endfunction
-
-    
-    function automatic logic [SELECTOR_WIDTH-1:0] gen_col_selector(logic [WEIGHT_ADDR_WIDTH-1:0] addr);
-        return {get_block_id(addr), get_sub_block_id(addr), get_col_id(addr)};
     endfunction
 
     //--------------------------------------------------------------------------
@@ -412,6 +413,14 @@ package controller_pkg;
         
         // Combine into 10-bit address: {block_id[1:0], sub_block_id[1:0], ann_row_id[2:0], ann_col_id[2:0]}
         return {block_id, sub_block_id, ann_row_id, ann_col_id};
+    endfunction
+
+    // Build 32-bit host payload = ann_core_word layout (parallel_interface host_data)
+    function automatic logic [31:0] host_parallel_packet_to_ann_word(
+        input logic [7:0] data_byte,
+        input logic [15:0] parallel_addr
+    );
+        return build_host_ann_word(data_byte, parallel_addr);
     endfunction
 
 endpackage

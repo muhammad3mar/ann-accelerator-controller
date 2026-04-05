@@ -11,7 +11,9 @@ import parallel_interface_pkg::*;
 
 module ann_controller #(
     parameter int ADDR_WIDTH   = controller_pkg::DEFAULT_ADDR_WIDTH,
-    parameter int WEIGHT_WIDTH = controller_pkg::DEFAULT_WEIGHT_WIDTH
+    parameter int WEIGHT_WIDTH = controller_pkg::DEFAULT_WEIGHT_WIDTH,
+    parameter bit USE_WEIGHT_PULSE_LUT = 1'b0,
+    parameter string WEIGHT_PULSE_LUT_FILE = "target/Controller/weight_pulse_lut.mem"
 ) (
     //======================================================================
     // Global
@@ -30,20 +32,14 @@ module ann_controller #(
     //======================================================================
     // Controller <-> ANN Core
     //======================================================================
-    output logic                     ann_reset,        
-    output logic                     weight_write_en,  // write enable for weight programming
-    output logic [SELECTOR_WIDTH-1:0] row_selector,     // row selector: block[1:0] + sub_block[1:0] + row[2:0]
-    output logic [SELECTOR_WIDTH-1:0] col_selector,     // column selector: block[1:0] + sub_block[1:0] + col[2:0]
+    // ann_core_word: [31:24] = host data byte (quantized weight in [27:24] for PROG);
+    //                [23:0] = {PE, SA, col, row} one-hot (see host_addr_to_ann_addr_out)
+    // pulses: operation / pulse mode toward core (READ/PROG/ERASE/INF)
+    //======================================================================
+    output logic                     ann_reset,
     input  logic                     op_done,
-    
-    // Mux control outputs (legacy, kept for compatibility)
-    output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl,
-    output logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl,
-    output logic [3:0]               weight_data,    // weight value to write          
-
-    // New outputs to ANN core (32-bit address + 3-bit pulses)
-    output logic [ADDR_OUT_WIDTH-1:0] addr_out,      // PE[23:20], SA[19:16], col[15:8], row[7:0] one-hot
-    output logic [2:0]               pulses,         // Pulse signals: bit i driven when mode[i]==1
+    output logic [31:0]              ann_core_word,
+    output logic [2:0]               pulses,
 
     // ADC/quantizer input for verification read (from ANN core)
     input  logic [3:0]               weight_read_data,  // Read weight from memristor during VERIFY
@@ -165,7 +161,13 @@ module ann_controller #(
     logic [3:0] weight_from_buffer;
     
     // Expected weight for verification (from buffer)
-    assign expected_weight = weight_from_buffer;             
+    assign expected_weight = weight_from_buffer;
+
+    // Optional: per-weight program pulse length (weights 0..15); reprogram uses 1 cycle (see PROG_WRITE mux)
+    logic [7:0] weight_pulse_cycles_lut [0:15];
+
+    initial
+        $readmemh(WEIGHT_PULSE_LUT_FILE, weight_pulse_cycles_lut);
 
     //--------------------------------------------------------------------------
     // Address Parsing: Direct address from parallel interface (all commands)
@@ -177,22 +179,28 @@ module ann_controller #(
     )
 
     //--------------------------------------------------------------------------
-    // Row and Column Selector Generation (using package functions)
+    // Packed ANN core bus: host data byte + one-hot address tail
     //--------------------------------------------------------------------------
-    `comb(
-        row_selector = gen_row_selector(weight_addr_reg);
-        col_selector = gen_col_selector(weight_addr_reg);
-    )
+    logic [7:0] data_byte_for_ann;
+    always_comb begin
+        data_byte_for_ann = 8'b0;
+        unique case (state)
+            S_PROGRAM,
+            S_VERIFY,
+            S_READ,
+            S_ERASE: data_byte_for_ann = data_reg;
+            S_COLLECT_DATA: data_byte_for_ann = data;
+            default: data_byte_for_ann = 8'b0;
+        endcase
+    end
 
-    //--------------------------------------------------------------------------
-    // 32-bit Address Output to ANN Core (one-hot format)
-    //--------------------------------------------------------------------------
-    `comb(
-        addr_out = host_addr_to_ann_addr_out(block_id, sub_block_id, row_id, col_id);
-    )
+    always_comb begin
+        if (state == S_IDLE)
+            ann_core_word = 32'b0;
+        else
+            ann_core_word = pack_ann_core_word(data_byte_for_ann, block_id, sub_block_id, row_id, col_id);
+    end
 
-    //--------------------------------------------------------------------------
-    // 3-bit Pulse Output to ANN Core
     //--------------------------------------------------------------------------
     //--------------------------------------------------------------------------
     // Pulse total and done (per spec: T*N cycles per mode)
@@ -201,8 +209,17 @@ module ann_controller #(
         pulse_total = 8'd0;
         if (state == S_READ)
             pulse_total = PULSE_TOTAL_READ[7:0];
-        else if (state == S_PROGRAM && prog_state == PROG_WRITE)
-            pulse_total = PULSE_TOTAL_PROG[7:0];
+        else if (state == S_PROGRAM && prog_state == PROG_WRITE) begin
+            if (!USE_WEIGHT_PULSE_LUT)
+                pulse_total = PULSE_TOTAL_PROG[7:0];
+            else if (prog_retry_cnt > 2'd0)
+                pulse_total = 8'd1;
+            else begin
+                pulse_total = weight_pulse_cycles_lut[expected_weight];
+                if (pulse_total == 8'd0)
+                    pulse_total = 8'd1;
+            end
+        end
         else if (state == S_ERASE && erase_state == ERASE_PULSE)
             pulse_total = PULSE_TOTAL_ERASE[7:0];
         else if (state == S_COMPUTE)
@@ -251,9 +268,6 @@ module ann_controller #(
                 weight_from_buffer = buf_data[7:4];
             end
         end
-        
-        // Weight data output
-        weight_data = weight_from_buffer;
     )
 
     //--------------------------------------------------------------------------
@@ -267,131 +281,6 @@ module ann_controller #(
             buf_data_out = data_reg;  // Use captured data for PROG
         end else begin
             buf_data_out = data;  // Use current data for INF (S_COLLECT_DATA)
-        end
-    )
-
-    //--------------------------------------------------------------------------
-    // Mux Control Signal Generation
-    //--------------------------------------------------------------------------
-    // Generate control signals for all row and column muxes
-    // Each mux control: {enable, mode[1:0]}
-    `comb(
-        // Default: all muxes disabled and in High Z mode
-        for (int b = 0; b < NUM_BLOCKS; b++) begin
-            for (int sb = 0; sb < NUM_SUB_BLOCKS; sb++) begin
-                for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                    row_mux_ctrl[b][sb][r] = {1'b0, MUX_MODE_HIZ};
-                end
-                for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                    col_mux_ctrl[b][sb][c] = {1'b0, MUX_MODE_HIZ};
-                end
-            end
-        end
-        
-        // ========== PROGRAM state: programming sequence sub-states ==========
-        if (state == S_PROGRAM) begin
-            if (prog_state == PROG_SELECT || prog_state == PROG_ENABLE || 
-                prog_state == PROG_WRITE) begin
-                // Target matrix: block_id, sub_block_id
-                // Target row: row_id within matrix
-                // Target column: col_id within matrix
-                
-                // Row muxes
-                for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                    if (r == row_id) begin
-                        // Target row mux: write mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_WRITE};
-                        end else if (prog_state == PROG_SELECT) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b0, MUX_MODE_WRITE};
-                        end
-                    end else begin
-                        // Other row muxes: High Z mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_HIZ};
-                        end
-                    end
-                end
-                
-                // Column muxes
-                for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                    if (c == col_id) begin
-                        // Target column mux: write mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_WRITE};
-                        end else if (prog_state == PROG_SELECT) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b0, MUX_MODE_WRITE};
-                        end
-                    end else begin
-                        // Other column muxes: High Z mode
-                        if (prog_state == PROG_ENABLE || prog_state == PROG_WRITE) begin
-                            col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_HIZ};
-                        end
-                    end
-                end
-            end
-        end
-        
-        // ========== READ state: set muxes to READ mode ==========
-        if (state == S_READ) begin
-            // In READ, select target row/col in READ mode to read weight from memristor
-            for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                if (r == row_id)
-                    row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_READ};
-            end
-
-            for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                if (c == col_id)
-                    col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_READ};
-            end
-        end
-
-        // ========== VERIFY state: set muxes to READ mode ==========
-        if (state == S_VERIFY) begin
-            // In VERIFY, select target row/col in READ mode
-            for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                if (r == row_id)
-                    row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_READ};
-            end
-
-            for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                if (c == col_id)
-                    col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_READ};
-            end
-        end
-
-        // ========== COMPUTE state: set muxes to INF mode ==========
-        if (state == S_COMPUTE) begin
-            // For inference computation, set muxes to INF mode (replaces High Z)
-            // INF mode enables matrix multiplication: input_data × stored_weights
-            // Set all relevant muxes based on input data being processed
-            for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                if (r == row_id)  // Based on input data row being applied
-                    row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_INF};
-            end
-
-            for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                // Column muxes in INF mode for computation
-                col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_INF};
-            end
-        end
-
-        // ========== ERASE state: set muxes to ERASE mode ==========
-        if (state == S_ERASE) begin
-            // In ERASE, select target row/col in ERASE mode for relevant sub-states
-            if (erase_state == ERASE_SELECT || erase_state == ERASE_ENABLE ||
-                erase_state == ERASE_PULSE  || erase_state == ERASE_DISABLE) begin
-
-                for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                    if (r == row_id)
-                        row_mux_ctrl[block_id][sub_block_id][r] = {1'b1, MUX_MODE_ERASE};
-                end
-
-                for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                    if (c == col_id)
-                        col_mux_ctrl[block_id][sub_block_id][c] = {1'b1, MUX_MODE_ERASE};
-                end
-            end
         end
     )
 
@@ -565,7 +454,6 @@ module ann_controller #(
     `comb(
        
         ann_reset        = 1'b0;
-        weight_write_en  = 1'b0;
 
         
         // Default buffer address (will be overridden in each state)
@@ -659,28 +547,19 @@ module ann_controller #(
                 // Programming sequence sub-state machine
                 unique case (prog_state)
                     PROG_HIZ: begin
-                        // Set all muxes to High Z mode (disabled)
-                        weight_write_en = 1'b0;
                         next_prog_state = PROG_SELECT;
                     end
                     
                     PROG_SELECT: begin
-                        // Set target row/column mux mode to write (but not enabled yet)
-                        weight_write_en = 1'b0;
                         next_prog_state = PROG_ENABLE;
                     end
                     
                     PROG_ENABLE: begin
-                        // Enable ALL row and column muxes
-                        // Target mux: enabled + write mode
-                        // Other muxes: enabled + High Z mode
-                        weight_write_en = 1'b0;
                         next_prog_state = PROG_WRITE;
                     end
                     
                     PROG_WRITE: begin
-                        // Hold write state for Tprog*Pulse_num_prog cycles (per spec)
-                        weight_write_en = 1'b1;
+                        // Hold PROG pulses for Tprog*Pulse_num_prog cycles (per spec)
                         if (pulse_done) begin
                             next_prog_state = PROG_DISABLE;
                         end else begin
@@ -689,14 +568,11 @@ module ann_controller #(
                     end
                     
                     PROG_DISABLE: begin
-                        // Disable all muxes (already in default state from mux control logic)
-                        weight_write_en = 1'b0;
                         next_prog_state = PROG_COMPLETE;
                     end
                     
                     PROG_COMPLETE: begin
                         // Weight programming complete, proceed to verify
-                        weight_write_en = 1'b0;
                         next_state = S_VERIFY;
                         next_prog_state = PROG_HIZ;  // Reset for next weight (if any)
                     end
@@ -836,7 +712,6 @@ module ann_controller #(
                 buf_reg_ctrl    = CTRL_IDLE;
                 buf_read_write  = 1'b0;
                 
-                // Set muxes to READ mode for target row/column (handled in mux control logic)
                 // Pulses held for Tread*Pulse_num_read cycles (per spec)
                 if (pulse_done) begin
                     next_state = S_IDLE;
@@ -880,7 +755,6 @@ module ann_controller #(
                 buf_read_write  = 1'b0;              // Read from buffer
                 buf_bit_sel     = bit_count;         // LSB-first bit index 0..7 each cycle
 
-                // Set muxes to INF mode for computation (handled in mux control logic)
                 // Pulses held for max(8, Tinf*Pulse_num_inf) cycles (per spec; min 8 for bit-serial)
                 if (pulse_done) begin
                     next_state = S_RESULT;
