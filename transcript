@@ -1,27 +1,20 @@
-# vsim -c -do "run -all; quit" work.parallel_interface_commands_tb 
-# Start time: 01:38:39 on Feb 26,2026
+# vsim -c -do "run -all; quit" work.controller_addr_pulse_tb 
+# Start time: 17:20:43 on Apr 05,2026
 # Loading sv_std.std
+# Loading work.input_buffer_pkg
 # Loading work.parallel_interface_pkg
-# Loading work.parallel_interface_commands_tb_sv_unit
-# Loading work.parallel_interface_commands_tb
+# Loading work.controller_pkg
+# Loading work.controller_addr_pulse_tb_sv_unit
+# Loading work.controller_addr_pulse_tb
 # Loading work.parallel_interface_sv_unit
 # Loading work.parallel_interface
+# Loading work.controller_sv_unit
+# Loading work.ann_controller
+# Loading work.input_buffer_sv_unit
+# Loading work.input_buffer
 # run -all
-# ----------------------------------------
-# Parallel Interface Commands Tests
-# Summary: Tests each command (HIZ, READ, PROG, ERASE, INF) with non-zero
-#          addr/data; boundary: max address (0xFFFC) and max data (0xFF).
-# ----------------------------------------
-#   Test: CMD_HIZ addr=0x00FF data=0xAA | Expected: valid=1 cmd=HIZ addr=0x00FF data=0xAA | Actual: valid=1 cmd=000 addr=0x00ff data=0xaa | PASS
-#   Test: CMD_READ addr=0x1100 data=0x11 | Expected: valid=1 cmd=READ addr=0x1100 data=0x11 | Actual: valid=1 cmd=001 addr=0x1100 data=0x11 | PASS
-#   Test: CMD_PROG addr=0x2233 data=0x22 | Expected: valid=1 cmd=PROG addr=0x2233 data=0x22 | Actual: valid=1 cmd=010 addr=0x2233 data=0x22 | PASS
-#   Test: CMD_ERASE addr=0x4455 data=0x33 | Expected: valid=1 cmd=ERASE addr=0x4455 data=0x33 | Actual: valid=1 cmd=011 addr=0x4455 data=0x33 | PASS
-#   Test: CMD_INF addr=0x6677 data=0x44 | Expected: valid=1 cmd=INF addr=0x6677 data=0x44 | Actual: valid=1 cmd=100 addr=0x6677 data=0x44 | PASS
-#   Test: boundary max addr=0xFFFC data=0xFF | Expected: valid=1 addr=0xFFFC data=0xFF | Actual: valid=1 addr=0xfffc data=0xff | PASS
-# ----------------------------------------
-# SUMMARY: 6 passed, 0 failed
-# RESULT: PASS (all 6 checks passed)
-# ** Note: $finish    : verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv(94)
-#    Time: 36 ns  Iteration: 0  Instance: /parallel_interface_commands_tb
-# End time: 01:38:41 on Feb 26,2026, Elapsed time: 0:00:02
+# [2354000] Verification complete. Results in target/Controller/controller_addr_pulse_verify.txt
+# ** Note: $finish    : verif/Controller/tb/controller_addr_pulse_tb.sv(239)
+#    Time: 2374 ns  Iteration: 1  Instance: /controller_addr_pulse_tb
+# End time: 17:20:44 on Apr 05,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0

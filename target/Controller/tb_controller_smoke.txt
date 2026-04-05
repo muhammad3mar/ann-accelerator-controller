@@ -1,0 +1,13 @@
+// controller_integration_smoke_tb (10 cases)
+
+PASS Case01 PROG (0,0,0,0)=7
+PASS Case02 READ idle
+PASS Case03 ERASE idle
+PASS Case04 INF returned idle
+PASS Case05 PROG [1][0][0][0]=4
+PASS Case06 READ idle
+PASS Case07 ERASE idle
+PASS Case08 PROG [1][3][7][4]=3
+PASS Case09 READ idle
+PASS Case10 ERASE idle
+// Summary: PASS=10 FAIL=0

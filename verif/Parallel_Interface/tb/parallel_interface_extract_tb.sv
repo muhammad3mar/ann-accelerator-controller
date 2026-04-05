@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
 // Parallel Interface - Field Extraction Testbench
 //------------------------------------------------------------------------------
-// Tests: data = host_data[7:0], address = host_data[23:8], cmd = host_data[26:24]
-//       for several host_data patterns.
+// Tests: data = host_data[31:24], address = decode(host_data[23:0]), cmd = host_cmd
+//       for several host_data / host_cmd patterns (ann_core_word host layout).
 //------------------------------------------------------------------------------
 
 `timescale 1ns/1ps
@@ -15,6 +15,7 @@ module parallel_interface_extract_tb;
 
     logic clk, reset;
     logic [31:0] host_data;
+    logic [2:0] host_cmd;
     logic valid;
     logic [7:0] data;
     logic [15:0] address;
@@ -24,6 +25,7 @@ module parallel_interface_extract_tb;
         .clk(clk),
         .reset(reset),
         .host_data(host_data),
+        .host_cmd(host_cmd),
         .valid(valid),
         .data(data),
         .address(address),
@@ -38,51 +40,69 @@ module parallel_interface_extract_tb;
     initial begin
         reset = 0;
         host_data = 32'd0;
+        host_cmd = CMD_HIZ;
         pass_count = 0;
         fail_count = 0;
         #20;
 
         $display("----------------------------------------");
         $display("Parallel Interface Field Extraction Tests");
-        $display("Summary: Tests extraction of data=host_data[7:0], address=host_data[23:8],");
-        $display("         cmd=host_data[26:24] for various host_data patterns.");
+        $display("Summary: data=host_data[31:24], addr=decode tail[23:0], cmd=host_cmd.");
         $display("----------------------------------------");
 
-        // Pattern 1: all zeros
+        // Pattern 1: idle
         host_data = 32'd0;
+        host_cmd  = CMD_HIZ;
         #1;
-        if (data == 8'd0 && address == 16'd0 && cmd == 3'b000) begin pass_count++; $display("  Test: host_data=0 | Expected: data=0 addr=0 cmd=000 | Actual: data=0x%02X addr=0x%04X cmd=%b | PASS", data, address, cmd); end
-        else begin fail_count++; $display("  Test: host_data=0 | Expected: data=0 addr=0 cmd=000 | Actual: data=0x%02X addr=0x%04X cmd=%b | FAIL", data, address, cmd); end
+        if (data == 8'd0 && address == 16'd0 && cmd == CMD_HIZ && !valid)
+            begin pass_count++; $display("  Test: idle | PASS"); end
+        else
+            begin fail_count++; $display("  Test: idle | FAIL data=%02X addr=%04X cmd=%b valid=%0d", data, address, cmd, valid); end
 
-        // Pattern 2: data only
-        host_data = {16'd0, 8'd0, 8'hA5};
+        // Pattern 2: data MSB byte only (tail zero); command shown on cmd port
+        host_data = {8'hA5, 24'd0};
+        host_cmd  = CMD_READ;
         #1;
-        if (data == 8'hA5 && address == 16'd0 && cmd == 3'b000) begin pass_count++; $display("  Test: data field 0xA5 | Expected: 0xA5 | Actual: 0x%02X | PASS", data); end
-        else begin fail_count++; $display("  Test: data field 0xA5 | Expected: 0xA5 | Actual: 0x%02X | FAIL", data); end
+        if (data == 8'hA5 && address == 16'd0 && cmd == CMD_READ)
+            begin pass_count++; $display("  Test: data 0xA5 tail=0 cmd=READ | PASS"); end
+        else
+            begin fail_count++; $display("  Test: data field | FAIL"); end
 
-        // Pattern 3: address only (host_data[23:8])
-        host_data = {8'd0, 16'h1234, 8'd0};
+        // Pattern 3: address via ann tail
+        host_data = build_host_ann_word(8'd0, 16'h1234);
+        host_cmd  = CMD_READ;
         #1;
-        if (data == 8'd0 && address == 16'h1234 && cmd == 3'b000) begin pass_count++; $display("  Test: address field 0x1234 | Expected: 0x1234 | Actual: 0x%04X | PASS", address); end
-        else begin fail_count++; $display("  Test: address field 0x1234 | Expected: 0x1234 | Actual: 0x%04X | FAIL", address); end
+        if (data == 8'd0 && address == 16'h1234 && cmd == CMD_READ)
+            begin pass_count++; $display("  Test: addr 0x1234 via tail | PASS"); end
+        else
+            begin fail_count++; $display("  Test: addr field | FAIL addr=%04X", address); end
 
-        // Pattern 4: cmd only (host_data[26:24])
-        host_data = {5'd0, 3'b101, 16'd0, 8'd0};
+        // Pattern 4: cmd port only (payload zero)
+        host_data = 32'd0;
+        host_cmd  = 3'b101;
         #1;
-        if (data == 8'd0 && address == 16'd0 && cmd == 3'b101) begin pass_count++; $display("  Test: cmd field 101 | Expected: 101 | Actual: %b | PASS", cmd); end
-        else begin fail_count++; $display("  Test: cmd field 101 | Expected: 101 | Actual: %b | FAIL", cmd); end
+        if (data == 8'd0 && address == 16'd0 && cmd == 3'b101)
+            begin pass_count++; $display("  Test: cmd 101 | PASS"); end
+        else
+            begin fail_count++; $display("  Test: cmd field | FAIL cmd=%b", cmd); end
 
-        // Pattern 5: all ones (mixed)
+        // Pattern 5: all ones in host_data; illegal one-hot tail decodes to addr 0
         host_data = 32'hFFFFFFFF;
+        host_cmd  = 3'b111;
         #1;
-        if (data == 8'hFF && address == 16'hFFFF && cmd == 3'b111) begin pass_count++; $display("  Test: host_data=all_ones | Expected: data=0xFF addr=0xFFFF cmd=111 | Actual: data=0x%02X addr=0x%04X cmd=%b | PASS", data, address, cmd); end
-        else begin fail_count++; $display("  Test: host_data=all_ones | Expected: data=0xFF addr=0xFFFF cmd=111 | Actual: data=0x%02X addr=0x%04X cmd=%b | FAIL", data, address, cmd); end
+        if (data == 8'hFF && address == 16'd0 && cmd == 3'b111)
+            begin pass_count++; $display("  Test: host_data all 1s | PASS"); end
+        else
+            begin fail_count++; $display("  Test: host_data all 1s | FAIL data=%02X addr=%04X", data, address); end
 
-        // Pattern 6: specific layout cmd=010, addr=0xFF00, data=0x0F
-        host_data = {5'd0, 3'b010, 16'hFF00, 8'h0F};
+        // Pattern 6: PROG-style payload
+        host_data = build_host_ann_word(8'h0F, 16'hFF00);
+        host_cmd  = CMD_PROG;
         #1;
-        if (data == 8'h0F && address == 16'hFF00 && cmd == 3'b010) begin pass_count++; $display("  Test: cmd=PROG addr=0xFF00 data=0x0F | Expected: data=0x0F addr=0xFF00 cmd=010 | Actual: data=0x%02X addr=0x%04X cmd=%b | PASS", data, address, cmd); end
-        else begin fail_count++; $display("  Test: cmd=PROG addr=0xFF00 data=0x0F | Expected: data=0x0F addr=0xFF00 cmd=010 | Actual: data=0x%02X addr=0x%04X cmd=%b | FAIL", data, address, cmd); end
+        if (data == 8'h0F && address == 16'hFF00 && cmd == CMD_PROG)
+            begin pass_count++; $display("  Test: PROG addr=0xFF00 data=0x0F | PASS"); end
+        else
+            begin fail_count++; $display("  Test: PROG pattern | FAIL"); end
 
         #10;
         $display("----------------------------------------");

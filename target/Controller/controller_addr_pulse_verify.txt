@@ -1,97 +1,97 @@
 // Controller Address and Pulse Verification
 // Parameters: TREAD=2, PULSE_NUM_READ=1, TPROG=2, PULSE_NUM_PROG=1
 //            TERASE=2, PULSE_NUM_ERASE=1, TINF=2, PULSE_NUM_INF=1
-// Expected: addr_out = {PE_onehot[23:20], SA_onehot[19:16], col_onehot[15:8], row_onehot[7:0]}
+// Expected: ann_core_word = {data[7:0], PE|SA|col|row one-hot[23:0]}
 // Expected: READ->pulses=001, PROG->pulses=010, ERASE->pulses=011, INF->pulses=100
 
 === Test 1: PROG   (PE=0,SA=0,col=0,row=0) at addr 0x0000 ===
-  PASS: addr_out 0x00110101
+  PASS: ann_core_word 0x05110101
 
 === Test 2: READ   (PE=1,SA=3,col=6,row=7) at addr 0x01e7 ===
-  PASS: addr_out 0x00281080
+  ERROR: ann_core_word never matched expected 0x00281080 (last while busy: 0x05110101)
 
 === Test 3: ERASE  (PE=0,SA=3,col=0,row=5) at addr 0x0305 ===
-  PASS: addr_out 0x00810120
+  PASS: ann_core_word 0x00810120
 
 === Test 4: PROG   (PE=3,SA=3,col=7,row=7) at addr 0x0fff ===
-  PASS: addr_out 0x00888080
+  ERROR: ann_core_word never matched expected 0x0f888080 (last while busy: 0x00810120)
 
 === Test 5: PROG   (PE=2,SA=0,col=0,row=0) at addr 0x2000 ===
-  PASS: addr_out 0x00110101
+  ERROR: ann_core_word never matched expected 0x03110101 (last while busy: 0x0f888080)
 
 === Test 6: READ   (PE=0,SA=2,col=4,row=4) at addr 0x00a4 ===
-  PASS: addr_out 0x00141010
+  ERROR: ann_core_word never matched expected 0x00141010 (last while busy: 0x03110101)
 
 === Test 7: ERASE  (PE=3,SA=0,col=0,row=7) at addr 0x3c07 ===
-  PASS: addr_out 0x00110180
+  PASS: ann_core_word 0x00110180
 
 === Test 8: PROG   (PE=1,SA=1,col=7,row=7) at addr 0x05ff ===
-  PASS: addr_out 0x00288080
+  ERROR: ann_core_word never matched expected 0x0c288080 (last while busy: 0x00110180)
 
 === Test 9: READ   (PE=2,SA=3,col=0,row=4) at addr 0x2d14 ===
-  PASS: addr_out 0x00210410
+  ERROR: ann_core_word never matched expected 0x00210410 (last while busy: 0x0c288080)
 
 === Test 10: ERASE  (PE=1,SA=2,col=0,row=1) at addr 0x1609 ===
-  PASS: addr_out 0x00410202
+  PASS: ann_core_word 0x00410202
 
 === Test 11: PROG   (PE=0,SA=0,col=6,row=0) at addr 0x0068 ===
-  PASS: addr_out 0x00122001
+  ERROR: ann_core_word never matched expected 0x07122001 (last while busy: 0x00410202)
 
 === Test 12: READ   (PE=3,SA=3,col=0,row=0) at addr 0x3f00 ===
-  PASS: addr_out 0x00810101
+  ERROR: ann_core_word never matched expected 0x00810101 (last while busy: 0x07122001)
 
 === Test 13: ERASE  (PE=0,SA=0,col=1,row=1) at addr 0x0091 ===
-  PASS: addr_out 0x00140402
+  PASS: ann_core_word 0x00140402
 
 === Test 14: PROG   (PE=1,SA=2,col=1,row=0) at addr 0x1838 ===
-  PASS: addr_out 0x00118001
+  ERROR: ann_core_word never matched expected 0x0a118001 (last while busy: 0x00140402)
 
 === Test 15: READ   (PE=0,SA=3,col=2,row=0) at addr 0x0d48 ===
-  PASS: addr_out 0x00220201
+  ERROR: ann_core_word never matched expected 0x00220201 (last while busy: 0x0a118001)
 
 === Test 16: PROG   (PE=3,SA=1,col=2,row=3) at addr 0x0353 ===
-  PASS: addr_out 0x00820408
+  PASS: ann_core_word 0x09820408
 
 === Test 17: READ   (PE=0,SA=1,col=5,row=2) at addr 0x006a ===
-  PASS: addr_out 0x00122004
+  ERROR: ann_core_word never matched expected 0x00122004 (last while busy: 0x09820408)
 
 === Test 18: ERASE  (PE=2,SA=1,col=4,row=6) at addr 0x0266 ===
-  PASS: addr_out 0x00421040
+  PASS: ann_core_word 0x00421040
 
 === Test 19: PROG   (PE=1,SA=0,col=0,row=7) at addr 0x0107 ===
-  PASS: addr_out 0x00210180
+  ERROR: ann_core_word never matched expected 0x0e210180 (last while busy: 0x00421040)
 
 === Test 20: READ   (PE=3,SA=2,col=3,row=5) at addr 0x039d ===
-  PASS: addr_out 0x00840820
+  ERROR: ann_core_word never matched expected 0x00840820 (last while busy: 0x0e210180)
 
 === Test 21: ERASE  (PE=0,SA=3,col=7,row=4) at addr 0x00fc ===
-  PASS: addr_out 0x00188010
+  PASS: ann_core_word 0x00188010
 
 === Test 22: PROG   (PE=2,SA=2,col=6,row=1) at addr 0x02b1 ===
-  PASS: addr_out 0x00444002
+  ERROR: ann_core_word never matched expected 0x06444002 (last while busy: 0x00188010)
 
 === Test 23: READ   (PE=1,SA=3,col=1,row=6) at addr 0x01ce ===
-  PASS: addr_out 0x00280240
+  ERROR: ann_core_word never matched expected 0x00280240 (last while busy: 0x06444002)
 
 === Test 24: ERASE  (PE=3,SA=0,col=2,row=2) at addr 0x0312 ===
-  PASS: addr_out 0x00810404
+  PASS: ann_core_word 0x00810404
 
 === Test 25: PROG   (PE=0,SA=2,col=0,row=3) at addr 0x0083 ===
-  PASS: addr_out 0x00140108
+  ERROR: ann_core_word never matched expected 0x0b140108 (last while busy: 0x00810404)
 
 === Test 26: READ   (PE=2,SA=0,col=7,row=5) at addr 0x023d ===
-  PASS: addr_out 0x00418020
+  ERROR: ann_core_word never matched expected 0x00418020 (last while busy: 0x0b140108)
 
 === Test 27: ERASE  (PE=1,SA=1,col=3,row=0) at addr 0x0158 ===
-  PASS: addr_out 0x00220801
+  PASS: ann_core_word 0x00220801
 
 === Test 28: PROG   (PE=3,SA=2,col=5,row=1) at addr 0x03a9 ===
-  PASS: addr_out 0x00842002
+  ERROR: ann_core_word never matched expected 0x04842002 (last while busy: 0x00220801)
 
 === Test 29: READ   (PE=1,SA=0,col=5,row=6) at addr 0x012e ===
-  PASS: addr_out 0x00212040
+  ERROR: ann_core_word never matched expected 0x00212040 (last while busy: 0x04842002)
 
 === Test 30: ERASE  (PE=0,SA=3,col=7,row=7) at addr 0x00ff ===
-  PASS: addr_out 0x00188080
+  PASS: ann_core_word 0x00188080
 
 === Verification Complete (30 tests) ===

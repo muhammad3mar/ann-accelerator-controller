@@ -23,7 +23,7 @@ module controller_weight_program_tb;
     //--------------------------------------------------------------------------
     // Parameters
     //--------------------------------------------------------------------------
-    localparam int CLK_PERIOD = 10;  // 10ns = 100MHz
+    localparam int CLK_PERIOD = 5;  // 5ns period -> 200 MHz
     localparam string WEIGHT_FILE      = "target/Controller/weight_matrix.txt";
     localparam string ANN_DUMP_FILE    = "target/Controller/ann_matrix_dump.txt";
     localparam string BUF_DUMP_FILE    = "target/Controller/input_buffer_dump.txt";
@@ -38,7 +38,8 @@ module controller_weight_program_tb;
     // Parallel Interface Signals
     //--------------------------------------------------------------------------
     logic                     reset;  // Active high reset for parallel interface
-    logic [31:0]              host_data;  // 32-bit packet from host
+    logic [31:0]              host_data;  // ann_core_word layout from host
+    logic [2:0]               host_cmd;
     logic                     valid;
     logic [7:0]               data;  // Extracted data from parallel interface
     logic [15:0]              address;  // Extracted address from parallel interface
@@ -48,16 +49,9 @@ module controller_weight_program_tb;
     // Controller Signals
     //--------------------------------------------------------------------------
     logic                     ann_reset;
-    logic                     weight_write_en;
-    logic [SELECTOR_WIDTH-1:0] row_selector;
-    logic [SELECTOR_WIDTH-1:0] col_selector;
     logic                     op_done;
     logic                     busy;
-    
-    // Mux control signals
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] row_mux_ctrl;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] col_mux_ctrl;
-    logic [3:0]               weight_data;
+    logic [31:0]              ann_core_word;
 
     //--------------------------------------------------------------------------
     // Input Buffer Signals
@@ -116,6 +110,7 @@ module controller_weight_program_tb;
         .clk        (clk),
         .reset      (reset),
         .host_data  (host_data),
+        .host_cmd   (host_cmd),
         .valid      (valid),
         .data       (data),
         .address    (address),
@@ -126,15 +121,25 @@ module controller_weight_program_tb;
     // Use buf_data_out from controller for PROG (captured data), otherwise use data from parallel interface
     assign data_in = buf_data_out;
     
-    // New controller outputs (32-bit addr, 3-bit pulses)
-    logic [ADDR_OUT_WIDTH-1:0] addr_out;
     logic [2:0]               pulses;
+
+    logic [1:0] dec_blk, dec_sb;
+    logic [2:0] dec_row, dec_col;
 
     // Mock ADC output for VERIFY: return programmed weight from mock ANN
     logic [3:0] weight_read_data_mock;
     always_comb begin
-        weight_read_data_mock = ann_weight_matrix[row_selector[6:5]][row_selector[4:3]][row_selector[2:0]][col_selector[2:0]];
+        ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
+        weight_read_data_mock = ann_weight_matrix[dec_blk][dec_sb][dec_row][dec_col];
     end
+
+    logic [9:0] reconstructed_weight_addr;
+    always_comb begin
+        reconstructed_weight_addr = {dec_blk, dec_sb, dec_row, dec_col};
+    end
+
+    logic in_prog_core_phase;
+    assign in_prog_core_phase = (pulses == PULSE_MODE_PROG) && (buf_reg_ctrl_dut == CTRL_WEIGHT_READ);
 
     ann_controller dut (
         .clk            (clk),
@@ -144,14 +149,8 @@ module controller_weight_program_tb;
         .address        (address),
         .cmd            (cmd),
         .ann_reset      (ann_reset),
-        .weight_write_en(weight_write_en),
-        .row_selector   (row_selector),
-        .col_selector   (col_selector),
         .op_done        (op_done),
-        .row_mux_ctrl   (row_mux_ctrl),
-        .col_mux_ctrl   (col_mux_ctrl),
-        .weight_data    (weight_data),
-        .addr_out       (addr_out),
+        .ann_core_word  (ann_core_word),
         .pulses         (pulses),
         .weight_read_data(weight_read_data_mock),  // Mock ADC: programmed weight for VERIFY
         .buf_reg_add    (buf_reg_add_dut),   // Controller-driven buffer address
@@ -195,28 +194,14 @@ module controller_weight_program_tb;
     //--------------------------------------------------------------------------
     // Extract weight from buffer data based on weight_sel
     //--------------------------------------------------------------------------
-    // Controller uses weight_addr_reg[5:1] for buffer address and weight_addr_reg[0] for weight select
-    // Buffer location contains 2 weights: weight[0] in [3:0], weight[1] in [7:4]
-    // We can reconstruct weight_addr_reg from row_selector and col_selector:
-    //   weight_addr_reg[9:8] = row_selector[6:5] = col_selector[6:5] (block_id)
-    //   weight_addr_reg[7:6] = row_selector[4:3] = col_selector[4:3] (sub_block_id)
-    //   weight_addr_reg[5:3] = row_selector[2:0] (row_id)
-    //   weight_addr_reg[2:0] = col_selector[2:0] (col_id)
-    
-    // Reconstruct weight address from selectors
-    logic [9:0] reconstructed_weight_addr;
+    // reconstructed_weight_addr comes from ann_core_word one-hot decode
     logic weight_sel;
     logic [3:0] weight0_from_buffer, weight1_from_buffer;
     
     assign weight0_from_buffer = buf_data[3:0];   // weight[0] from buffer (full byte at addr)
     assign weight1_from_buffer = buf_data[7:4];   // weight[1] from buffer
     
-    // Reconstruct full weight address from selectors
     always_comb begin
-        reconstructed_weight_addr = {row_selector[6:5],    // block_id [9:8]
-                                      row_selector[4:3],    // sub_block_id [7:6]
-                                      row_selector[2:0],    // row_id [5:3]
-                                      col_selector[2:0]};    // col_id [2:0]
         weight_sel = reconstructed_weight_addr[0];  // LSB determines which weight
     end
     
@@ -244,29 +229,15 @@ module controller_weight_program_tb;
                 end
             end
         end else begin
-            // Capture weight when weight_write_en is asserted
-            // Use weight_data from controller (extracted from buffer)
-            if (weight_write_en) begin
-                // Extract block, sub-block, row, col from selectors
-                logic [1:0] block_id;
-                logic [1:0] sub_block_id;
-                logic [2:0] row_id;
-                logic [2:0] col_id;
-                logic [3:0] selected_weight;
-                
-                block_id = row_selector[6:5];
-                sub_block_id = row_selector[4:3];
-                row_id = row_selector[2:0];
-                col_id = col_selector[2:0];
-                
-                // Use weight_data from controller (already extracted from buffer)
-                selected_weight = weight_data;
-                
-                // Program weight into ANN matrix
+            if (in_prog_core_phase) begin
+                automatic logic [1:0] block_id, sub_block_id;
+                automatic logic [2:0] row_id, col_id;
+                automatic logic [3:0] selected_weight;
+                ann_core_word_decode(ann_core_word, block_id, sub_block_id, row_id, col_id);
+                selected_weight = ann_core_word[27:24];
                 ann_weight_matrix[block_id][sub_block_id][row_id][col_id] <= selected_weight;
-                
-                $display("[%0t] Programming weight: Block=%0d, SubBlock=%0d, Row=%0d, Col=%0d, Weight=%0d (addr=0x%03X, buffer[%0d], sel=%0d)", 
-                         $time, block_id, sub_block_id, row_id, col_id, selected_weight, 
+                $display("[%0t] Programming weight: Block=%0d, SubBlock=%0d, Row=%0d, Col=%0d, Weight=%0d (addr=0x%03X, buffer[%0d], sel=%0d)",
+                         $time, block_id, sub_block_id, row_id, col_id, selected_weight,
                          reconstructed_weight_addr, buf_reg_add[4:0], reconstructed_weight_addr[0]);
             end
         end
@@ -279,8 +250,7 @@ module controller_weight_program_tb;
     int op_done_counter = 0;
     logic in_prog_write_state;
     
-    // Detect when we're in PROG_WRITE state (weight_write_en is asserted)
-    assign in_prog_write_state = weight_write_en;
+    assign in_prog_write_state = in_prog_core_phase;
     
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -366,63 +336,6 @@ module controller_weight_program_tb;
     end
     
     //--------------------------------------------------------------------------
-    // Monitor mux control signals and verify sequence
-    //--------------------------------------------------------------------------
-    logic [1:0] prev_block_id, prev_sub_block_id;
-    logic [2:0] prev_row_id, prev_col_id;
-    logic prev_weight_write_en;
-    
-    always_ff @(posedge clk) begin
-        prev_weight_write_en <= weight_write_en;
-        
-        if (weight_write_en && !prev_weight_write_en) begin
-            // Weight write just started - verify mux control
-            logic [1:0] block_id_check, sub_block_id_check;
-            logic [2:0] row_id_check, col_id_check;
-            
-            block_id_check = row_selector[6:5];
-            sub_block_id_check = row_selector[4:3];
-            row_id_check = row_selector[2:0];
-            col_id_check = col_selector[2:0];
-            
-            // Verify target row mux is enabled and in write mode
-            if (row_mux_ctrl[block_id_check][sub_block_id_check][row_id_check][MUX_CONTROL_WIDTH-1] != 1'b1 ||
-                row_mux_ctrl[block_id_check][sub_block_id_check][row_id_check][MUX_MODE_WIDTH-1:0] != MUX_MODE_WRITE) begin
-                $error("[%0t] ERROR: Target row mux not properly configured for write", $time);
-            end
-            
-            // Verify target column mux is enabled and in write mode
-            if (col_mux_ctrl[block_id_check][sub_block_id_check][col_id_check][MUX_CONTROL_WIDTH-1] != 1'b1 ||
-                col_mux_ctrl[block_id_check][sub_block_id_check][col_id_check][MUX_MODE_WIDTH-1:0] != MUX_MODE_WRITE) begin
-                $error("[%0t] ERROR: Target column mux not properly configured for write", $time);
-            end
-            
-            // Verify other row muxes are in High Z mode (but enabled)
-            for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-                if (r != row_id_check) begin
-                    if (row_mux_ctrl[block_id_check][sub_block_id_check][r][MUX_CONTROL_WIDTH-1] != 1'b1 ||
-                        row_mux_ctrl[block_id_check][sub_block_id_check][r][MUX_MODE_WIDTH-1:0] != MUX_MODE_HIZ) begin
-                        $error("[%0t] ERROR: Row mux %0d not in High Z mode", $time, r);
-                    end
-                end
-            end
-            
-            // Verify other column muxes are in High Z mode (but enabled)
-            for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-                if (c != col_id_check) begin
-                    if (col_mux_ctrl[block_id_check][sub_block_id_check][c][MUX_CONTROL_WIDTH-1] != 1'b1 ||
-                        col_mux_ctrl[block_id_check][sub_block_id_check][c][MUX_MODE_WIDTH-1:0] != MUX_MODE_HIZ) begin
-                        $error("[%0t] ERROR: Column mux %0d not in High Z mode", $time, c);
-                    end
-                end
-            end
-            
-            $display("[%0t] Mux control verified: Block=%0d, SubBlock=%0d, Row=%0d, Col=%0d, Weight=%0d", 
-                     $time, block_id_check, sub_block_id_check, row_id_check, col_id_check, weight_data);
-        end
-    end
-
-    //--------------------------------------------------------------------------
     // Function to convert matrix coordinates to ANN address
     //--------------------------------------------------------------------------
     function automatic logic [15:0] matrix_coords_to_address(
@@ -496,17 +409,19 @@ module controller_weight_program_tb;
         current_weight_16bit_addr_reg = addr;
         current_weight_10bit_addr_reg = convert_16bit_to_10bit_addr(addr);
         
-        // Construct 32-bit packet: {reserved[31:27], cmd[26:24], address[23:8], data[7:0]}
-        packet = {5'b0, CMD_PROG, addr, weight_val};
-        
-        // Clear host_data first to reset valid
+        packet = build_host_ann_word(weight_val, addr);
+
+        host_cmd = CMD_HIZ;
         @(posedge clk);
         host_data = 32'b0;
         @(posedge clk);
-        
-        // Send packet
         host_data = packet;
-        
+        host_cmd = CMD_PROG;
+        @(posedge clk);
+        host_cmd = CMD_HIZ;
+        host_data = 32'b0;
+        @(posedge clk);
+
         // Wait for controller to start processing (busy goes high)
         wait_cycles = 0;
         while (!busy && wait_cycles < 10) begin
@@ -519,14 +434,7 @@ module controller_weight_program_tb;
             return;
         end
         
-        // Wait for weight to be programmed (weight_write_en and op_done)
-        wait_cycles = 0;
-        while (!(weight_write_en && op_done) && wait_cycles < 200) begin
-            @(posedge clk);
-            wait_cycles++;
-        end
-        
-        // Wait for controller to finish (busy goes low)
+        // Wait for controller to finish (busy covers PROG+VERIFY+IDLE)
         wait_cycles = 0;
         while (busy && wait_cycles < 100) begin
             @(posedge clk);
@@ -686,15 +594,13 @@ module controller_weight_program_tb;
         // This task is deprecated - controller handles buffer writes automatically
         $display("[%0t] NOTE: store_weights_to_buffer() is not used with new architecture", $time);
     endtask
-    //--------------------------------------------------------------------------
-    // Mux Control Snapshot Storage
-    //--------------------------------------------------------------------------
-    // Store mux control snapshot when weight_write_en is first asserted (PROG_WRITE state)
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][ROW_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] snapshot_row_mux_ctrl;
-    logic [NUM_BLOCKS-1:0][NUM_SUB_BLOCKS-1:0][COL_MUXES_PER_MATRIX-1:0][MUX_CONTROL_WIDTH-1:0] snapshot_col_mux_ctrl;
+    logic [31:0] snapshot_ann_core_word;
     string snapshot_prog_state;
-    logic capture_mux_snapshot;
-    
+    logic prev_in_prog_core;
+    logic [9:0] captured_addr_when_prog_pulse;
+    logic prev_op_done_prog;
+    logic [2:0] prev_pulses_for_dump;
+
     //--------------------------------------------------------------------------
     // Initialize dump file header
     //--------------------------------------------------------------------------
@@ -759,159 +665,30 @@ module controller_weight_program_tb;
         $fdisplay(dump_file, "// Time: %0t ns", $time);
         $fdisplay(dump_file, "");
         
-        // Write programming sequence information
         $fdisplay(dump_file, "//------------------------------------------------------------------------------");
-        $fdisplay(dump_file, "// Programming Sequence Sent to ANN Core");
-        $fdisplay(dump_file, "//------------------------------------------------------------------------------");
-        $fdisplay(dump_file, "// Sequence State: %s", snapshot_prog_state);
+        $fdisplay(dump_file, "// ANN core bus (captured at PROG pulse phase):");
+        $fdisplay(dump_file, "//   ann_core_word=0x%08h  state=%s", snapshot_ann_core_word, snapshot_prog_state);
         $fdisplay(dump_file, "// Sequence: PROG_HIZ -> PROG_SELECT -> PROG_ENABLE -> PROG_WRITE -> PROG_DISABLE -> PROG_COMPLETE");
         $fdisplay(dump_file, "//------------------------------------------------------------------------------");
         $fdisplay(dump_file, "");
-        
-        // Dump mux control for target matrix
-        $fdisplay(dump_file, "//------------------------------------------------------------------------------");
-        $fdisplay(dump_file, "// Mux Control for Target Matrix: Block=%0d, SubBlock=%0d", block_id, sub_block_id);
-        $fdisplay(dump_file, "//------------------------------------------------------------------------------");
-        $fdisplay(dump_file, "// Format: Mux[Index] = {Enable, Mode} = Mode_String");
-        $fdisplay(dump_file, "// Enable: 1=ON, 0=OFF");
-        $fdisplay(dump_file, "// Mode: 00=READ, 01=WRITE, 10=ERASE, 11=HIZ");
-        $fdisplay(dump_file, "");
-        
-        // Mux Control Matrix View - Visual Format
-        $fdisplay(dump_file, "// Mux Control Matrix (8x8):");
-        $fdisplay(dump_file, "//");
-        $fdisplay(dump_file, "// Row Muxes (horizontal, one per row):");
-        $fwrite(dump_file, "//   R0  R1  R2  R3  R4  R5  R6  R7");
-        $fdisplay(dump_file, "");
-        $fwrite(dump_file, "//   ");
-        for (int r = 0; r < ROW_MUXES_PER_MATRIX; r++) begin
-            automatic string mode_str = get_mux_mode_str(snapshot_row_mux_ctrl[block_id][sub_block_id][r]);
-            if (r == row_id) begin
-                $fwrite(dump_file, "%4s*", mode_str);
-            end else begin
-                $fwrite(dump_file, "%4s ", mode_str);
-            end
-        end
-        $fdisplay(dump_file, "");
-        $fdisplay(dump_file, "");
-        $fdisplay(dump_file, "// Column Muxes (vertical, one per column):");
-        $fdisplay(dump_file, "//   C0  C1  C2  C3  C4  C5  C6  C7");
-        $fwrite(dump_file, "//   ");
-        for (int c = 0; c < COL_MUXES_PER_MATRIX; c++) begin
-            automatic string mode_str = get_mux_mode_str(snapshot_col_mux_ctrl[block_id][sub_block_id][c]);
-            if (c == col_id) begin
-                $fwrite(dump_file, "%4s*", mode_str);
-            end else begin
-                $fwrite(dump_file, "%4s ", mode_str);
-            end
-        end
-        $fdisplay(dump_file, "");
-        $fdisplay(dump_file, "");
-        $fdisplay(dump_file, "//   * = TARGET mux (Row=%0d, Col=%0d) in WRITE mode", row_id, col_id);
-        $fdisplay(dump_file, "//   All other muxes are in HIZ mode (enabled but high-impedance)");
-        $fdisplay(dump_file, "");
-        $fdisplay(dump_file, "//------------------------------------------------------------------------------");
-        $fdisplay(dump_file, "");
-        
-        // Dump all blocks (showing current state)
+
         for (int b = 0; b < NUM_BLOCKS; b++) begin
             $fdisplay(dump_file, "// Block %0d", b);
             for (int sb = 0; sb < NUM_SUB_BLOCKS; sb++) begin
                 $fdisplay(dump_file, "//   Sub-Block %0d", sb);
-                
-                // Only show mux control for the target matrix being programmed
-                if (b == block_id && sb == sub_block_id) begin
-                    // Print column mux header row - aligned with weight columns (5 chars each: "[ 2] " or "  2  ")
-                    $fwrite(dump_file, "//         ");
+                $fwrite(dump_file, "//         ");
+                for (int c = 0; c < SUB_BLOCK_COLS; c++)
+                    $fwrite(dump_file, " C%0d  ", c);
+                $fdisplay(dump_file, "");
+                for (int r = 0; r < SUB_BLOCK_ROWS; r++) begin
+                    $fwrite(dump_file, "// R%0d      ", r);
                     for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
-                        automatic string col_mode_str = get_mux_mode_str(snapshot_col_mux_ctrl[b][sb][c]);
-                        // Format to exactly 5 characters to match weight column width
-                        // Weight format: "[%2d] " = 5 chars (with trailing space) or " %2d  " = 5 chars
-                        if (c == col_id) begin
-                            // Target column: match "[ 2] " format = 5 chars with trailing space
-                            if (col_mode_str.len() == 3) begin
-                                $fwrite(dump_file, "%3s* ", col_mode_str);  // "HIZ* " = 5 chars
-                            end else if (col_mode_str.len() == 4) begin
-                                $fwrite(dump_file, "%4s*", col_mode_str);  // "READ*" = 5 chars
-                            end else if (col_mode_str.len() == 5) begin
-                                // Match "[ 2] " format: use 4 chars + "*" = 5 chars total
-                                $fwrite(dump_file, "%4s*", col_mode_str.substr(0, 3));  // "WRIT*" = 5 chars
-                            end else begin
-                                $fwrite(dump_file, "%5s", col_mode_str);
-                            end
-                        end else begin
-                            // Non-target columns: match "  2  " format = 5 chars with spaces
-                            if (col_mode_str.len() == 3) begin
-                                $fwrite(dump_file, " %3s ", col_mode_str);  // " HIZ " = 5 chars
-                            end else if (col_mode_str.len() == 4) begin
-                                $fwrite(dump_file, "%4s ", col_mode_str);  // "READ " = 5 chars
-                            end else if (col_mode_str.len() == 5) begin
-                                $fwrite(dump_file, "%5s", col_mode_str);  // "WRITE" = 5 chars
-                            end else begin
-                                $fwrite(dump_file, "%5s", col_mode_str);
-                            end
-                        end
-                    end
-                    $fdisplay(dump_file, "  <- Column Muxes");
-                    
-                    // Print each row with row mux value and weight values
-                    for (int r = 0; r < SUB_BLOCK_ROWS; r++) begin
-                        automatic string row_mode_str = get_mux_mode_str(snapshot_row_mux_ctrl[b][sb][r]);
-                        // Format row mux to exactly 5 characters to match weight column width
-                        automatic string padded_row_str;
-                        if (row_mode_str.len() == 3) begin
-                            padded_row_str = {row_mode_str, "  "};  // "HIZ  " = 5 chars
-                        end else if (row_mode_str.len() == 4) begin
-                            padded_row_str = {row_mode_str, " "};  // "READ " = 5 chars
-                        end else if (row_mode_str.len() == 5) begin
-                            padded_row_str = row_mode_str;  // "WRITE" = 5 chars
-                        end else begin
-                            padded_row_str = row_mode_str;
-                        end
-                        if (r == row_id) begin
-                            // Target row: format to 4 chars + "*" = 5 chars total
-                            if (row_mode_str.len() == 3) begin
-                                $fwrite(dump_file, "// R%0d %3s* ", r, row_mode_str);  // "HIZ* " = 5 chars
-                            end else if (row_mode_str.len() == 4) begin
-                                $fwrite(dump_file, "// R%0d %4s* ", r, row_mode_str);  // "READ*" = 5 chars
-                            end else if (row_mode_str.len() == 5) begin
-                                $fwrite(dump_file, "// R%0d %4s* ", r, row_mode_str.substr(0, 3));  // "WRIT*" = 5 chars
-                            end else begin
-                                $fwrite(dump_file, "// R%0d %5s ", r, row_mode_str);
-                            end
-                        end else begin
-                            $fwrite(dump_file, "// R%0d %5s ", r, padded_row_str);
-                        end
-                        for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
-                            // Highlight the weight that was just programmed
-                            if (r == row_id && c == col_id) begin
-                                $fwrite(dump_file, "[%2d] ", ann_weight_matrix[b][sb][r][c]);
-                            end else begin
-                                $fwrite(dump_file, " %2d  ", ann_weight_matrix[b][sb][r][c]);
-                            end
-                        end
-                        $fdisplay(dump_file, "");
-                    end
-                    $fdisplay(dump_file, "//      ^");
-                    $fdisplay(dump_file, "//      Row Muxes");
-                end else begin
-                    // For other matrices, show without mux control but with aligned column headers
-                    // Column header row - aligned with weight columns (5 chars each, matching target matrix format)
-                    $fwrite(dump_file, "//         ");  // Same indentation as target matrix (10 spaces)
-                    for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
-                        // Format to match target matrix: "WRIT*" = 5 chars starting at position 11
-                        // Shift right by 1 space to better align: " C%0d  " = 5 chars (space, C, digit, space, space)
-                        $fwrite(dump_file, " C%0d  ", c);  // " C0  " = 5 chars (space, C, digit, space, space)
+                        if (b == block_id && sb == sub_block_id && r == row_id && c == col_id)
+                            $fwrite(dump_file, "[%2d] ", ann_weight_matrix[b][sb][r][c]);
+                        else
+                            $fwrite(dump_file, " %2d  ", ann_weight_matrix[b][sb][r][c]);
                     end
                     $fdisplay(dump_file, "");
-                    // Weight rows - use same format as target matrix for consistency
-                    for (int r = 0; r < SUB_BLOCK_ROWS; r++) begin
-                        $fwrite(dump_file, "// R%0d      ", r);  // Match target matrix row format spacing
-                        for (int c = 0; c < SUB_BLOCK_COLS; c++) begin
-                            $fwrite(dump_file, " %2d  ", ann_weight_matrix[b][sb][r][c]);  // "  2  " = 5 chars
-                        end
-                        $fdisplay(dump_file, "");
-                    end
                 end
                 $fdisplay(dump_file, "");
             end
@@ -931,45 +708,32 @@ module controller_weight_program_tb;
     logic prev_op_done;
     int sequence_step_count;
     
-    // Function to get mux mode string
-    function string get_mux_mode_str(logic [MUX_CONTROL_WIDTH-1:0] mux_ctrl);
-        logic enable;
-        logic [1:0] mode;
-        enable = mux_ctrl[MUX_CONTROL_WIDTH-1];
-        mode = mux_ctrl[MUX_MODE_WIDTH-1:0];
-        
-        if (!enable) return "OFF";
-        else case (mode)
-            MUX_MODE_READ:  return "READ";
-            MUX_MODE_WRITE: return "WRITE";
-            MUX_MODE_ERASE: return "ERASE";
-            MUX_MODE_HIZ:   return "HIZ";
-            default: return "UNK";
-        endcase
-    endfunction
-    
-    // Function to infer programming sequence state
     function string infer_prog_state();
         if (!busy) return "IDLE";
         else if (ann_reset) return "RESET";
-        else if (weight_write_en) return "PROG_WRITE";
-        else if (buf_reg_ctrl == CTRL_WEIGHT_READ && !weight_write_en) return "PROG_ENABLE/SELECT";
-        else return "PROG_HIZ/DISABLE";
+        else if (in_prog_core_phase) return "PROG_PULSE";
+        else if (buf_reg_ctrl == CTRL_WEIGHT_READ && !in_prog_core_phase) return "PROG_BUFFER_READ";
+        else return "PROG_OTHER";
     endfunction
     
-    // Monitor programming sequence
     always_ff @(posedge clk) begin
-        prev_weight_write_en <= weight_write_en;
+        if (in_prog_core_phase && !prev_in_prog_core) begin
+            snapshot_ann_core_word <= ann_core_word;
+            snapshot_prog_state <= "PROG_PULSE_PHASE";
+            captured_addr_when_prog_pulse <= current_weight_10bit_addr_reg;
+        end
+
+        prev_in_prog_core <= in_prog_core_phase;
         prev_op_done <= op_done;
         
         if (busy && !ann_reset) begin
-            if (weight_write_en && !prev_weight_write_en) begin
+            if (in_prog_core_phase && !prev_in_prog_core) begin
                 sequence_step_count++;
-                prog_sequence_state_str = "PROG_WRITE";
-            end else if (!weight_write_en && prev_weight_write_en && op_done) begin
+                prog_sequence_state_str = "PROG_PULSE";
+            end else if (!in_prog_core_phase && prev_in_prog_core && op_done) begin
                 sequence_step_count++;
-                prog_sequence_state_str = "PROG_DISABLE";
-            end else if (!weight_write_en && buf_reg_ctrl == CTRL_WEIGHT_READ) begin
+                prog_sequence_state_str = "PROG_PULSE_DONE";
+            end else if (!in_prog_core_phase && buf_reg_ctrl == CTRL_WEIGHT_READ) begin
                 if (sequence_step_count == 0) prog_sequence_state_str = "PROG_HIZ";
                 else if (sequence_step_count == 1) prog_sequence_state_str = "PROG_SELECT";
                 else if (sequence_step_count == 2) prog_sequence_state_str = "PROG_ENABLE";
@@ -987,19 +751,6 @@ module controller_weight_program_tb;
     logic [9:0] dump_weight_addr;
     logic [1:0] dump_block_id, dump_sub_block_id;
     logic [2:0] dump_row_id, dump_col_id;
-    
-    // Capture mux snapshot when weight_write_en is first asserted (PROG_WRITE state)
-    always_ff @(posedge clk) begin
-        if (weight_write_en && !prev_weight_write_en && buf_reg_ctrl == CTRL_WEIGHT_READ) begin
-            // Capture mux control at start of PROG_WRITE state
-            snapshot_row_mux_ctrl <= row_mux_ctrl;
-            snapshot_col_mux_ctrl <= col_mux_ctrl;
-            snapshot_prog_state <= "PROG_WRITE";
-            capture_mux_snapshot <= 1'b1;
-        end else begin
-            capture_mux_snapshot <= 1'b0;
-        end
-    end
     
     // Trigger dump when programming is complete (op_done) - use stored address from send_prog_command
     always_ff @(posedge clk) begin
@@ -1027,29 +778,18 @@ module controller_weight_program_tb;
         end
     end
     
-    // Capture address when weight_write_en is first asserted
-    logic [9:0] captured_addr_when_write_en;
-    
     always_ff @(posedge clk) begin
-        if (weight_write_en && !prev_weight_write_en) begin
-            // Capture the address at the moment weight_write_en goes high
-            captured_addr_when_write_en <= current_weight_10bit_addr_reg;
-        end
-    end
-    
-    // Trigger dump when programming is complete (op_done) - use captured address
-    always_ff @(posedge clk) begin
-        if (weight_write_en && op_done) begin
-            // Track current weight address (use address captured when weight_write_en first asserted)
+        if (op_done && !prev_op_done_prog && prev_pulses_for_dump == PULSE_MODE_PROG
+            && weights_programmed < DEFAULT_NUM_WEIGHTS) begin
             weights_programmed++;
-            current_weight_addr = captured_addr_when_write_en;
-            dump_weight_addr <= captured_addr_when_write_en;
-            
-            // Trigger dump on next clock cycle (after weight is written)
+            current_weight_addr = captured_addr_when_prog_pulse;
+            dump_weight_addr <= captured_addr_when_prog_pulse;
             dump_trigger <= 1'b1;
         end else begin
             dump_trigger <= 1'b0;
         end
+        prev_op_done_prog <= op_done;
+        prev_pulses_for_dump <= pulses;
     end
     
     // Dump on next clock cycle after weight is written
@@ -1072,6 +812,7 @@ module controller_weight_program_tb;
         
         // Initialize
         reset = 1'b1;  // Active high reset for parallel interface
+        host_cmd = CMD_HIZ;
         host_data = 32'b0;
         rst_n = 0;  // Active low reset for controller
         tb_control_buffer = 0;

@@ -1,0 +1,13 @@
+// PI + controller + input_buffer integration
+
+PASS 01_READ pulses=001 word=00281080
+PASS 02_PROG pulses=001 word=0c110101
+PASS 03_ERASE pulses=001 word=00810120
+PASS 04_INF pulses=100 word=00120420
+PASS 05_READ pulses=001 word=00410110
+PASS 06_PROG pulses=001 word=0e210201
+PASS 07_ERASE pulses=001 word=00420101
+PASS 08_READ pulses=001 word=00810101
+PASS 09_PROG pulses=001 word=0f288080
+PASS 10_ERASE pulses=001 word=00188010
+// Summary: PASS=10 FAIL=0
