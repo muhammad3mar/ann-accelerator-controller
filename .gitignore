@@ -1,0 +1,5 @@
+# ModelSim console transcripts from scripts/run_sim.py (sim / run_all)
+target/**/*_tb_log.txt
+wlf*
+*.wlf
+transcript

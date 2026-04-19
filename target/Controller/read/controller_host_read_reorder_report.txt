@@ -1,0 +1,93 @@
+//==============================================================================
+// controller_host_read_reorder_tb
+// Program 8 weights, then CMD_READ in non-sequential order (by program index).
+// ann_core_word fields: data[31:24]-PE[23:20]-SA[19:16]-col[15:8]-row[7:0] (binary in samples)
+// Pulse: READ=001. Mock ADC = ann_weight_matrix cell selected by ann_core_word decode.
+//==============================================================================
+
+//==============================================================================
+// PHASE 1: Programmed weights (CMD_PROG via host, PROG+VERIFY in DUT)
+//==============================================================================
+// ix | addr   | blk | sub | row | col | weight | host_prog_packet (hex)
+//----+--------+-----+-----+-----+-----+--------+----------------------------
+// 0  | 0x0000 | 0   | 0   | 0   | 0   | 1      | 0x01110101
+// 1  | 0x0100 | 1   | 0   | 0   | 0   | 2      | 0x02210101
+// 2  | 0x0204 | 2   | 0   | 4   | 0   | 3      | 0x03410110
+// 3  | 0x0305 | 3   | 0   | 5   | 0   | 4      | 0x04810120
+// 4  | 0x01e7 | 1   | 3   | 7   | 4   | 5      | 0x05281080
+// 5  | 0x00a4 | 0   | 2   | 4   | 4   | 6      | 0x06141010
+// 6  | 0x05ff | 1   | 3   | 7   | 7   | 7      | 0x07288080
+// 7  | 0x3c07 | 0   | 0   | 7   | 0   | 8      | 0x08110180
+
+// After programming — mock matrix at programmed cells:
+//   ix0 addr=0x0000 -> weight=1 (expect 1)
+//   ix1 addr=0x0100 -> weight=2 (expect 2)
+//   ix2 addr=0x0204 -> weight=3 (expect 3)
+//   ix3 addr=0x0305 -> weight=4 (expect 4)
+//   ix4 addr=0x01e7 -> weight=5 (expect 5)
+//   ix5 addr=0x00a4 -> weight=6 (expect 6)
+//   ix6 addr=0x05ff -> weight=7 (expect 7)
+//   ix7 addr=0x3c07 -> weight=8 (expect 8)
+
+//==============================================================================
+// PHASE 2: Host READ requests (order permuted)
+//==============================================================================
+// read_step uses program indices in order: 4 0 7 2 1 6 3 5
+
+=== READ step 1 (program order index 4) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x01e7
+// Host 32b packet (build_host_ann_word): 0x00281080
+// Expected mock memristor weight at this cell: 5 (4b)
+[542000] DUT in S_READ: pulses=001 ann_core_word=0x00281080 (0b00000000-0010-1000-00010000-10000000) weight_read_data(mock)=5
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 2 (program order index 0) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x0000
+// Host 32b packet (build_host_ann_word): 0x00110101
+// Expected mock memristor weight at this cell: 1 (4b)
+[558000] DUT in S_READ: pulses=001 ann_core_word=0x00110101 (0b00000000-0001-0001-00000001-00000001) weight_read_data(mock)=1
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 3 (program order index 7) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x3c07
+// Host 32b packet (build_host_ann_word): 0x00110180
+// Expected mock memristor weight at this cell: 8 (4b)
+[574000] DUT in S_READ: pulses=001 ann_core_word=0x00110180 (0b00000000-0001-0001-00000001-10000000) weight_read_data(mock)=8
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 4 (program order index 2) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x0204
+// Host 32b packet (build_host_ann_word): 0x00410110
+// Expected mock memristor weight at this cell: 3 (4b)
+[590000] DUT in S_READ: pulses=001 ann_core_word=0x00410110 (0b00000000-0100-0001-00000001-00010000) weight_read_data(mock)=3
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 5 (program order index 1) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x0100
+// Host 32b packet (build_host_ann_word): 0x00210101
+// Expected mock memristor weight at this cell: 2 (4b)
+[606000] DUT in S_READ: pulses=001 ann_core_word=0x00210101 (0b00000000-0010-0001-00000001-00000001) weight_read_data(mock)=2
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 6 (program order index 6) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x05ff
+// Host 32b packet (build_host_ann_word): 0x00288080
+// Expected mock memristor weight at this cell: 7 (4b)
+[622000] DUT in S_READ: pulses=001 ann_core_word=0x00288080 (0b00000000-0010-1000-10000000-10000000) weight_read_data(mock)=7
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 7 (program order index 3) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x0305
+// Host 32b packet (build_host_ann_word): 0x00810120
+// Expected mock memristor weight at this cell: 4 (4b)
+[638000] DUT in S_READ: pulses=001 ann_core_word=0x00810120 (0b00000000-1000-0001-00000001-00100000) weight_read_data(mock)=4
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+=== READ step 8 (program order index 5) ===
+// Host command line: CMD_READ  data_byte=0x00  ann_addr=0x00a4
+// Host 32b packet (build_host_ann_word): 0x00141010
+// Expected mock memristor weight at this cell: 6 (4b)
+[654000] DUT in S_READ: pulses=001 ann_core_word=0x00141010 (0b00000000-0001-0100-00010000-00010000) weight_read_data(mock)=6
+PASS: READ returned consistent ann_core_word and mock ADC data
+
+// Summary: PASS=8 FAIL=0

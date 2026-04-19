@@ -12,7 +12,7 @@ python scripts/run_sim.py list
 python scripts/run_sim.py compile -m Controller -t verif
 
 # Run Controller testbench
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
 
 # Clean all generated files
 python scripts/run_sim.py clean -a
@@ -42,18 +42,18 @@ Run a simulation/testbench.
 
 ```bash
 # Run simulation in batch mode (no GUI)
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
 
 # Run simulation with GUI waveform viewer
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb -g
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb -g
 
 # Run simulation for specific duration
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb -d 1000ns
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb -d 1000ns
 ```
 
 **Options:**
 - `-m, --module`: Module name
-- `-tb, --testbench`: Testbench name (e.g., controller_weight_program_tb)
+- `-tb, --testbench`: Testbench name (e.g., controller_prog_verify_lut_tb)
 - `-g, --gui`: Open GUI waveform viewer
 - `-d, --duration`: Simulation duration (e.g., 1000ns)
 
@@ -96,7 +96,7 @@ python scripts/run_sim.py list
 Generate simulation report.
 
 ```bash
-python scripts/run_sim.py report -m Controller -tb controller_weight_program_tb
+python scripts/run_sim.py report -m Controller -tb controller_prog_verify_lut_tb
 ```
 
 **Options:**
@@ -112,11 +112,11 @@ python scripts/run_sim.py report -m Controller -tb controller_weight_program_tb
 python scripts/run_sim.py clean -a
 
 # 2. Run simulation (automatically compiles first)
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
 
 # 3. Check results
 ls target/Controller/
-# Should see: ann_matrix_dump.txt, input_buffer_dump.txt
+# Should see: programming_inputs/weight_matrix.txt, prog/prog_verify_report.txt (after successful run), etc.
 ```
 
 ### Compile Only (No Simulation)
@@ -133,16 +133,16 @@ python scripts/run_sim.py compile -m Controller -t verif
 
 ```bash
 # Open ModelSim GUI with waveform viewer
-python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb -g
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
 ```
 
 ## Output Files
 
 After running simulations, check the `target/` directory:
 
-- **`target/Controller/ann_matrix_dump.txt`**: Step-by-step ANN weight matrix updates
-- **`target/Controller/input_buffer_dump.txt`**: Input buffer state after weight loading
-- **`target/Controller/weight_matrix.txt`**: Input weight matrix file
+- **`target/Controller/controller_addr_pulse_verify.txt`**: Address/`ann_core_word` checks from `controller_addr_pulse_tb`
+- **`target/Controller/prog/prog_verify_report.txt`**: PROG→VERIFY sweep report from `controller_prog_verify_lut_tb`
+- **`target/Controller/programming_inputs/weight_matrix.txt`**: Input weight matrix file (used by program/verify benches)
 
 ## Troubleshooting
 
@@ -171,7 +171,7 @@ If compilation fails:
 If simulation fails:
 1. Check that compilation succeeded
 2. Verify testbench name is correct
-3. Check that weight_matrix.txt exists in target/Controller/
+3. Check that `programming_inputs/weight_matrix.txt` exists under `target/Controller/`
 
 ## File Structure
 
@@ -193,12 +193,12 @@ project/
 │   │   │   ├── controller_list.f
 │   │   │   └── controller_verif_list.f
 │   │   └── tb/
-│   │       └── controller_weight_program_tb.sv
+│   │       └── regular/prog/...
 │   └── ...
 └── target/
-    └── Controller/
-        ├── ann_matrix_dump.txt
-        ├── input_buffer_dump.txt
-        └── weight_matrix.txt
+    ├── Controller/
+    │   ├── prog/
+    │   └── programming_inputs/
+    │       └── weight_matrix.txt
+    └── ...
 ```
-

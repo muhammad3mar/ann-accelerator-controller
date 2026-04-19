@@ -21,10 +21,10 @@ Examples:
     python scripts/run_sim.py compile -m Controller -t rtl
 
     # Run Controller testbench
-    python scripts/run_sim.py sim -m Controller -tb controller_weight_program_tb
+    python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
 
     # ModelSim GUI + waves (--do-file implies GUI; path is relative to project root)
-    python scripts/run_sim.py sim -m Controller -tb controller_program_state_waves_tb --do-file verif/Controller/do/controller_program_state_waves.do
+    python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
 
     # Clean all generated files
     python scripts/run_sim.py clean -a
@@ -56,27 +56,54 @@ MODULES = {
         "verif_list": "verif/Controller/file_list/controller_verif_list.f",
         "rtl_dir": "source/Controller",
         "verif_dir": "verif/Controller",
-        "testbenches": ["controller_weight_program_tb", "controller_addr_pulse_tb", "controller_prog_verify_tb", "controller_prog_verify_lut_tb", "controller_program_state_waves_tb", "ann_controller_unit_tb", "parallel_interface_controller_integration_tb", "controller_buffer_integration_tb", "controller_integration_smoke_tb"]
+        "testbenches": ["controller_addr_pulse_tb", "controller_prog_verify_lut_tb", "parallel_interface_controller_integration_tb", "controller_host_erase_tb", "controller_inf_buffer_flow_tb", "controller_host_read_reorder_tb"]
     },
     "Input_Buffer": {
         "rtl_list": "source/Input_Buffer/input_buffer_rtl_list.f",
         "verif_list": "verif/Input_Buffer/file_list/input_buffer_verif_list.f",
         "rtl_dir": "source/Input_Buffer",
         "verif_dir": "verif/Input_Buffer",
-        "testbenches": ["input_buffer_write_read_tb", "input_buffer_bit_serial_tb"]
+        "testbenches": ["input_buffer_bit_serial_tb", "input_buffer_reset_behavior_tb", "input_buffer_full_overwrite_tb"]
     },
     "Parallel_Interface": {
         "rtl_list": "source/Parallel_Interface/parallel_interface_rtl_list.f",
         "verif_list": "verif/Parallel_Interface/file_list/parallel_interface_verif_list.f",
         "rtl_dir": "source/Parallel_Interface",
         "verif_dir": "verif/Parallel_Interface",
-        "testbenches": ["parallel_interface_extract_tb", "parallel_interface_valid_tb", "parallel_interface_commands_tb"]
+        "testbenches": ["parallel_interface_extract_tb"]
     }
 }
 
 # Work directory
 WORK_DIR = PROJECT_ROOT / "work"
 TARGET_DIR = PROJECT_ROOT / "target"
+
+
+def target_subdir_for_module(module_name: str) -> str:
+    """Folder under target/ for logs and reports."""
+    if module_name == "Input_Buffer":
+        return "input_buffer"
+    if module_name == "Parallel_Interface":
+        return "parallel_interface"
+    return module_name
+
+
+def clean_sim_artifacts(verbose: bool = False) -> int:
+    """Remove common ModelSim temporary artifacts from project root."""
+    patterns = ["wlf*", "*.wlf", "transcript"]
+    removed = 0
+    for pat in patterns:
+        for p in PROJECT_ROOT.glob(pat):
+            if p.is_file():
+                try:
+                    p.unlink()
+                    removed += 1
+                    if verbose:
+                        print(f"[OK] Removed artifact: {p.name}")
+                except Exception as e:
+                    if verbose:
+                        print(f"[X] Could not remove artifact {p.name}: {e}")
+    return removed
 
 
 def check_modelsim():
@@ -157,10 +184,33 @@ def compile_verif(module_name, file_list):
     return success
 
 
+def relocate_input_buffer_tb_report_to_end(log_path: Path) -> None:
+    """After ModelSim, move the // TB REPORT block to the physical end of the log (after vsim trailer)."""
+    try:
+        text = log_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return
+    marker = "# //==============================================================================\n# // TB REPORT"
+    if marker not in text:
+        return
+    i = text.index(marker)
+    if i >= 4 and text[i - 4 : i] == "# \n\n":
+        i -= 4
+    finish = text.find("# ** Note: $finish", i)
+    if finish < 0:
+        return
+    block = text[i:finish]
+    rest = text[:i] + text[finish:]
+    log_path.write_text(rest + block, encoding="utf-8")
+
+
 def run_simulation(module_name, testbench_name, gui=False, duration=None, log_file=None, do_file=None):
     """Run a simulation. If log_file is set, capture output to that path.
     If do_file is set (path to a .tcl/.do script), vsim is launched with -do after resolving
     the path; use with gui=True so the Wave window opens (recommended)."""
+    # Auto-clean transient simulator artifacts before each simulation run.
+    clean_sim_artifacts(verbose=False)
+
     print(f"\n{'='*60}")
     print(f"Running Simulation: {testbench_name}")
     if log_file:
@@ -202,6 +252,14 @@ def run_simulation(module_name, testbench_name, gui=False, duration=None, log_fi
     else:
         success = run_command(cmd, cwd=PROJECT_ROOT)
     
+    if success and log_file:
+        lp = Path(log_file)
+        if "input_buffer" in str(lp).replace("\\", "/").lower():
+            relocate_input_buffer_tb_report_to_end(lp)
+
+    # Auto-clean transient simulator artifacts after run as well.
+    clean_sim_artifacts(verbose=False)
+    
     if success:
         print(f"\n[OK] Simulation completed: {testbench_name}")
     else:
@@ -236,7 +294,7 @@ def clean_target(module_name=None):
     print(f"{'='*60}")
     
     if module_name:
-        target_module_dir = TARGET_DIR / module_name
+        target_module_dir = TARGET_DIR / target_subdir_for_module(module_name)
         if target_module_dir.exists():
             try:
                 shutil.rmtree(target_module_dir)
@@ -245,15 +303,17 @@ def clean_target(module_name=None):
                 print(f"[X] Error removing target/{module_name}/: {e}")
                 return False
     else:
-        # Clean all target files except weight_matrix.txt
+        # Remove loose files under target/<module>/ (not recursive). Keeps subdirs
+        # (e.g. programming_inputs/, prog/) intact; legacy top-level weight_matrix.txt skip retained.
         for item in TARGET_DIR.iterdir():
             if item.is_dir():
                 for subitem in item.iterdir():
+                    if not subitem.is_file():
+                        continue
                     if subitem.name != "weight_matrix.txt":
                         try:
-                            if subitem.is_file():
-                                subitem.unlink()
-                                print(f"[OK] Removed {subitem}")
+                            subitem.unlink()
+                            print(f"[OK] Removed {subitem}")
                         except Exception as e:
                             print(f"[X] Error removing {subitem}: {e}")
     
@@ -280,12 +340,12 @@ def generate_report(module_name, testbench_name):
     print(f"Generating Report for {testbench_name}")
     print(f"{'='*60}")
     
-    report_file = TARGET_DIR / module_name / f"{testbench_name}_report.txt"
+    report_file = TARGET_DIR / target_subdir_for_module(module_name) / f"{testbench_name}_report.txt"
     report_file.parent.mkdir(parents=True, exist_ok=True)
     
     # Collect output files
     dump_files = []
-    target_module_dir = TARGET_DIR / module_name
+    target_module_dir = TARGET_DIR / target_subdir_for_module(module_name)
     if target_module_dir.exists():
         for file in target_module_dir.glob("*_dump.txt"):
             dump_files.append(file)
@@ -331,14 +391,14 @@ def main():
                            help='Module name')
     sim_parser.add_argument('-tb', '--testbench',
                            required=True,
-                           help='Testbench name (e.g., controller_weight_program_tb)')
+                           help='Testbench name (e.g., controller_prog_verify_lut_tb)')
     sim_parser.add_argument('-g', '--gui',
                            action='store_true',
                            help='Open ModelSim GUI (vsim without -c)')
     sim_parser.add_argument('--do-file',
                            default=None,
                            metavar='PATH',
-                           help='Optional ModelSim DO/TCL script (e.g. verif/Controller/do/controller_program_state_waves.do). '
+                           help='Optional ModelSim DO/TCL script (e.g. verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do). '
                                 'Implies GUI. Path is relative to project root.')
     sim_parser.add_argument('-d', '--duration',
                            help='Simulation duration (e.g., 1000ns)')
@@ -391,6 +451,9 @@ def main():
             print("Make sure ModelSim is installed and in your PATH")
             print(f"Expected path: {MODELSIM_PATH}")
     
+    # Keep root clean from simulator temp artifacts across all invocations.
+    clean_sim_artifacts(verbose=False)
+
     # Execute commands
     if args.command == 'compile':
         module_config = MODULES[args.module]
@@ -400,6 +463,7 @@ def main():
         else:
             file_list = module_config['verif_list']
             success = compile_verif(args.module, file_list)
+        clean_sim_artifacts(verbose=False)
         return 0 if success else 1
     
     elif args.command == 'sim':
@@ -426,14 +490,22 @@ def main():
         if do_path and not args.gui:
             print("Note: --do-file opens ModelSim GUI (wave window).")
 
+        sim_log = None
+        if args.module in ("Input_Buffer", "Parallel_Interface"):
+            sim_log = str(
+                TARGET_DIR / target_subdir_for_module(args.module) / f"{tb_name}_log.txt"
+            )
+
         # Then run simulation
         success = run_simulation(
             args.module,
             tb_name,
             gui=use_gui,
             duration=args.duration,
+            log_file=sim_log,
             do_file=str(do_path) if do_path else None,
         )
+        clean_sim_artifacts(verbose=False)
         return 0 if success else 1
     
     elif args.command == 'run_all':
@@ -447,12 +519,13 @@ def main():
             print(f"\n>>> Compiling {module_name} verification...")
             compile_verif(module_name, cfg['verif_list'])
             for tb in cfg['testbenches']:
-                log_path = TARGET_DIR / module_name / f"{tb}_log.txt"
+                log_path = TARGET_DIR / target_subdir_for_module(module_name) / f"{tb}_log.txt"
                 ok = run_simulation(module_name, tb, log_file=str(log_path))
                 all_success = all_success and ok
         print(f"\n{'='*60}")
-        print(f"Logs saved under target/<module>/<testbench>_log.txt")
+        print("Logs saved under target/<module_dir>/<testbench>_log.txt (Input_Buffer -> input_buffer/)")
         print(f"{'='*60}")
+        clean_sim_artifacts(verbose=False)
         return 0 if all_success else 1
     
     elif args.command == 'clean':
@@ -465,6 +538,7 @@ def main():
                 success &= clean_work()
             if args.target:
                 success &= clean_target(args.module if args.module else None)
+        clean_sim_artifacts(verbose=False)
         return 0 if success else 1
     
     elif args.command == 'list':
@@ -473,6 +547,7 @@ def main():
     
     elif args.command == 'report':
         success = generate_report(args.module, normalize_testbench_name(args.testbench))
+        clean_sim_artifacts(verbose=False)
         return 0 if success else 1
     
     return 0

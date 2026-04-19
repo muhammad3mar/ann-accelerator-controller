@@ -12,8 +12,8 @@ import parallel_interface_pkg::*;
 module ann_controller #(
     parameter int ADDR_WIDTH   = controller_pkg::DEFAULT_ADDR_WIDTH,
     parameter int WEIGHT_WIDTH = controller_pkg::DEFAULT_WEIGHT_WIDTH,
-    parameter bit USE_WEIGHT_PULSE_LUT = 1'b0,
-    parameter string WEIGHT_PULSE_LUT_FILE = "target/Controller/weight_pulse_lut.mem"
+    parameter bit USE_WEIGHT_PULSE_LUT = 1'b1,
+    parameter string WEIGHT_PULSE_LUT_FILE = "target/Controller/programming_inputs/weight_pulse_lut.mem"
 ) (
     //======================================================================
     // Global
@@ -112,6 +112,10 @@ module ann_controller #(
 
     // Optional: flag to strengthen program when read > expected
     logic        program_stronger;
+
+    // Host CMD_ERASE from S_IDLE: after erase sub-FSM, return to idle (no PROG/VERIFY).
+    // Verify-failure path clears this when entering S_ERASE from S_VERIFY.
+    logic        erase_from_host;
 
     //--------------------------------------------------------------------------
     // Direct Address and Data from Parallel Interface (for new commands)
@@ -233,12 +237,14 @@ module ann_controller #(
     //--------------------------------------------------------------------------
     // Drive pulses based on current mode: bit i = 1 when mode[i]==1 and in active state
     // HIZ(000): all 0 | READ(001): pulse[0] | PROG(010): pulse[1] | ERASE(011): pulse[0,1] | INF(100): pulse[2]
+    // PROG/ERASE stress only in timed substates (PROG_WRITE / ERASE_PULSE). ENABLE/DISABLE stay 000 so
+    // ann_core_word + pulse mode do not apply extra electrical stress outside PULSE_TOTAL_* / LUT.
     `comb(
         pulses = 3'b000;
-        if (state == S_PROGRAM && (prog_state == PROG_ENABLE || prog_state == PROG_WRITE)) begin
-            pulses = 3'b010;  // PROG mode
-        end else if (state == S_ERASE && (erase_state == ERASE_ENABLE || erase_state == ERASE_PULSE || erase_state == ERASE_DISABLE)) begin
-            pulses = 3'b011;  // ERASE mode
+        if (state == S_PROGRAM && prog_state == PROG_WRITE) begin
+            pulses = 3'b010;  // PROG mode (active pulse window only)
+        end else if (state == S_ERASE && erase_state == ERASE_PULSE) begin
+            pulses = 3'b011;  // ERASE mode (active pulse window only)
         end else if (state == S_READ) begin
             pulses = 3'b001;  // READ mode
         end else if (state == S_VERIFY && (verify_state == VERIFY_READ || verify_state == VERIFY_WAIT)) begin
@@ -306,9 +312,18 @@ module ann_controller #(
             weight_prog_done   <= 1'b0;
             matrix_rows        <= DEFAULT_MATRIX_ROWS;  // Default: 10 rows
             matrix_cols        <= DEFAULT_MATRIX_COLS;  // Default: 64 columns
+            erase_from_host    <= 1'b0;
         end else begin
             state <= next_state;
             prog_state <= next_prog_state;
+
+            // Host-initiated erase vs verify-driven erase
+            if (state == S_VERIFY && next_state == S_ERASE)
+                erase_from_host <= 1'b0;
+            else if (state == S_IDLE && valid && cmd == CMD_ERASE)
+                erase_from_host <= 1'b1;
+            else if (state == S_ERASE && next_state == S_IDLE)
+                erase_from_host <= 1'b0;
             
             // Capture address and data from parallel interface when valid command arrives
             if (valid && state == S_IDLE) begin
@@ -683,8 +698,12 @@ module ann_controller #(
                     end
                     
                     ERASE_COMPLETE: begin
-                        // Check retry count and decide next action
-                        if (retry_cnt < 3) begin
+                        // Host CMD_ERASE: finish after erase; verify-failure path reprograms
+                        if (erase_from_host) begin
+                            next_state = S_IDLE;
+                            next_prog_state = PROG_HIZ;
+                            erase_next = ERASE_HIZ;
+                        end else if (retry_cnt < 3) begin
                             // Retry: go back to PROGRAM (with adaptive voltage if program_stronger set)
                             next_state = S_PROGRAM;
                             next_prog_state = PROG_HIZ;
@@ -727,7 +746,9 @@ module ann_controller #(
                 busy            = 1'b1;
                 
                 // Write pixel data to input buffer
-                buf_reg_add     = buf_write_addr;
+                // Use current counters directly so each valid beat maps 1:1 to target address.
+                // (Using registered buf_write_addr introduces a one-cycle lag and can overwrite.)
+                buf_reg_add     = (row_count * 8) + data_count;
                 buf_reg_ctrl    = CTRL_DATA_LOAD;
                 buf_read_write  = 1'b1;              // Write to buffer
                 

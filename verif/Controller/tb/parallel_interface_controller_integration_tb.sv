@@ -109,8 +109,75 @@ module parallel_interface_controller_integration_tb;
         return pack_ann_core_word(d, blk, sb, rw, cl);
     endfunction
 
+    function automatic string cmd_name(input logic [2:0] c);
+        case (c)
+            CMD_READ:  return "CMD_READ";
+            CMD_PROG:  return "CMD_PROG";
+            CMD_ERASE: return "CMD_ERASE";
+            CMD_INF:   return "CMD_INF";
+            CMD_HIZ:   return "CMD_HIZ";
+            default:   return "CMD_???";
+        endcase
+    endfunction
+
+    function automatic string pulse_name(input logic [2:0] p);
+        case (p)
+            PULSE_MODE_HIZ:   return "HIZ";
+            PULSE_MODE_READ:  return "READ";
+            PULSE_MODE_PROG:  return "PROG";
+            PULSE_MODE_ERASE: return "ERASE";
+            PULSE_MODE_INF:   return "INF";
+            default:          return "???";
+        endcase
+    endfunction
+
     int fd;
     int pass_c, fail_c;
+
+    // Hierarchical peek at buffer RAM for post-transaction snapshot (simulation only).
+    task automatic dump_buffer_snapshot(input string ctx);
+        int rr;
+        $fdisplay(fd, "  // input_buffer after %s — buffer_reg[0:63], 8x8 row-major (hex):", ctx);
+        for (rr = 0; rr < 8; rr++) begin
+            $fdisplay(fd,
+                "  //   row%0d  %02h %02h %02h %02h %02h %02h %02h %02h",
+                rr,
+                u_input_buffer.buffer_reg[rr * 8 + 0],
+                u_input_buffer.buffer_reg[rr * 8 + 1],
+                u_input_buffer.buffer_reg[rr * 8 + 2],
+                u_input_buffer.buffer_reg[rr * 8 + 3],
+                u_input_buffer.buffer_reg[rr * 8 + 4],
+                u_input_buffer.buffer_reg[rr * 8 + 5],
+                u_input_buffer.buffer_reg[rr * 8 + 6],
+                u_input_buffer.buffer_reg[rr * 8 + 7]);
+        end
+    endtask
+
+    task automatic log_host_and_pi(
+        input logic [31:0] host_pkt,
+        input logic [2:0]  host_c,
+        input logic [15:0] par_a
+    );
+        logic [15:0] pi_addr;
+        logic        pi_valid;
+        pi_valid = (host_c != CMD_HIZ);
+        pi_addr  = extract_address(host_pkt);
+        $fdisplay(fd, "  // Host packet: host_cmd=%s (%b)", cmd_name(host_c), host_c);
+        $fdisplay(fd, "  //   host_data:");
+        $fdisplay(fd, "  //     %08b-%04b-%04b-%08b-%08b",
+            host_pkt[31:24], host_pkt[23:20], host_pkt[19:16], host_pkt[15:8], host_pkt[7:0]);
+        $fdisplay(fd, "  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]");
+        $fdisplay(fd, "  //   host_data (hex): 0x%08h", host_pkt);
+        $fdisplay(fd, "  // PI -> controller:");
+        $fdisplay(fd, "  //   valid=%b  data(bin)=%08b  cmd=%s (%b)",
+            pi_valid, host_pkt[31:24], cmd_name(host_c), host_c);
+        $fdisplay(fd, "  //   address[15:0]:");
+        $fdisplay(fd, "  //     %06b-%02b-%02b-%03b-%03b",
+            pi_addr[15:10], pi_addr[9:8], pi_addr[7:6], pi_addr[5:3], pi_addr[2:0]);
+        $fdisplay(fd, "  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]");
+        $fdisplay(fd, "  //   address (hex): 0x%04h  |  parallel_addr idx: blk=%0d sub_blk=%0d col=%0d row=%0d",
+            pi_addr, par_a[9:8], par_a[7:6], par_a[5:3], par_a[2:0]);
+    endtask
 
     task automatic wait_until_idle(int maxcyc);
         int n;
@@ -132,18 +199,26 @@ module parallel_interface_controller_integration_tb;
         input logic [2:0] exp_pulse,
         input string ctx
     );
-        logic [31:0] exp, saw_word;
+        logic [31:0] exp, saw_word, host_pkt;
         logic [2:0]  saw_pulse;
         int to;
+        int busy_cycles;
         bit pulse_ok, word_ok;
+        host_pkt = build_host_ann_word(d, a);
         exp = exp_word(a, d);
         wait_until_idle(500_000);
         repeat(8) @(posedge clk);
         host_data = 0;
         host_cmd  = CMD_HIZ;
         @(posedge clk);
-        host_data = build_host_ann_word(d, a);
+        $fdisplay(fd, "");
+        $fdisplay(fd, "//==============================================================================");
+        $fdisplay(fd, "// %s", ctx);
+        $fdisplay(fd, "//==============================================================================");
+        host_data = host_pkt;
         host_cmd  = c;
+        log_host_and_pi(host_pkt, c, a);
+        $fdisplay(fd, "  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).");
         @(posedge clk);
         host_data = '0;
         host_cmd  = CMD_HIZ;
@@ -154,7 +229,9 @@ module parallel_interface_controller_integration_tb;
         pulse_ok = 0;
         word_ok = 0;
         to = 0;
+        busy_cycles = 0;
         while (busy) begin
+            busy_cycles++;
             if (pulses === exp_pulse)
                 pulse_ok = 1;
             if (pulses !== 3'b000)
@@ -168,17 +245,24 @@ module parallel_interface_controller_integration_tb;
             if (to > 500_000)
                 break;
         end
+        $fdisplay(fd, "  // DUT: controller busy for %0d posedge cycles (then idle)", busy_cycles);
+        $fdisplay(fd, "  //   pulses: expected %s (%b)  |  last non-zero saw %s (%b)  pulse_ok=%0b",
+            pulse_name(exp_pulse), exp_pulse, pulse_name(saw_pulse), saw_pulse, pulse_ok);
+        $fdisplay(fd, "  //   ann_core_word: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b",
+            exp, saw_word, word_ok);
+        dump_buffer_snapshot(ctx);
+        $fdisplay(fd, "  // Return to idle: busy=%0b", busy);
         if (!pulse_ok || !word_ok) begin
             fail_c++;
-            $fdisplay(fd, "FAIL %s pulse_ok=%0b word_ok=%0b saw_pulse=%b saw_word=%h exp_word=%h",
+            $fdisplay(fd, "FAIL %s  pulse_ok=%0b word_ok=%0b  saw_pulse=%b saw_word=0x%h  exp_word=0x%h",
                       ctx, pulse_ok, word_ok, saw_pulse, saw_word, exp);
         end else begin
             pass_c++;
-            $fdisplay(fd, "PASS %s pulses=%b word=%h", ctx, saw_pulse, saw_word);
+            $fdisplay(fd, "PASS %s", ctx);
         end
         if (busy) begin
             fail_c++;
-            $fdisplay(fd, "FAIL %s: busy stuck", ctx);
+            $fdisplay(fd, "FAIL %s: busy stuck high after case", ctx);
         end
         host_data = '0;
         host_cmd  = CMD_HIZ;
@@ -192,23 +276,32 @@ module parallel_interface_controller_integration_tb;
         input logic [7:0] d,
         input string ctx
     );
-        logic [31:0] exp, saw_word;
+        logic [31:0] exp, saw_word, host_pkt;
         logic [2:0]  saw_pulse;
         int to;
+        int busy_cycles;
         bit pulse_ok, word_ok;
+        host_pkt = build_host_ann_word(d, a);
         exp = exp_word(a, d);
         wait_until_idle(500_000);
         repeat(8) @(posedge clk);
         host_data = '0;
         host_cmd  = CMD_HIZ;
         @(posedge clk);
-        host_data = build_host_ann_word(d, a);
+        $fdisplay(fd, "");
+        $fdisplay(fd, "//==============================================================================");
+        $fdisplay(fd, "// %s  (INF: 9 clk host_cmd=CMD_INF, same host_data each cycle)", ctx);
+        $fdisplay(fd, "//==============================================================================");
+        host_data = host_pkt;
         host_cmd  = CMD_INF;
+        log_host_and_pi(host_pkt, CMD_INF, a);
+        $fdisplay(fd, "  // INF: buffer loads 8 pixels (CTRL_DATA_LOAD), then COMPUTE issues INF pulses.");
         saw_word = '0;
         saw_pulse = '0;
         pulse_ok = 0;
         word_ok = 0;
         to = 0;
+        busy_cycles = 0;
         fork
             begin : drive_inf_row
                 repeat(9) @(posedge clk);
@@ -219,6 +312,7 @@ module parallel_interface_controller_integration_tb;
             begin : mon_inf_row
                 wait (busy);
                 while (busy) begin
+                    busy_cycles++;
                     if (pulses === PULSE_MODE_INF)
                         pulse_ok = 1;
                     if (pulses !== 3'b000)
@@ -234,18 +328,24 @@ module parallel_interface_controller_integration_tb;
                 end
             end
         join
-        // COLLECT phase matches exp word; COMPUTE sets INF pulses — different cycles.
+        $fdisplay(fd, "  // DUT: controller busy for %0d posedge cycles (INF COLLECT + COMPUTE + ...)", busy_cycles);
+        $fdisplay(fd, "  //   pulses: expected %s (%b)  |  last non-zero saw %s (%b)  pulse_ok=%0b",
+            pulse_name(PULSE_MODE_INF), PULSE_MODE_INF, pulse_name(saw_pulse), saw_pulse, pulse_ok);
+        $fdisplay(fd, "  //   ann_core_word: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b  (INF may toggle word during COLLECT vs COMPUTE)",
+            exp, saw_word, word_ok);
+        dump_buffer_snapshot(ctx);
+        $fdisplay(fd, "  // Return to idle: busy=%0b", busy);
         if (!pulse_ok || !word_ok) begin
             fail_c++;
-            $fdisplay(fd, "FAIL %s saw_inf_pulse=%0b saw_match_word=%0b saw_pulse=%b saw_word=%h exp_word=%h",
+            $fdisplay(fd, "FAIL %s  saw_inf_pulse=%0b saw_match_word=%0b saw_pulse=%b saw_word=0x%h exp_word=0x%h",
                       ctx, pulse_ok, word_ok, saw_pulse, saw_word, exp);
         end else begin
             pass_c++;
-            $fdisplay(fd, "PASS %s pulses=%b word=%h", ctx, saw_pulse, saw_word);
+            $fdisplay(fd, "PASS %s", ctx);
         end
         if (busy) begin
             fail_c++;
-            $fdisplay(fd, "FAIL %s: busy stuck", ctx);
+            $fdisplay(fd, "FAIL %s: busy stuck high after case", ctx);
         end
         host_data = '0;
         host_cmd  = CMD_HIZ;
@@ -256,7 +356,10 @@ module parallel_interface_controller_integration_tb;
         fail_c = 0;
         fd = $fopen(LOG_FILE, "w");
         if (!fd) begin $error("Cannot open log"); $finish; end
-        $fdisplay(fd, "// PI + controller + input_buffer integration");
+        $fdisplay(fd, "// PI + controller + input_buffer integration (verbose report)");
+        $fdisplay(fd, "//");
+        $fdisplay(fd, "// Per case: host 32b + host_cmd | PI->controller (valid,data,address,cmd) |");
+        $fdisplay(fd, "//   busy cycle count | pulses + ann_core_word (exp vs saw) | input_buffer 8x8 dump | idle.");
         $fdisplay(fd, "");
         wait(rst_n);
         repeat(6) @(posedge clk);

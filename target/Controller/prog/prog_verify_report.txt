@@ -1,0 +1,1628 @@
+//------------------------------------------------------------------------------
+// Controller Program-Verify Cycle Verification Report (PROG pulse length from weight_pulse_lut.mem)
+//------------------------------------------------------------------------------
+// Flow: PROG -> VERIFY -> (OK: next | FAIL: ERASE -> PROG retry)
+// Weights from: target/Controller/programming_inputs/weight_matrix.txt
+//------------------------------------------------------------------------------
+
+[66000] Phase: PROG  ann_core_word=0x02110101  programmed_weight=2
+[106000] Phase: VERIFY  ann_core_word=0x02110101  expected_weight=2  read_weight=2
+[154000] Phase: PROG  ann_core_word=0x02110201  programmed_weight=2
+[190000] Phase: VERIFY  ann_core_word=0x02110201  expected_weight=2  read_weight=2
+[238000] Phase: PROG  ann_core_word=0x05110401  programmed_weight=5
+[278000] Phase: VERIFY  ann_core_word=0x05110401  expected_weight=5  read_weight=5
+[326000] Phase: PROG  ann_core_word=0x0a110801  programmed_weight=10
+[390000] Phase: VERIFY  ann_core_word=0x0a110801  expected_weight=10  read_weight=10
+[438000] Phase: PROG  ann_core_word=0x0c111001  programmed_weight=12
+[478000] Phase: VERIFY  ann_core_word=0x0c111001  expected_weight=12  read_weight=12
+[526000] Phase: PROG  ann_core_word=0x0a112001  programmed_weight=10
+[590000] Phase: VERIFY  ann_core_word=0x0a112001  expected_weight=10  read_weight=9
+//------------------------------------------------------------------------------
+// re-PROG sequence START [606000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[606000] Phase: REPROG  ann_core_word=0x0a112001  programmed_weight=10
+[634000] Phase: VERIFY  ann_core_word=0x0a112001  expected_weight=10  read_weight=10
+//------------------------------------------------------------------------------
+// re-PROG sequence END [642000]  (DUT idle)
+//------------------------------------------------------------------------------
+[682000] Phase: PROG  ann_core_word=0x05114001  programmed_weight=5
+[722000] Phase: VERIFY  ann_core_word=0x05114001  expected_weight=5  read_weight=5
+[770000] Phase: PROG  ann_core_word=0x02118001  programmed_weight=2
+[806000] Phase: VERIFY  ann_core_word=0x02118001  expected_weight=2  read_weight=2
+[854000] Phase: PROG  ann_core_word=0x02120101  programmed_weight=2
+[890000] Phase: VERIFY  ann_core_word=0x02120101  expected_weight=2  read_weight=2
+[938000] Phase: PROG  ann_core_word=0x02120201  programmed_weight=2
+[974000] Phase: VERIFY  ann_core_word=0x02120201  expected_weight=2  read_weight=2
+[1022000] Phase: PROG  ann_core_word=0x05120401  programmed_weight=5
+[1062000] Phase: VERIFY  ann_core_word=0x05120401  expected_weight=5  read_weight=6
+//------------------------------------------------------------------------------
+// ERASE sequence START [1082000]
+//------------------------------------------------------------------------------
+[1082000] Phase: ERASE  ann_core_word=0x05120401  programmed_weight=5
+//------------------------------------------------------------------------------
+// ERASE sequence END   [1090000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [1110000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[1110000] Phase: REPROG  ann_core_word=0x05120401  programmed_weight=5
+[1150000] Phase: VERIFY  ann_core_word=0x05120401  expected_weight=5  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence END [1158000]  (DUT idle)
+//------------------------------------------------------------------------------
+[1198000] Phase: PROG  ann_core_word=0x0a120801  programmed_weight=10
+[1262000] Phase: VERIFY  ann_core_word=0x0a120801  expected_weight=10  read_weight=10
+[1310000] Phase: PROG  ann_core_word=0x0c121001  programmed_weight=12
+[1350000] Phase: VERIFY  ann_core_word=0x0c121001  expected_weight=12  read_weight=12
+[1398000] Phase: PROG  ann_core_word=0x0a122001  programmed_weight=10
+[1462000] Phase: VERIFY  ann_core_word=0x0a122001  expected_weight=10  read_weight=10
+[1510000] Phase: PROG  ann_core_word=0x05124001  programmed_weight=5
+[1550000] Phase: VERIFY  ann_core_word=0x05124001  expected_weight=5  read_weight=5
+[1598000] Phase: PROG  ann_core_word=0x02128001  programmed_weight=2
+[1634000] Phase: VERIFY  ann_core_word=0x02128001  expected_weight=2  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence START [1650000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[1650000] Phase: REPROG  ann_core_word=0x02128001  programmed_weight=2
+[1678000] Phase: VERIFY  ann_core_word=0x02128001  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [1686000]  (DUT idle)
+//------------------------------------------------------------------------------
+[1726000] Phase: PROG  ann_core_word=0x02210101  programmed_weight=2
+[1762000] Phase: VERIFY  ann_core_word=0x02210101  expected_weight=2  read_weight=2
+[1810000] Phase: PROG  ann_core_word=0x02210201  programmed_weight=2
+[1846000] Phase: VERIFY  ann_core_word=0x02210201  expected_weight=2  read_weight=2
+[1894000] Phase: PROG  ann_core_word=0x05210401  programmed_weight=5
+[1934000] Phase: VERIFY  ann_core_word=0x05210401  expected_weight=5  read_weight=5
+[1982000] Phase: PROG  ann_core_word=0x0a210801  programmed_weight=10
+[2046000] Phase: VERIFY  ann_core_word=0x0a210801  expected_weight=10  read_weight=10
+[2094000] Phase: PROG  ann_core_word=0x0c211001  programmed_weight=12
+[2134000] Phase: VERIFY  ann_core_word=0x0c211001  expected_weight=12  read_weight=12
+[2182000] Phase: PROG  ann_core_word=0x0a212001  programmed_weight=10
+[2246000] Phase: VERIFY  ann_core_word=0x0a212001  expected_weight=10  read_weight=10
+[2294000] Phase: PROG  ann_core_word=0x05214001  programmed_weight=5
+[2334000] Phase: VERIFY  ann_core_word=0x05214001  expected_weight=5  read_weight=5
+[2382000] Phase: PROG  ann_core_word=0x02218001  programmed_weight=2
+[2418000] Phase: VERIFY  ann_core_word=0x02218001  expected_weight=2  read_weight=2
+[2466000] Phase: PROG  ann_core_word=0x02220101  programmed_weight=2
+[2502000] Phase: VERIFY  ann_core_word=0x02220101  expected_weight=2  read_weight=2
+[2550000] Phase: PROG  ann_core_word=0x02220201  programmed_weight=2
+[2586000] Phase: VERIFY  ann_core_word=0x02220201  expected_weight=2  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence START [2602000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[2602000] Phase: REPROG  ann_core_word=0x02220201  programmed_weight=2
+[2630000] Phase: VERIFY  ann_core_word=0x02220201  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [2638000]  (DUT idle)
+//------------------------------------------------------------------------------
+[2678000] Phase: PROG  ann_core_word=0x05220401  programmed_weight=5
+[2718000] Phase: VERIFY  ann_core_word=0x05220401  expected_weight=5  read_weight=5
+[2766000] Phase: PROG  ann_core_word=0x0a220801  programmed_weight=10
+[2830000] Phase: VERIFY  ann_core_word=0x0a220801  expected_weight=10  read_weight=10
+[2878000] Phase: PROG  ann_core_word=0x0c221001  programmed_weight=12
+[2918000] Phase: VERIFY  ann_core_word=0x0c221001  expected_weight=12  read_weight=12
+[2966000] Phase: PROG  ann_core_word=0x0a222001  programmed_weight=10
+[3030000] Phase: VERIFY  ann_core_word=0x0a222001  expected_weight=10  read_weight=10
+[3078000] Phase: PROG  ann_core_word=0x05224001  programmed_weight=5
+[3118000] Phase: VERIFY  ann_core_word=0x05224001  expected_weight=5  read_weight=6
+//------------------------------------------------------------------------------
+// ERASE sequence START [3134000]
+//------------------------------------------------------------------------------
+[3134000] Phase: ERASE  ann_core_word=0x05224001  programmed_weight=5
+//------------------------------------------------------------------------------
+// ERASE sequence END   [3142000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [3162000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[3162000] Phase: REPROG  ann_core_word=0x05224001  programmed_weight=5
+[3202000] Phase: VERIFY  ann_core_word=0x05224001  expected_weight=5  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence END [3210000]  (DUT idle)
+//------------------------------------------------------------------------------
+[3250000] Phase: PROG  ann_core_word=0x02228001  programmed_weight=2
+[3286000] Phase: VERIFY  ann_core_word=0x02228001  expected_weight=2  read_weight=2
+[3334000] Phase: PROG  ann_core_word=0x02410101  programmed_weight=2
+[3370000] Phase: VERIFY  ann_core_word=0x02410101  expected_weight=2  read_weight=2
+[3418000] Phase: PROG  ann_core_word=0x02410201  programmed_weight=2
+[3454000] Phase: VERIFY  ann_core_word=0x02410201  expected_weight=2  read_weight=2
+[3502000] Phase: PROG  ann_core_word=0x05410401  programmed_weight=5
+[3542000] Phase: VERIFY  ann_core_word=0x05410401  expected_weight=5  read_weight=5
+[3590000] Phase: PROG  ann_core_word=0x0a410801  programmed_weight=10
+[3654000] Phase: VERIFY  ann_core_word=0x0a410801  expected_weight=10  read_weight=10
+[3702000] Phase: PROG  ann_core_word=0x0c411001  programmed_weight=12
+[3742000] Phase: VERIFY  ann_core_word=0x0c411001  expected_weight=12  read_weight=12
+[3790000] Phase: PROG  ann_core_word=0x0a412001  programmed_weight=10
+[3854000] Phase: VERIFY  ann_core_word=0x0a412001  expected_weight=10  read_weight=10
+[3902000] Phase: PROG  ann_core_word=0x05414001  programmed_weight=5
+[3942000] Phase: VERIFY  ann_core_word=0x05414001  expected_weight=5  read_weight=5
+[3990000] Phase: PROG  ann_core_word=0x02418001  programmed_weight=2
+[4026000] Phase: VERIFY  ann_core_word=0x02418001  expected_weight=2  read_weight=2
+[4074000] Phase: PROG  ann_core_word=0x02420101  programmed_weight=2
+[4110000] Phase: VERIFY  ann_core_word=0x02420101  expected_weight=2  read_weight=2
+[4158000] Phase: PROG  ann_core_word=0x02420201  programmed_weight=2
+[4194000] Phase: VERIFY  ann_core_word=0x02420201  expected_weight=2  read_weight=2
+[4242000] Phase: PROG  ann_core_word=0x05420401  programmed_weight=5
+[4282000] Phase: VERIFY  ann_core_word=0x05420401  expected_weight=5  read_weight=5
+[4330000] Phase: PROG  ann_core_word=0x0a420801  programmed_weight=10
+[4394000] Phase: VERIFY  ann_core_word=0x0a420801  expected_weight=10  read_weight=10
+[4442000] Phase: PROG  ann_core_word=0x0c421001  programmed_weight=12
+[4482000] Phase: VERIFY  ann_core_word=0x0c421001  expected_weight=12  read_weight=12
+[4530000] Phase: PROG  ann_core_word=0x0a422001  programmed_weight=10
+[4594000] Phase: VERIFY  ann_core_word=0x0a422001  expected_weight=10  read_weight=10
+[4642000] Phase: PROG  ann_core_word=0x05424001  programmed_weight=5
+[4682000] Phase: VERIFY  ann_core_word=0x05424001  expected_weight=5  read_weight=5
+[4730000] Phase: PROG  ann_core_word=0x02428001  programmed_weight=2
+[4766000] Phase: VERIFY  ann_core_word=0x02428001  expected_weight=2  read_weight=2
+[4814000] Phase: PROG  ann_core_word=0x02810101  programmed_weight=2
+[4850000] Phase: VERIFY  ann_core_word=0x02810101  expected_weight=2  read_weight=2
+[4898000] Phase: PROG  ann_core_word=0x02810201  programmed_weight=2
+[4934000] Phase: VERIFY  ann_core_word=0x02810201  expected_weight=2  read_weight=2
+[4982000] Phase: PROG  ann_core_word=0x05810401  programmed_weight=5
+[5022000] Phase: VERIFY  ann_core_word=0x05810401  expected_weight=5  read_weight=4
+//------------------------------------------------------------------------------
+// re-PROG sequence START [5038000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[5038000] Phase: REPROG  ann_core_word=0x05810401  programmed_weight=5
+[5066000] Phase: VERIFY  ann_core_word=0x05810401  expected_weight=5  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence END [5074000]  (DUT idle)
+//------------------------------------------------------------------------------
+[5114000] Phase: PROG  ann_core_word=0x0a810801  programmed_weight=10
+[5178000] Phase: VERIFY  ann_core_word=0x0a810801  expected_weight=10  read_weight=10
+[5226000] Phase: PROG  ann_core_word=0x0c811001  programmed_weight=12
+[5266000] Phase: VERIFY  ann_core_word=0x0c811001  expected_weight=12  read_weight=12
+[5314000] Phase: PROG  ann_core_word=0x0a812001  programmed_weight=10
+[5378000] Phase: VERIFY  ann_core_word=0x0a812001  expected_weight=10  read_weight=10
+[5426000] Phase: PROG  ann_core_word=0x05814001  programmed_weight=5
+[5466000] Phase: VERIFY  ann_core_word=0x05814001  expected_weight=5  read_weight=5
+[5514000] Phase: PROG  ann_core_word=0x02818001  programmed_weight=2
+[5550000] Phase: VERIFY  ann_core_word=0x02818001  expected_weight=2  read_weight=2
+[5598000] Phase: PROG  ann_core_word=0x02820101  programmed_weight=2
+[5634000] Phase: VERIFY  ann_core_word=0x02820101  expected_weight=2  read_weight=2
+[5682000] Phase: PROG  ann_core_word=0x02820201  programmed_weight=2
+[5718000] Phase: VERIFY  ann_core_word=0x02820201  expected_weight=2  read_weight=2
+[5766000] Phase: PROG  ann_core_word=0x05820401  programmed_weight=5
+[5806000] Phase: VERIFY  ann_core_word=0x05820401  expected_weight=5  read_weight=5
+[5854000] Phase: PROG  ann_core_word=0x0a820801  programmed_weight=10
+[5918000] Phase: VERIFY  ann_core_word=0x0a820801  expected_weight=10  read_weight=10
+[5966000] Phase: PROG  ann_core_word=0x0c821001  programmed_weight=12
+[6006000] Phase: VERIFY  ann_core_word=0x0c821001  expected_weight=12  read_weight=12
+[6054000] Phase: PROG  ann_core_word=0x0a822001  programmed_weight=10
+[6118000] Phase: VERIFY  ann_core_word=0x0a822001  expected_weight=10  read_weight=10
+[6166000] Phase: PROG  ann_core_word=0x05824001  programmed_weight=5
+[6206000] Phase: VERIFY  ann_core_word=0x05824001  expected_weight=5  read_weight=5
+[6254000] Phase: PROG  ann_core_word=0x02828001  programmed_weight=2
+[6290000] Phase: VERIFY  ann_core_word=0x02828001  expected_weight=2  read_weight=2
+[6338000] Phase: PROG  ann_core_word=0x02110102  programmed_weight=2
+[6374000] Phase: VERIFY  ann_core_word=0x02110102  expected_weight=2  read_weight=2
+[6422000] Phase: PROG  ann_core_word=0x03110202  programmed_weight=3
+[6470000] Phase: VERIFY  ann_core_word=0x03110202  expected_weight=3  read_weight=3
+[6518000] Phase: PROG  ann_core_word=0x0c110402  programmed_weight=12
+[6558000] Phase: VERIFY  ann_core_word=0x0c110402  expected_weight=12  read_weight=12
+[6606000] Phase: PROG  ann_core_word=0x08110802  programmed_weight=8
+[6666000] Phase: VERIFY  ann_core_word=0x08110802  expected_weight=8  read_weight=8
+[6714000] Phase: PROG  ann_core_word=0x04111002  programmed_weight=4
+[6766000] Phase: VERIFY  ann_core_word=0x04111002  expected_weight=4  read_weight=4
+[6814000] Phase: PROG  ann_core_word=0x09112002  programmed_weight=9
+[6862000] Phase: VERIFY  ann_core_word=0x09112002  expected_weight=9  read_weight=9
+[6910000] Phase: PROG  ann_core_word=0x06114002  programmed_weight=6
+[6966000] Phase: VERIFY  ann_core_word=0x06114002  expected_weight=6  read_weight=7
+//------------------------------------------------------------------------------
+// ERASE sequence START [6982000]
+//------------------------------------------------------------------------------
+[6982000] Phase: ERASE  ann_core_word=0x06114002  programmed_weight=6
+//------------------------------------------------------------------------------
+// ERASE sequence END   [6990000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [7010000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[7010000] Phase: REPROG  ann_core_word=0x06114002  programmed_weight=6
+[7066000] Phase: VERIFY  ann_core_word=0x06114002  expected_weight=6  read_weight=6
+//------------------------------------------------------------------------------
+// re-PROG sequence END [7074000]  (DUT idle)
+//------------------------------------------------------------------------------
+[7114000] Phase: PROG  ann_core_word=0x02118002  programmed_weight=2
+[7150000] Phase: VERIFY  ann_core_word=0x02118002  expected_weight=2  read_weight=2
+[7198000] Phase: PROG  ann_core_word=0x02120102  programmed_weight=2
+[7234000] Phase: VERIFY  ann_core_word=0x02120102  expected_weight=2  read_weight=2
+[7282000] Phase: PROG  ann_core_word=0x03120202  programmed_weight=3
+[7330000] Phase: VERIFY  ann_core_word=0x03120202  expected_weight=3  read_weight=3
+[7378000] Phase: PROG  ann_core_word=0x0c120402  programmed_weight=12
+[7418000] Phase: VERIFY  ann_core_word=0x0c120402  expected_weight=12  read_weight=12
+[7466000] Phase: PROG  ann_core_word=0x08120802  programmed_weight=8
+[7526000] Phase: VERIFY  ann_core_word=0x08120802  expected_weight=8  read_weight=8
+[7574000] Phase: PROG  ann_core_word=0x04121002  programmed_weight=4
+[7626000] Phase: VERIFY  ann_core_word=0x04121002  expected_weight=4  read_weight=4
+[7674000] Phase: PROG  ann_core_word=0x09122002  programmed_weight=9
+[7722000] Phase: VERIFY  ann_core_word=0x09122002  expected_weight=9  read_weight=9
+[7770000] Phase: PROG  ann_core_word=0x06124002  programmed_weight=6
+[7826000] Phase: VERIFY  ann_core_word=0x06124002  expected_weight=6  read_weight=6
+[7874000] Phase: PROG  ann_core_word=0x02128002  programmed_weight=2
+[7910000] Phase: VERIFY  ann_core_word=0x02128002  expected_weight=2  read_weight=2
+[7958000] Phase: PROG  ann_core_word=0x02210102  programmed_weight=2
+[7994000] Phase: VERIFY  ann_core_word=0x02210102  expected_weight=2  read_weight=2
+[8042000] Phase: PROG  ann_core_word=0x03210202  programmed_weight=3
+[8090000] Phase: VERIFY  ann_core_word=0x03210202  expected_weight=3  read_weight=3
+[8138000] Phase: PROG  ann_core_word=0x0c210402  programmed_weight=12
+[8178000] Phase: VERIFY  ann_core_word=0x0c210402  expected_weight=12  read_weight=12
+[8226000] Phase: PROG  ann_core_word=0x08210802  programmed_weight=8
+[8286000] Phase: VERIFY  ann_core_word=0x08210802  expected_weight=8  read_weight=8
+[8334000] Phase: PROG  ann_core_word=0x04211002  programmed_weight=4
+[8386000] Phase: VERIFY  ann_core_word=0x04211002  expected_weight=4  read_weight=4
+[8434000] Phase: PROG  ann_core_word=0x09212002  programmed_weight=9
+[8482000] Phase: VERIFY  ann_core_word=0x09212002  expected_weight=9  read_weight=9
+[8530000] Phase: PROG  ann_core_word=0x06214002  programmed_weight=6
+[8586000] Phase: VERIFY  ann_core_word=0x06214002  expected_weight=6  read_weight=6
+[8634000] Phase: PROG  ann_core_word=0x02218002  programmed_weight=2
+[8670000] Phase: VERIFY  ann_core_word=0x02218002  expected_weight=2  read_weight=2
+[8718000] Phase: PROG  ann_core_word=0x02220102  programmed_weight=2
+[8754000] Phase: VERIFY  ann_core_word=0x02220102  expected_weight=2  read_weight=2
+[8802000] Phase: PROG  ann_core_word=0x03220202  programmed_weight=3
+[8850000] Phase: VERIFY  ann_core_word=0x03220202  expected_weight=3  read_weight=3
+[8898000] Phase: PROG  ann_core_word=0x0c220402  programmed_weight=12
+[8938000] Phase: VERIFY  ann_core_word=0x0c220402  expected_weight=12  read_weight=12
+[8986000] Phase: PROG  ann_core_word=0x08220802  programmed_weight=8
+[9046000] Phase: VERIFY  ann_core_word=0x08220802  expected_weight=8  read_weight=8
+[9094000] Phase: PROG  ann_core_word=0x04221002  programmed_weight=4
+[9146000] Phase: VERIFY  ann_core_word=0x04221002  expected_weight=4  read_weight=4
+[9194000] Phase: PROG  ann_core_word=0x09222002  programmed_weight=9
+[9242000] Phase: VERIFY  ann_core_word=0x09222002  expected_weight=9  read_weight=9
+[9290000] Phase: PROG  ann_core_word=0x06224002  programmed_weight=6
+[9346000] Phase: VERIFY  ann_core_word=0x06224002  expected_weight=6  read_weight=6
+[9394000] Phase: PROG  ann_core_word=0x02228002  programmed_weight=2
+[9430000] Phase: VERIFY  ann_core_word=0x02228002  expected_weight=2  read_weight=2
+[9478000] Phase: PROG  ann_core_word=0x02410102  programmed_weight=2
+[9514000] Phase: VERIFY  ann_core_word=0x02410102  expected_weight=2  read_weight=2
+[9562000] Phase: PROG  ann_core_word=0x03410202  programmed_weight=3
+[9610000] Phase: VERIFY  ann_core_word=0x03410202  expected_weight=3  read_weight=3
+[9658000] Phase: PROG  ann_core_word=0x0c410402  programmed_weight=12
+[9698000] Phase: VERIFY  ann_core_word=0x0c410402  expected_weight=12  read_weight=12
+[9746000] Phase: PROG  ann_core_word=0x08410802  programmed_weight=8
+[9806000] Phase: VERIFY  ann_core_word=0x08410802  expected_weight=8  read_weight=8
+[9854000] Phase: PROG  ann_core_word=0x04411002  programmed_weight=4
+[9906000] Phase: VERIFY  ann_core_word=0x04411002  expected_weight=4  read_weight=3
+//------------------------------------------------------------------------------
+// re-PROG sequence START [9922000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[9922000] Phase: REPROG  ann_core_word=0x04411002  programmed_weight=4
+[9950000] Phase: VERIFY  ann_core_word=0x04411002  expected_weight=4  read_weight=4
+//------------------------------------------------------------------------------
+// re-PROG sequence END [9958000]  (DUT idle)
+//------------------------------------------------------------------------------
+[9998000] Phase: PROG  ann_core_word=0x09412002  programmed_weight=9
+[10046000] Phase: VERIFY  ann_core_word=0x09412002  expected_weight=9  read_weight=9
+[10094000] Phase: PROG  ann_core_word=0x06414002  programmed_weight=6
+[10150000] Phase: VERIFY  ann_core_word=0x06414002  expected_weight=6  read_weight=6
+[10198000] Phase: PROG  ann_core_word=0x02418002  programmed_weight=2
+[10234000] Phase: VERIFY  ann_core_word=0x02418002  expected_weight=2  read_weight=2
+[10282000] Phase: PROG  ann_core_word=0x02420102  programmed_weight=2
+[10318000] Phase: VERIFY  ann_core_word=0x02420102  expected_weight=2  read_weight=2
+[10366000] Phase: PROG  ann_core_word=0x03420202  programmed_weight=3
+[10414000] Phase: VERIFY  ann_core_word=0x03420202  expected_weight=3  read_weight=3
+[10462000] Phase: PROG  ann_core_word=0x0c420402  programmed_weight=12
+[10502000] Phase: VERIFY  ann_core_word=0x0c420402  expected_weight=12  read_weight=12
+[10550000] Phase: PROG  ann_core_word=0x08420802  programmed_weight=8
+[10610000] Phase: VERIFY  ann_core_word=0x08420802  expected_weight=8  read_weight=8
+[10658000] Phase: PROG  ann_core_word=0x04421002  programmed_weight=4
+[10710000] Phase: VERIFY  ann_core_word=0x04421002  expected_weight=4  read_weight=4
+[10758000] Phase: PROG  ann_core_word=0x09422002  programmed_weight=9
+[10806000] Phase: VERIFY  ann_core_word=0x09422002  expected_weight=9  read_weight=9
+[10854000] Phase: PROG  ann_core_word=0x06424002  programmed_weight=6
+[10910000] Phase: VERIFY  ann_core_word=0x06424002  expected_weight=6  read_weight=6
+[10958000] Phase: PROG  ann_core_word=0x02428002  programmed_weight=2
+[10994000] Phase: VERIFY  ann_core_word=0x02428002  expected_weight=2  read_weight=2
+[11042000] Phase: PROG  ann_core_word=0x02810102  programmed_weight=2
+[11078000] Phase: VERIFY  ann_core_word=0x02810102  expected_weight=2  read_weight=2
+[11126000] Phase: PROG  ann_core_word=0x03810202  programmed_weight=3
+[11174000] Phase: VERIFY  ann_core_word=0x03810202  expected_weight=3  read_weight=3
+[11222000] Phase: PROG  ann_core_word=0x0c810402  programmed_weight=12
+[11262000] Phase: VERIFY  ann_core_word=0x0c810402  expected_weight=12  read_weight=12
+[11310000] Phase: PROG  ann_core_word=0x08810802  programmed_weight=8
+[11370000] Phase: VERIFY  ann_core_word=0x08810802  expected_weight=8  read_weight=8
+[11418000] Phase: PROG  ann_core_word=0x04811002  programmed_weight=4
+[11470000] Phase: VERIFY  ann_core_word=0x04811002  expected_weight=4  read_weight=4
+[11518000] Phase: PROG  ann_core_word=0x09812002  programmed_weight=9
+[11566000] Phase: VERIFY  ann_core_word=0x09812002  expected_weight=9  read_weight=9
+[11614000] Phase: PROG  ann_core_word=0x06814002  programmed_weight=6
+[11670000] Phase: VERIFY  ann_core_word=0x06814002  expected_weight=6  read_weight=6
+[11718000] Phase: PROG  ann_core_word=0x02818002  programmed_weight=2
+[11754000] Phase: VERIFY  ann_core_word=0x02818002  expected_weight=2  read_weight=2
+[11802000] Phase: PROG  ann_core_word=0x02820102  programmed_weight=2
+[11838000] Phase: VERIFY  ann_core_word=0x02820102  expected_weight=2  read_weight=2
+[11886000] Phase: PROG  ann_core_word=0x03820202  programmed_weight=3
+[11934000] Phase: VERIFY  ann_core_word=0x03820202  expected_weight=3  read_weight=3
+[11982000] Phase: PROG  ann_core_word=0x0c820402  programmed_weight=12
+[12022000] Phase: VERIFY  ann_core_word=0x0c820402  expected_weight=12  read_weight=12
+[12070000] Phase: PROG  ann_core_word=0x08820802  programmed_weight=8
+[12130000] Phase: VERIFY  ann_core_word=0x08820802  expected_weight=8  read_weight=8
+[12178000] Phase: PROG  ann_core_word=0x04821002  programmed_weight=4
+[12230000] Phase: VERIFY  ann_core_word=0x04821002  expected_weight=4  read_weight=4
+[12278000] Phase: PROG  ann_core_word=0x09822002  programmed_weight=9
+[12326000] Phase: VERIFY  ann_core_word=0x09822002  expected_weight=9  read_weight=9
+[12374000] Phase: PROG  ann_core_word=0x06824002  programmed_weight=6
+[12430000] Phase: VERIFY  ann_core_word=0x06824002  expected_weight=6  read_weight=6
+[12478000] Phase: PROG  ann_core_word=0x02828002  programmed_weight=2
+[12514000] Phase: VERIFY  ann_core_word=0x02828002  expected_weight=2  read_weight=2
+[12562000] Phase: PROG  ann_core_word=0x02110104  programmed_weight=2
+[12598000] Phase: VERIFY  ann_core_word=0x02110104  expected_weight=2  read_weight=2
+[12646000] Phase: PROG  ann_core_word=0x03110204  programmed_weight=3
+[12694000] Phase: VERIFY  ann_core_word=0x03110204  expected_weight=3  read_weight=3
+[12742000] Phase: PROG  ann_core_word=0x0b110404  programmed_weight=11
+[12798000] Phase: VERIFY  ann_core_word=0x0b110404  expected_weight=11  read_weight=11
+[12846000] Phase: PROG  ann_core_word=0x03110804  programmed_weight=3
+[12894000] Phase: VERIFY  ann_core_word=0x03110804  expected_weight=3  read_weight=3
+[12942000] Phase: PROG  ann_core_word=0x03111004  programmed_weight=3
+[12990000] Phase: VERIFY  ann_core_word=0x03111004  expected_weight=3  read_weight=3
+[13038000] Phase: PROG  ann_core_word=0x0a112004  programmed_weight=10
+[13102000] Phase: VERIFY  ann_core_word=0x0a112004  expected_weight=10  read_weight=10
+[13150000] Phase: PROG  ann_core_word=0x04114004  programmed_weight=4
+[13202000] Phase: VERIFY  ann_core_word=0x04114004  expected_weight=4  read_weight=4
+[13250000] Phase: PROG  ann_core_word=0x02118004  programmed_weight=2
+[13286000] Phase: VERIFY  ann_core_word=0x02118004  expected_weight=2  read_weight=2
+[13334000] Phase: PROG  ann_core_word=0x02120104  programmed_weight=2
+[13370000] Phase: VERIFY  ann_core_word=0x02120104  expected_weight=2  read_weight=2
+[13418000] Phase: PROG  ann_core_word=0x03120204  programmed_weight=3
+[13466000] Phase: VERIFY  ann_core_word=0x03120204  expected_weight=3  read_weight=3
+[13514000] Phase: PROG  ann_core_word=0x0b120404  programmed_weight=11
+[13570000] Phase: VERIFY  ann_core_word=0x0b120404  expected_weight=11  read_weight=11
+[13618000] Phase: PROG  ann_core_word=0x03120804  programmed_weight=3
+[13666000] Phase: VERIFY  ann_core_word=0x03120804  expected_weight=3  read_weight=3
+[13714000] Phase: PROG  ann_core_word=0x03121004  programmed_weight=3
+[13762000] Phase: VERIFY  ann_core_word=0x03121004  expected_weight=3  read_weight=3
+[13810000] Phase: PROG  ann_core_word=0x0a122004  programmed_weight=10
+[13874000] Phase: VERIFY  ann_core_word=0x0a122004  expected_weight=10  read_weight=10
+[13922000] Phase: PROG  ann_core_word=0x04124004  programmed_weight=4
+[13974000] Phase: VERIFY  ann_core_word=0x04124004  expected_weight=4  read_weight=4
+[14022000] Phase: PROG  ann_core_word=0x02128004  programmed_weight=2
+[14058000] Phase: VERIFY  ann_core_word=0x02128004  expected_weight=2  read_weight=2
+[14106000] Phase: PROG  ann_core_word=0x02210104  programmed_weight=2
+[14142000] Phase: VERIFY  ann_core_word=0x02210104  expected_weight=2  read_weight=2
+[14190000] Phase: PROG  ann_core_word=0x03210204  programmed_weight=3
+[14238000] Phase: VERIFY  ann_core_word=0x03210204  expected_weight=3  read_weight=3
+[14286000] Phase: PROG  ann_core_word=0x0b210404  programmed_weight=11
+[14342000] Phase: VERIFY  ann_core_word=0x0b210404  expected_weight=11  read_weight=11
+[14390000] Phase: PROG  ann_core_word=0x03210804  programmed_weight=3
+[14438000] Phase: VERIFY  ann_core_word=0x03210804  expected_weight=3  read_weight=3
+[14486000] Phase: PROG  ann_core_word=0x03211004  programmed_weight=3
+[14534000] Phase: VERIFY  ann_core_word=0x03211004  expected_weight=3  read_weight=3
+[14582000] Phase: PROG  ann_core_word=0x0a212004  programmed_weight=10
+[14646000] Phase: VERIFY  ann_core_word=0x0a212004  expected_weight=10  read_weight=10
+[14694000] Phase: PROG  ann_core_word=0x04214004  programmed_weight=4
+[14746000] Phase: VERIFY  ann_core_word=0x04214004  expected_weight=4  read_weight=5
+//------------------------------------------------------------------------------
+// ERASE sequence START [14762000]
+//------------------------------------------------------------------------------
+[14762000] Phase: ERASE  ann_core_word=0x04214004  programmed_weight=4
+//------------------------------------------------------------------------------
+// ERASE sequence END   [14770000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [14790000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[14790000] Phase: REPROG  ann_core_word=0x04214004  programmed_weight=4
+[14842000] Phase: VERIFY  ann_core_word=0x04214004  expected_weight=4  read_weight=4
+//------------------------------------------------------------------------------
+// re-PROG sequence END [14850000]  (DUT idle)
+//------------------------------------------------------------------------------
+[14890000] Phase: PROG  ann_core_word=0x02218004  programmed_weight=2
+[14926000] Phase: VERIFY  ann_core_word=0x02218004  expected_weight=2  read_weight=2
+[14974000] Phase: PROG  ann_core_word=0x02220104  programmed_weight=2
+[15010000] Phase: VERIFY  ann_core_word=0x02220104  expected_weight=2  read_weight=2
+[15058000] Phase: PROG  ann_core_word=0x03220204  programmed_weight=3
+[15106000] Phase: VERIFY  ann_core_word=0x03220204  expected_weight=3  read_weight=3
+[15154000] Phase: PROG  ann_core_word=0x0b220404  programmed_weight=11
+[15210000] Phase: VERIFY  ann_core_word=0x0b220404  expected_weight=11  read_weight=11
+[15258000] Phase: PROG  ann_core_word=0x03220804  programmed_weight=3
+[15306000] Phase: VERIFY  ann_core_word=0x03220804  expected_weight=3  read_weight=3
+[15354000] Phase: PROG  ann_core_word=0x03221004  programmed_weight=3
+[15402000] Phase: VERIFY  ann_core_word=0x03221004  expected_weight=3  read_weight=3
+[15450000] Phase: PROG  ann_core_word=0x0a222004  programmed_weight=10
+[15514000] Phase: VERIFY  ann_core_word=0x0a222004  expected_weight=10  read_weight=10
+[15562000] Phase: PROG  ann_core_word=0x04224004  programmed_weight=4
+[15614000] Phase: VERIFY  ann_core_word=0x04224004  expected_weight=4  read_weight=4
+[15662000] Phase: PROG  ann_core_word=0x02228004  programmed_weight=2
+[15698000] Phase: VERIFY  ann_core_word=0x02228004  expected_weight=2  read_weight=2
+[15746000] Phase: PROG  ann_core_word=0x02410104  programmed_weight=2
+[15782000] Phase: VERIFY  ann_core_word=0x02410104  expected_weight=2  read_weight=2
+[15830000] Phase: PROG  ann_core_word=0x03410204  programmed_weight=3
+[15878000] Phase: VERIFY  ann_core_word=0x03410204  expected_weight=3  read_weight=3
+[15926000] Phase: PROG  ann_core_word=0x0b410404  programmed_weight=11
+[15982000] Phase: VERIFY  ann_core_word=0x0b410404  expected_weight=11  read_weight=11
+[16030000] Phase: PROG  ann_core_word=0x03410804  programmed_weight=3
+[16078000] Phase: VERIFY  ann_core_word=0x03410804  expected_weight=3  read_weight=3
+[16126000] Phase: PROG  ann_core_word=0x03411004  programmed_weight=3
+[16174000] Phase: VERIFY  ann_core_word=0x03411004  expected_weight=3  read_weight=3
+[16222000] Phase: PROG  ann_core_word=0x0a412004  programmed_weight=10
+[16286000] Phase: VERIFY  ann_core_word=0x0a412004  expected_weight=10  read_weight=10
+[16334000] Phase: PROG  ann_core_word=0x04414004  programmed_weight=4
+[16386000] Phase: VERIFY  ann_core_word=0x04414004  expected_weight=4  read_weight=4
+[16434000] Phase: PROG  ann_core_word=0x02418004  programmed_weight=2
+[16470000] Phase: VERIFY  ann_core_word=0x02418004  expected_weight=2  read_weight=2
+[16518000] Phase: PROG  ann_core_word=0x02420104  programmed_weight=2
+[16554000] Phase: VERIFY  ann_core_word=0x02420104  expected_weight=2  read_weight=2
+[16602000] Phase: PROG  ann_core_word=0x03420204  programmed_weight=3
+[16650000] Phase: VERIFY  ann_core_word=0x03420204  expected_weight=3  read_weight=3
+[16698000] Phase: PROG  ann_core_word=0x0b420404  programmed_weight=11
+[16754000] Phase: VERIFY  ann_core_word=0x0b420404  expected_weight=11  read_weight=11
+[16802000] Phase: PROG  ann_core_word=0x03420804  programmed_weight=3
+[16850000] Phase: VERIFY  ann_core_word=0x03420804  expected_weight=3  read_weight=3
+[16898000] Phase: PROG  ann_core_word=0x03421004  programmed_weight=3
+[16946000] Phase: VERIFY  ann_core_word=0x03421004  expected_weight=3  read_weight=3
+[16994000] Phase: PROG  ann_core_word=0x0a422004  programmed_weight=10
+[17058000] Phase: VERIFY  ann_core_word=0x0a422004  expected_weight=10  read_weight=10
+[17106000] Phase: PROG  ann_core_word=0x04424004  programmed_weight=4
+[17158000] Phase: VERIFY  ann_core_word=0x04424004  expected_weight=4  read_weight=4
+[17206000] Phase: PROG  ann_core_word=0x02428004  programmed_weight=2
+[17242000] Phase: VERIFY  ann_core_word=0x02428004  expected_weight=2  read_weight=2
+[17290000] Phase: PROG  ann_core_word=0x02810104  programmed_weight=2
+[17326000] Phase: VERIFY  ann_core_word=0x02810104  expected_weight=2  read_weight=2
+[17374000] Phase: PROG  ann_core_word=0x03810204  programmed_weight=3
+[17422000] Phase: VERIFY  ann_core_word=0x03810204  expected_weight=3  read_weight=3
+[17470000] Phase: PROG  ann_core_word=0x0b810404  programmed_weight=11
+[17526000] Phase: VERIFY  ann_core_word=0x0b810404  expected_weight=11  read_weight=11
+[17574000] Phase: PROG  ann_core_word=0x03810804  programmed_weight=3
+[17622000] Phase: VERIFY  ann_core_word=0x03810804  expected_weight=3  read_weight=3
+[17670000] Phase: PROG  ann_core_word=0x03811004  programmed_weight=3
+[17718000] Phase: VERIFY  ann_core_word=0x03811004  expected_weight=3  read_weight=3
+[17766000] Phase: PROG  ann_core_word=0x0a812004  programmed_weight=10
+[17830000] Phase: VERIFY  ann_core_word=0x0a812004  expected_weight=10  read_weight=10
+[17878000] Phase: PROG  ann_core_word=0x04814004  programmed_weight=4
+[17930000] Phase: VERIFY  ann_core_word=0x04814004  expected_weight=4  read_weight=4
+[17978000] Phase: PROG  ann_core_word=0x02818004  programmed_weight=2
+[18014000] Phase: VERIFY  ann_core_word=0x02818004  expected_weight=2  read_weight=2
+[18062000] Phase: PROG  ann_core_word=0x02820104  programmed_weight=2
+[18098000] Phase: VERIFY  ann_core_word=0x02820104  expected_weight=2  read_weight=2
+[18146000] Phase: PROG  ann_core_word=0x03820204  programmed_weight=3
+[18194000] Phase: VERIFY  ann_core_word=0x03820204  expected_weight=3  read_weight=3
+[18242000] Phase: PROG  ann_core_word=0x0b820404  programmed_weight=11
+[18298000] Phase: VERIFY  ann_core_word=0x0b820404  expected_weight=11  read_weight=11
+[18346000] Phase: PROG  ann_core_word=0x03820804  programmed_weight=3
+[18394000] Phase: VERIFY  ann_core_word=0x03820804  expected_weight=3  read_weight=3
+[18442000] Phase: PROG  ann_core_word=0x03821004  programmed_weight=3
+[18490000] Phase: VERIFY  ann_core_word=0x03821004  expected_weight=3  read_weight=3
+[18538000] Phase: PROG  ann_core_word=0x0a822004  programmed_weight=10
+[18602000] Phase: VERIFY  ann_core_word=0x0a822004  expected_weight=10  read_weight=10
+[18650000] Phase: PROG  ann_core_word=0x04824004  programmed_weight=4
+[18702000] Phase: VERIFY  ann_core_word=0x04824004  expected_weight=4  read_weight=4
+[18750000] Phase: PROG  ann_core_word=0x02828004  programmed_weight=2
+[18786000] Phase: VERIFY  ann_core_word=0x02828004  expected_weight=2  read_weight=2
+[18834000] Phase: PROG  ann_core_word=0x02110108  programmed_weight=2
+[18870000] Phase: VERIFY  ann_core_word=0x02110108  expected_weight=2  read_weight=2
+[18918000] Phase: PROG  ann_core_word=0x01110208  programmed_weight=1
+[18962000] Phase: VERIFY  ann_core_word=0x01110208  expected_weight=1  read_weight=1
+[19010000] Phase: PROG  ann_core_word=0x0a110408  programmed_weight=10
+[19074000] Phase: VERIFY  ann_core_word=0x0a110408  expected_weight=10  read_weight=10
+[19122000] Phase: PROG  ann_core_word=0x0f110808  programmed_weight=15
+[19194000] Phase: VERIFY  ann_core_word=0x0f110808  expected_weight=15  read_weight=15
+[19242000] Phase: PROG  ann_core_word=0x0f111008  programmed_weight=15
+[19314000] Phase: VERIFY  ann_core_word=0x0f111008  expected_weight=15  read_weight=15
+[19362000] Phase: PROG  ann_core_word=0x0c112008  programmed_weight=12
+[19402000] Phase: VERIFY  ann_core_word=0x0c112008  expected_weight=12  read_weight=12
+[19450000] Phase: PROG  ann_core_word=0x03114008  programmed_weight=3
+[19498000] Phase: VERIFY  ann_core_word=0x03114008  expected_weight=3  read_weight=3
+[19546000] Phase: PROG  ann_core_word=0x02118008  programmed_weight=2
+[19582000] Phase: VERIFY  ann_core_word=0x02118008  expected_weight=2  read_weight=2
+[19630000] Phase: PROG  ann_core_word=0x02120108  programmed_weight=2
+[19666000] Phase: VERIFY  ann_core_word=0x02120108  expected_weight=2  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence START [19682000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[19682000] Phase: REPROG  ann_core_word=0x02120108  programmed_weight=2
+[19710000] Phase: VERIFY  ann_core_word=0x02120108  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [19718000]  (DUT idle)
+//------------------------------------------------------------------------------
+[19758000] Phase: PROG  ann_core_word=0x01120208  programmed_weight=1
+[19802000] Phase: VERIFY  ann_core_word=0x01120208  expected_weight=1  read_weight=1
+[19850000] Phase: PROG  ann_core_word=0x0a120408  programmed_weight=10
+[19914000] Phase: VERIFY  ann_core_word=0x0a120408  expected_weight=10  read_weight=10
+[19962000] Phase: PROG  ann_core_word=0x0f120808  programmed_weight=15
+[20034000] Phase: VERIFY  ann_core_word=0x0f120808  expected_weight=15  read_weight=15
+[20082000] Phase: PROG  ann_core_word=0x0f121008  programmed_weight=15
+[20154000] Phase: VERIFY  ann_core_word=0x0f121008  expected_weight=15  read_weight=15
+[20202000] Phase: PROG  ann_core_word=0x0c122008  programmed_weight=12
+[20242000] Phase: VERIFY  ann_core_word=0x0c122008  expected_weight=12  read_weight=12
+[20290000] Phase: PROG  ann_core_word=0x03124008  programmed_weight=3
+[20338000] Phase: VERIFY  ann_core_word=0x03124008  expected_weight=3  read_weight=3
+[20386000] Phase: PROG  ann_core_word=0x02128008  programmed_weight=2
+[20422000] Phase: VERIFY  ann_core_word=0x02128008  expected_weight=2  read_weight=2
+[20470000] Phase: PROG  ann_core_word=0x02210108  programmed_weight=2
+[20506000] Phase: VERIFY  ann_core_word=0x02210108  expected_weight=2  read_weight=2
+[20554000] Phase: PROG  ann_core_word=0x01210208  programmed_weight=1
+[20598000] Phase: VERIFY  ann_core_word=0x01210208  expected_weight=1  read_weight=1
+[20646000] Phase: PROG  ann_core_word=0x0a210408  programmed_weight=10
+[20710000] Phase: VERIFY  ann_core_word=0x0a210408  expected_weight=10  read_weight=10
+[20758000] Phase: PROG  ann_core_word=0x0f210808  programmed_weight=15
+[20830000] Phase: VERIFY  ann_core_word=0x0f210808  expected_weight=15  read_weight=15
+[20878000] Phase: PROG  ann_core_word=0x0f211008  programmed_weight=15
+[20950000] Phase: VERIFY  ann_core_word=0x0f211008  expected_weight=15  read_weight=15
+[20998000] Phase: PROG  ann_core_word=0x0c212008  programmed_weight=12
+[21038000] Phase: VERIFY  ann_core_word=0x0c212008  expected_weight=12  read_weight=12
+[21086000] Phase: PROG  ann_core_word=0x03214008  programmed_weight=3
+[21134000] Phase: VERIFY  ann_core_word=0x03214008  expected_weight=3  read_weight=3
+[21182000] Phase: PROG  ann_core_word=0x02218008  programmed_weight=2
+[21218000] Phase: VERIFY  ann_core_word=0x02218008  expected_weight=2  read_weight=2
+[21266000] Phase: PROG  ann_core_word=0x02220108  programmed_weight=2
+[21302000] Phase: VERIFY  ann_core_word=0x02220108  expected_weight=2  read_weight=2
+[21350000] Phase: PROG  ann_core_word=0x01220208  programmed_weight=1
+[21394000] Phase: VERIFY  ann_core_word=0x01220208  expected_weight=1  read_weight=1
+[21442000] Phase: PROG  ann_core_word=0x0a220408  programmed_weight=10
+[21506000] Phase: VERIFY  ann_core_word=0x0a220408  expected_weight=10  read_weight=10
+[21554000] Phase: PROG  ann_core_word=0x0f220808  programmed_weight=15
+[21626000] Phase: VERIFY  ann_core_word=0x0f220808  expected_weight=15  read_weight=15
+[21674000] Phase: PROG  ann_core_word=0x0f221008  programmed_weight=15
+[21746000] Phase: VERIFY  ann_core_word=0x0f221008  expected_weight=15  read_weight=15
+[21794000] Phase: PROG  ann_core_word=0x0c222008  programmed_weight=12
+[21834000] Phase: VERIFY  ann_core_word=0x0c222008  expected_weight=12  read_weight=12
+[21882000] Phase: PROG  ann_core_word=0x03224008  programmed_weight=3
+[21930000] Phase: VERIFY  ann_core_word=0x03224008  expected_weight=3  read_weight=3
+[21978000] Phase: PROG  ann_core_word=0x02228008  programmed_weight=2
+[22014000] Phase: VERIFY  ann_core_word=0x02228008  expected_weight=2  read_weight=2
+[22062000] Phase: PROG  ann_core_word=0x02410108  programmed_weight=2
+[22098000] Phase: VERIFY  ann_core_word=0x02410108  expected_weight=2  read_weight=2
+[22146000] Phase: PROG  ann_core_word=0x01410208  programmed_weight=1
+[22190000] Phase: VERIFY  ann_core_word=0x01410208  expected_weight=1  read_weight=1
+[22238000] Phase: PROG  ann_core_word=0x0a410408  programmed_weight=10
+[22302000] Phase: VERIFY  ann_core_word=0x0a410408  expected_weight=10  read_weight=10
+[22350000] Phase: PROG  ann_core_word=0x0f410808  programmed_weight=15
+[22422000] Phase: VERIFY  ann_core_word=0x0f410808  expected_weight=15  read_weight=15
+[22470000] Phase: PROG  ann_core_word=0x0f411008  programmed_weight=15
+[22542000] Phase: VERIFY  ann_core_word=0x0f411008  expected_weight=15  read_weight=15
+[22590000] Phase: PROG  ann_core_word=0x0c412008  programmed_weight=12
+[22630000] Phase: VERIFY  ann_core_word=0x0c412008  expected_weight=12  read_weight=12
+[22678000] Phase: PROG  ann_core_word=0x03414008  programmed_weight=3
+[22726000] Phase: VERIFY  ann_core_word=0x03414008  expected_weight=3  read_weight=3
+[22774000] Phase: PROG  ann_core_word=0x02418008  programmed_weight=2
+[22810000] Phase: VERIFY  ann_core_word=0x02418008  expected_weight=2  read_weight=2
+[22858000] Phase: PROG  ann_core_word=0x02420108  programmed_weight=2
+[22894000] Phase: VERIFY  ann_core_word=0x02420108  expected_weight=2  read_weight=2
+[22942000] Phase: PROG  ann_core_word=0x01420208  programmed_weight=1
+[22986000] Phase: VERIFY  ann_core_word=0x01420208  expected_weight=1  read_weight=1
+[23034000] Phase: PROG  ann_core_word=0x0a420408  programmed_weight=10
+[23098000] Phase: VERIFY  ann_core_word=0x0a420408  expected_weight=10  read_weight=10
+[23146000] Phase: PROG  ann_core_word=0x0f420808  programmed_weight=15
+[23218000] Phase: VERIFY  ann_core_word=0x0f420808  expected_weight=15  read_weight=15
+[23266000] Phase: PROG  ann_core_word=0x0f421008  programmed_weight=15
+[23338000] Phase: VERIFY  ann_core_word=0x0f421008  expected_weight=15  read_weight=15
+[23386000] Phase: PROG  ann_core_word=0x0c422008  programmed_weight=12
+[23426000] Phase: VERIFY  ann_core_word=0x0c422008  expected_weight=12  read_weight=12
+[23474000] Phase: PROG  ann_core_word=0x03424008  programmed_weight=3
+[23522000] Phase: VERIFY  ann_core_word=0x03424008  expected_weight=3  read_weight=3
+[23570000] Phase: PROG  ann_core_word=0x02428008  programmed_weight=2
+[23606000] Phase: VERIFY  ann_core_word=0x02428008  expected_weight=2  read_weight=2
+[23654000] Phase: PROG  ann_core_word=0x02810108  programmed_weight=2
+[23690000] Phase: VERIFY  ann_core_word=0x02810108  expected_weight=2  read_weight=2
+[23738000] Phase: PROG  ann_core_word=0x01810208  programmed_weight=1
+[23782000] Phase: VERIFY  ann_core_word=0x01810208  expected_weight=1  read_weight=1
+[23830000] Phase: PROG  ann_core_word=0x0a810408  programmed_weight=10
+[23894000] Phase: VERIFY  ann_core_word=0x0a810408  expected_weight=10  read_weight=10
+[23942000] Phase: PROG  ann_core_word=0x0f810808  programmed_weight=15
+[24014000] Phase: VERIFY  ann_core_word=0x0f810808  expected_weight=15  read_weight=15
+[24062000] Phase: PROG  ann_core_word=0x0f811008  programmed_weight=15
+[24134000] Phase: VERIFY  ann_core_word=0x0f811008  expected_weight=15  read_weight=15
+[24182000] Phase: PROG  ann_core_word=0x0c812008  programmed_weight=12
+[24222000] Phase: VERIFY  ann_core_word=0x0c812008  expected_weight=12  read_weight=12
+[24270000] Phase: PROG  ann_core_word=0x03814008  programmed_weight=3
+[24318000] Phase: VERIFY  ann_core_word=0x03814008  expected_weight=3  read_weight=3
+[24366000] Phase: PROG  ann_core_word=0x02818008  programmed_weight=2
+[24402000] Phase: VERIFY  ann_core_word=0x02818008  expected_weight=2  read_weight=2
+[24450000] Phase: PROG  ann_core_word=0x02820108  programmed_weight=2
+[24486000] Phase: VERIFY  ann_core_word=0x02820108  expected_weight=2  read_weight=2
+[24534000] Phase: PROG  ann_core_word=0x01820208  programmed_weight=1
+[24578000] Phase: VERIFY  ann_core_word=0x01820208  expected_weight=1  read_weight=1
+[24626000] Phase: PROG  ann_core_word=0x0a820408  programmed_weight=10
+[24690000] Phase: VERIFY  ann_core_word=0x0a820408  expected_weight=10  read_weight=11
+//------------------------------------------------------------------------------
+// ERASE sequence START [24706000]
+//------------------------------------------------------------------------------
+[24706000] Phase: ERASE  ann_core_word=0x0a820408  programmed_weight=10
+//------------------------------------------------------------------------------
+// ERASE sequence END   [24714000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [24734000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[24734000] Phase: REPROG  ann_core_word=0x0a820408  programmed_weight=10
+[24798000] Phase: VERIFY  ann_core_word=0x0a820408  expected_weight=10  read_weight=10
+//------------------------------------------------------------------------------
+// re-PROG sequence END [24806000]  (DUT idle)
+//------------------------------------------------------------------------------
+[24846000] Phase: PROG  ann_core_word=0x0f820808  programmed_weight=15
+[24918000] Phase: VERIFY  ann_core_word=0x0f820808  expected_weight=15  read_weight=15
+[24966000] Phase: PROG  ann_core_word=0x0f821008  programmed_weight=15
+[25038000] Phase: VERIFY  ann_core_word=0x0f821008  expected_weight=15  read_weight=15
+[25086000] Phase: PROG  ann_core_word=0x0c822008  programmed_weight=12
+[25126000] Phase: VERIFY  ann_core_word=0x0c822008  expected_weight=12  read_weight=12
+[25174000] Phase: PROG  ann_core_word=0x03824008  programmed_weight=3
+[25222000] Phase: VERIFY  ann_core_word=0x03824008  expected_weight=3  read_weight=3
+[25270000] Phase: PROG  ann_core_word=0x02828008  programmed_weight=2
+[25306000] Phase: VERIFY  ann_core_word=0x02828008  expected_weight=2  read_weight=2
+[25354000] Phase: PROG  ann_core_word=0x02110110  programmed_weight=2
+[25390000] Phase: VERIFY  ann_core_word=0x02110110  expected_weight=2  read_weight=2
+[25438000] Phase: PROG  ann_core_word=0x00110210  programmed_weight=0
+[25470000] Phase: VERIFY  ann_core_word=0x00110210  expected_weight=0  read_weight=0
+[25518000] Phase: PROG  ann_core_word=0x07110410  programmed_weight=7
+[25562000] Phase: VERIFY  ann_core_word=0x07110410  expected_weight=7  read_weight=7
+[25610000] Phase: PROG  ann_core_word=0x0f110810  programmed_weight=15
+[25682000] Phase: VERIFY  ann_core_word=0x0f110810  expected_weight=15  read_weight=15
+[25730000] Phase: PROG  ann_core_word=0x0d111010  programmed_weight=13
+[25798000] Phase: VERIFY  ann_core_word=0x0d111010  expected_weight=13  read_weight=13
+[25846000] Phase: PROG  ann_core_word=0x0c112010  programmed_weight=12
+[25886000] Phase: VERIFY  ann_core_word=0x0c112010  expected_weight=12  read_weight=12
+[25934000] Phase: PROG  ann_core_word=0x04114010  programmed_weight=4
+[25986000] Phase: VERIFY  ann_core_word=0x04114010  expected_weight=4  read_weight=4
+[26034000] Phase: PROG  ann_core_word=0x02118010  programmed_weight=2
+[26070000] Phase: VERIFY  ann_core_word=0x02118010  expected_weight=2  read_weight=2
+[26118000] Phase: PROG  ann_core_word=0x02120110  programmed_weight=2
+[26154000] Phase: VERIFY  ann_core_word=0x02120110  expected_weight=2  read_weight=2
+[26202000] Phase: PROG  ann_core_word=0x00120210  programmed_weight=0
+[26234000] Phase: VERIFY  ann_core_word=0x00120210  expected_weight=0  read_weight=0
+[26282000] Phase: PROG  ann_core_word=0x07120410  programmed_weight=7
+[26326000] Phase: VERIFY  ann_core_word=0x07120410  expected_weight=7  read_weight=7
+[26374000] Phase: PROG  ann_core_word=0x0f120810  programmed_weight=15
+[26446000] Phase: VERIFY  ann_core_word=0x0f120810  expected_weight=15  read_weight=15
+[26494000] Phase: PROG  ann_core_word=0x0d121010  programmed_weight=13
+[26562000] Phase: VERIFY  ann_core_word=0x0d121010  expected_weight=13  read_weight=13
+[26610000] Phase: PROG  ann_core_word=0x0c122010  programmed_weight=12
+[26650000] Phase: VERIFY  ann_core_word=0x0c122010  expected_weight=12  read_weight=12
+[26698000] Phase: PROG  ann_core_word=0x04124010  programmed_weight=4
+[26750000] Phase: VERIFY  ann_core_word=0x04124010  expected_weight=4  read_weight=4
+[26798000] Phase: PROG  ann_core_word=0x02128010  programmed_weight=2
+[26834000] Phase: VERIFY  ann_core_word=0x02128010  expected_weight=2  read_weight=2
+[26882000] Phase: PROG  ann_core_word=0x02210110  programmed_weight=2
+[26918000] Phase: VERIFY  ann_core_word=0x02210110  expected_weight=2  read_weight=2
+[26966000] Phase: PROG  ann_core_word=0x00210210  programmed_weight=0
+[26998000] Phase: VERIFY  ann_core_word=0x00210210  expected_weight=0  read_weight=0
+[27046000] Phase: PROG  ann_core_word=0x07210410  programmed_weight=7
+[27090000] Phase: VERIFY  ann_core_word=0x07210410  expected_weight=7  read_weight=7
+[27138000] Phase: PROG  ann_core_word=0x0f210810  programmed_weight=15
+[27210000] Phase: VERIFY  ann_core_word=0x0f210810  expected_weight=15  read_weight=15
+[27258000] Phase: PROG  ann_core_word=0x0d211010  programmed_weight=13
+[27326000] Phase: VERIFY  ann_core_word=0x0d211010  expected_weight=13  read_weight=13
+[27374000] Phase: PROG  ann_core_word=0x0c212010  programmed_weight=12
+[27414000] Phase: VERIFY  ann_core_word=0x0c212010  expected_weight=12  read_weight=12
+[27462000] Phase: PROG  ann_core_word=0x04214010  programmed_weight=4
+[27514000] Phase: VERIFY  ann_core_word=0x04214010  expected_weight=4  read_weight=4
+[27562000] Phase: PROG  ann_core_word=0x02218010  programmed_weight=2
+[27598000] Phase: VERIFY  ann_core_word=0x02218010  expected_weight=2  read_weight=2
+[27646000] Phase: PROG  ann_core_word=0x02220110  programmed_weight=2
+[27682000] Phase: VERIFY  ann_core_word=0x02220110  expected_weight=2  read_weight=2
+[27730000] Phase: PROG  ann_core_word=0x00220210  programmed_weight=0
+[27762000] Phase: VERIFY  ann_core_word=0x00220210  expected_weight=0  read_weight=0
+[27810000] Phase: PROG  ann_core_word=0x07220410  programmed_weight=7
+[27854000] Phase: VERIFY  ann_core_word=0x07220410  expected_weight=7  read_weight=7
+[27902000] Phase: PROG  ann_core_word=0x0f220810  programmed_weight=15
+[27974000] Phase: VERIFY  ann_core_word=0x0f220810  expected_weight=15  read_weight=15
+[28022000] Phase: PROG  ann_core_word=0x0d221010  programmed_weight=13
+[28090000] Phase: VERIFY  ann_core_word=0x0d221010  expected_weight=13  read_weight=13
+[28138000] Phase: PROG  ann_core_word=0x0c222010  programmed_weight=12
+[28178000] Phase: VERIFY  ann_core_word=0x0c222010  expected_weight=12  read_weight=12
+[28226000] Phase: PROG  ann_core_word=0x04224010  programmed_weight=4
+[28278000] Phase: VERIFY  ann_core_word=0x04224010  expected_weight=4  read_weight=4
+[28326000] Phase: PROG  ann_core_word=0x02228010  programmed_weight=2
+[28362000] Phase: VERIFY  ann_core_word=0x02228010  expected_weight=2  read_weight=2
+[28410000] Phase: PROG  ann_core_word=0x02410110  programmed_weight=2
+[28446000] Phase: VERIFY  ann_core_word=0x02410110  expected_weight=2  read_weight=2
+[28494000] Phase: PROG  ann_core_word=0x00410210  programmed_weight=0
+[28526000] Phase: VERIFY  ann_core_word=0x00410210  expected_weight=0  read_weight=0
+[28574000] Phase: PROG  ann_core_word=0x07410410  programmed_weight=7
+[28618000] Phase: VERIFY  ann_core_word=0x07410410  expected_weight=7  read_weight=7
+[28666000] Phase: PROG  ann_core_word=0x0f410810  programmed_weight=15
+[28738000] Phase: VERIFY  ann_core_word=0x0f410810  expected_weight=15  read_weight=15
+[28786000] Phase: PROG  ann_core_word=0x0d411010  programmed_weight=13
+[28854000] Phase: VERIFY  ann_core_word=0x0d411010  expected_weight=13  read_weight=13
+[28902000] Phase: PROG  ann_core_word=0x0c412010  programmed_weight=12
+[28942000] Phase: VERIFY  ann_core_word=0x0c412010  expected_weight=12  read_weight=12
+[28990000] Phase: PROG  ann_core_word=0x04414010  programmed_weight=4
+[29042000] Phase: VERIFY  ann_core_word=0x04414010  expected_weight=4  read_weight=4
+[29090000] Phase: PROG  ann_core_word=0x02418010  programmed_weight=2
+[29126000] Phase: VERIFY  ann_core_word=0x02418010  expected_weight=2  read_weight=2
+[29174000] Phase: PROG  ann_core_word=0x02420110  programmed_weight=2
+[29210000] Phase: VERIFY  ann_core_word=0x02420110  expected_weight=2  read_weight=2
+[29258000] Phase: PROG  ann_core_word=0x00420210  programmed_weight=0
+[29290000] Phase: VERIFY  ann_core_word=0x00420210  expected_weight=0  read_weight=0
+[29338000] Phase: PROG  ann_core_word=0x07420410  programmed_weight=7
+[29382000] Phase: VERIFY  ann_core_word=0x07420410  expected_weight=7  read_weight=7
+[29430000] Phase: PROG  ann_core_word=0x0f420810  programmed_weight=15
+[29502000] Phase: VERIFY  ann_core_word=0x0f420810  expected_weight=15  read_weight=15
+[29550000] Phase: PROG  ann_core_word=0x0d421010  programmed_weight=13
+[29618000] Phase: VERIFY  ann_core_word=0x0d421010  expected_weight=13  read_weight=13
+[29666000] Phase: PROG  ann_core_word=0x0c422010  programmed_weight=12
+[29706000] Phase: VERIFY  ann_core_word=0x0c422010  expected_weight=12  read_weight=12
+[29754000] Phase: PROG  ann_core_word=0x04424010  programmed_weight=4
+[29806000] Phase: VERIFY  ann_core_word=0x04424010  expected_weight=4  read_weight=4
+[29854000] Phase: PROG  ann_core_word=0x02428010  programmed_weight=2
+[29890000] Phase: VERIFY  ann_core_word=0x02428010  expected_weight=2  read_weight=2
+[29938000] Phase: PROG  ann_core_word=0x02810110  programmed_weight=2
+[29974000] Phase: VERIFY  ann_core_word=0x02810110  expected_weight=2  read_weight=2
+[30022000] Phase: PROG  ann_core_word=0x00810210  programmed_weight=0
+[30054000] Phase: VERIFY  ann_core_word=0x00810210  expected_weight=0  read_weight=0
+[30102000] Phase: PROG  ann_core_word=0x07810410  programmed_weight=7
+[30146000] Phase: VERIFY  ann_core_word=0x07810410  expected_weight=7  read_weight=7
+[30194000] Phase: PROG  ann_core_word=0x0f810810  programmed_weight=15
+[30266000] Phase: VERIFY  ann_core_word=0x0f810810  expected_weight=15  read_weight=15
+[30314000] Phase: PROG  ann_core_word=0x0d811010  programmed_weight=13
+[30382000] Phase: VERIFY  ann_core_word=0x0d811010  expected_weight=13  read_weight=13
+[30430000] Phase: PROG  ann_core_word=0x0c812010  programmed_weight=12
+[30470000] Phase: VERIFY  ann_core_word=0x0c812010  expected_weight=12  read_weight=12
+[30518000] Phase: PROG  ann_core_word=0x04814010  programmed_weight=4
+[30570000] Phase: VERIFY  ann_core_word=0x04814010  expected_weight=4  read_weight=4
+[30618000] Phase: PROG  ann_core_word=0x02818010  programmed_weight=2
+[30654000] Phase: VERIFY  ann_core_word=0x02818010  expected_weight=2  read_weight=2
+[30702000] Phase: PROG  ann_core_word=0x02820110  programmed_weight=2
+[30738000] Phase: VERIFY  ann_core_word=0x02820110  expected_weight=2  read_weight=2
+[30786000] Phase: PROG  ann_core_word=0x00820210  programmed_weight=0
+[30818000] Phase: VERIFY  ann_core_word=0x00820210  expected_weight=0  read_weight=0
+[30866000] Phase: PROG  ann_core_word=0x07820410  programmed_weight=7
+[30910000] Phase: VERIFY  ann_core_word=0x07820410  expected_weight=7  read_weight=7
+[30958000] Phase: PROG  ann_core_word=0x0f820810  programmed_weight=15
+[31030000] Phase: VERIFY  ann_core_word=0x0f820810  expected_weight=15  read_weight=15
+[31078000] Phase: PROG  ann_core_word=0x0d821010  programmed_weight=13
+[31146000] Phase: VERIFY  ann_core_word=0x0d821010  expected_weight=13  read_weight=13
+[31194000] Phase: PROG  ann_core_word=0x0c822010  programmed_weight=12
+[31234000] Phase: VERIFY  ann_core_word=0x0c822010  expected_weight=12  read_weight=12
+[31282000] Phase: PROG  ann_core_word=0x04824010  programmed_weight=4
+[31334000] Phase: VERIFY  ann_core_word=0x04824010  expected_weight=4  read_weight=4
+[31382000] Phase: PROG  ann_core_word=0x02828010  programmed_weight=2
+[31418000] Phase: VERIFY  ann_core_word=0x02828010  expected_weight=2  read_weight=2
+[31466000] Phase: PROG  ann_core_word=0x02110120  programmed_weight=2
+[31502000] Phase: VERIFY  ann_core_word=0x02110120  expected_weight=2  read_weight=2
+[31550000] Phase: PROG  ann_core_word=0x01110220  programmed_weight=1
+[31594000] Phase: VERIFY  ann_core_word=0x01110220  expected_weight=1  read_weight=1
+[31642000] Phase: PROG  ann_core_word=0x03110420  programmed_weight=3
+[31690000] Phase: VERIFY  ann_core_word=0x03110420  expected_weight=3  read_weight=3
+[31738000] Phase: PROG  ann_core_word=0x07110820  programmed_weight=7
+[31782000] Phase: VERIFY  ann_core_word=0x07110820  expected_weight=7  read_weight=7
+[31830000] Phase: PROG  ann_core_word=0x07111020  programmed_weight=7
+[31874000] Phase: VERIFY  ann_core_word=0x07111020  expected_weight=7  read_weight=7
+[31922000] Phase: PROG  ann_core_word=0x08112020  programmed_weight=8
+[31982000] Phase: VERIFY  ann_core_word=0x08112020  expected_weight=8  read_weight=8
+[32030000] Phase: PROG  ann_core_word=0x05114020  programmed_weight=5
+[32070000] Phase: VERIFY  ann_core_word=0x05114020  expected_weight=5  read_weight=5
+[32118000] Phase: PROG  ann_core_word=0x02118020  programmed_weight=2
+[32154000] Phase: VERIFY  ann_core_word=0x02118020  expected_weight=2  read_weight=2
+[32202000] Phase: PROG  ann_core_word=0x02120120  programmed_weight=2
+[32238000] Phase: VERIFY  ann_core_word=0x02120120  expected_weight=2  read_weight=2
+[32286000] Phase: PROG  ann_core_word=0x01120220  programmed_weight=1
+[32330000] Phase: VERIFY  ann_core_word=0x01120220  expected_weight=1  read_weight=1
+[32378000] Phase: PROG  ann_core_word=0x03120420  programmed_weight=3
+[32426000] Phase: VERIFY  ann_core_word=0x03120420  expected_weight=3  read_weight=3
+[32474000] Phase: PROG  ann_core_word=0x07120820  programmed_weight=7
+[32518000] Phase: VERIFY  ann_core_word=0x07120820  expected_weight=7  read_weight=7
+[32566000] Phase: PROG  ann_core_word=0x07121020  programmed_weight=7
+[32610000] Phase: VERIFY  ann_core_word=0x07121020  expected_weight=7  read_weight=7
+[32658000] Phase: PROG  ann_core_word=0x08122020  programmed_weight=8
+[32718000] Phase: VERIFY  ann_core_word=0x08122020  expected_weight=8  read_weight=8
+[32766000] Phase: PROG  ann_core_word=0x05124020  programmed_weight=5
+[32806000] Phase: VERIFY  ann_core_word=0x05124020  expected_weight=5  read_weight=5
+[32854000] Phase: PROG  ann_core_word=0x02128020  programmed_weight=2
+[32890000] Phase: VERIFY  ann_core_word=0x02128020  expected_weight=2  read_weight=2
+[32938000] Phase: PROG  ann_core_word=0x02210120  programmed_weight=2
+[32974000] Phase: VERIFY  ann_core_word=0x02210120  expected_weight=2  read_weight=2
+[33022000] Phase: PROG  ann_core_word=0x01210220  programmed_weight=1
+[33066000] Phase: VERIFY  ann_core_word=0x01210220  expected_weight=1  read_weight=1
+[33114000] Phase: PROG  ann_core_word=0x03210420  programmed_weight=3
+[33162000] Phase: VERIFY  ann_core_word=0x03210420  expected_weight=3  read_weight=3
+[33210000] Phase: PROG  ann_core_word=0x07210820  programmed_weight=7
+[33254000] Phase: VERIFY  ann_core_word=0x07210820  expected_weight=7  read_weight=7
+[33302000] Phase: PROG  ann_core_word=0x07211020  programmed_weight=7
+[33346000] Phase: VERIFY  ann_core_word=0x07211020  expected_weight=7  read_weight=7
+[33394000] Phase: PROG  ann_core_word=0x08212020  programmed_weight=8
+[33454000] Phase: VERIFY  ann_core_word=0x08212020  expected_weight=8  read_weight=8
+[33502000] Phase: PROG  ann_core_word=0x05214020  programmed_weight=5
+[33542000] Phase: VERIFY  ann_core_word=0x05214020  expected_weight=5  read_weight=5
+[33590000] Phase: PROG  ann_core_word=0x02218020  programmed_weight=2
+[33626000] Phase: VERIFY  ann_core_word=0x02218020  expected_weight=2  read_weight=2
+[33674000] Phase: PROG  ann_core_word=0x02220120  programmed_weight=2
+[33710000] Phase: VERIFY  ann_core_word=0x02220120  expected_weight=2  read_weight=2
+[33758000] Phase: PROG  ann_core_word=0x01220220  programmed_weight=1
+[33802000] Phase: VERIFY  ann_core_word=0x01220220  expected_weight=1  read_weight=1
+[33850000] Phase: PROG  ann_core_word=0x03220420  programmed_weight=3
+[33898000] Phase: VERIFY  ann_core_word=0x03220420  expected_weight=3  read_weight=3
+[33946000] Phase: PROG  ann_core_word=0x07220820  programmed_weight=7
+[33990000] Phase: VERIFY  ann_core_word=0x07220820  expected_weight=7  read_weight=7
+[34038000] Phase: PROG  ann_core_word=0x07221020  programmed_weight=7
+[34082000] Phase: VERIFY  ann_core_word=0x07221020  expected_weight=7  read_weight=7
+[34130000] Phase: PROG  ann_core_word=0x08222020  programmed_weight=8
+[34190000] Phase: VERIFY  ann_core_word=0x08222020  expected_weight=8  read_weight=8
+[34238000] Phase: PROG  ann_core_word=0x05224020  programmed_weight=5
+[34278000] Phase: VERIFY  ann_core_word=0x05224020  expected_weight=5  read_weight=6
+//------------------------------------------------------------------------------
+// ERASE sequence START [34294000]
+//------------------------------------------------------------------------------
+[34294000] Phase: ERASE  ann_core_word=0x05224020  programmed_weight=5
+//------------------------------------------------------------------------------
+// ERASE sequence END   [34302000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [34322000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[34322000] Phase: REPROG  ann_core_word=0x05224020  programmed_weight=5
+[34362000] Phase: VERIFY  ann_core_word=0x05224020  expected_weight=5  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence END [34370000]  (DUT idle)
+//------------------------------------------------------------------------------
+[34410000] Phase: PROG  ann_core_word=0x02228020  programmed_weight=2
+[34446000] Phase: VERIFY  ann_core_word=0x02228020  expected_weight=2  read_weight=2
+[34494000] Phase: PROG  ann_core_word=0x02410120  programmed_weight=2
+[34530000] Phase: VERIFY  ann_core_word=0x02410120  expected_weight=2  read_weight=2
+[34578000] Phase: PROG  ann_core_word=0x01410220  programmed_weight=1
+[34622000] Phase: VERIFY  ann_core_word=0x01410220  expected_weight=1  read_weight=1
+[34670000] Phase: PROG  ann_core_word=0x03410420  programmed_weight=3
+[34718000] Phase: VERIFY  ann_core_word=0x03410420  expected_weight=3  read_weight=3
+[34766000] Phase: PROG  ann_core_word=0x07410820  programmed_weight=7
+[34810000] Phase: VERIFY  ann_core_word=0x07410820  expected_weight=7  read_weight=7
+[34858000] Phase: PROG  ann_core_word=0x07411020  programmed_weight=7
+[34902000] Phase: VERIFY  ann_core_word=0x07411020  expected_weight=7  read_weight=7
+[34950000] Phase: PROG  ann_core_word=0x08412020  programmed_weight=8
+[35010000] Phase: VERIFY  ann_core_word=0x08412020  expected_weight=8  read_weight=8
+[35058000] Phase: PROG  ann_core_word=0x05414020  programmed_weight=5
+[35098000] Phase: VERIFY  ann_core_word=0x05414020  expected_weight=5  read_weight=5
+[35146000] Phase: PROG  ann_core_word=0x02418020  programmed_weight=2
+[35182000] Phase: VERIFY  ann_core_word=0x02418020  expected_weight=2  read_weight=2
+[35230000] Phase: PROG  ann_core_word=0x02420120  programmed_weight=2
+[35266000] Phase: VERIFY  ann_core_word=0x02420120  expected_weight=2  read_weight=2
+[35314000] Phase: PROG  ann_core_word=0x01420220  programmed_weight=1
+[35358000] Phase: VERIFY  ann_core_word=0x01420220  expected_weight=1  read_weight=1
+[35406000] Phase: PROG  ann_core_word=0x03420420  programmed_weight=3
+[35454000] Phase: VERIFY  ann_core_word=0x03420420  expected_weight=3  read_weight=3
+[35502000] Phase: PROG  ann_core_word=0x07420820  programmed_weight=7
+[35546000] Phase: VERIFY  ann_core_word=0x07420820  expected_weight=7  read_weight=7
+[35594000] Phase: PROG  ann_core_word=0x07421020  programmed_weight=7
+[35638000] Phase: VERIFY  ann_core_word=0x07421020  expected_weight=7  read_weight=7
+[35686000] Phase: PROG  ann_core_word=0x08422020  programmed_weight=8
+[35746000] Phase: VERIFY  ann_core_word=0x08422020  expected_weight=8  read_weight=8
+[35794000] Phase: PROG  ann_core_word=0x05424020  programmed_weight=5
+[35834000] Phase: VERIFY  ann_core_word=0x05424020  expected_weight=5  read_weight=5
+[35882000] Phase: PROG  ann_core_word=0x02428020  programmed_weight=2
+[35918000] Phase: VERIFY  ann_core_word=0x02428020  expected_weight=2  read_weight=2
+[35966000] Phase: PROG  ann_core_word=0x02810120  programmed_weight=2
+[36002000] Phase: VERIFY  ann_core_word=0x02810120  expected_weight=2  read_weight=2
+[36050000] Phase: PROG  ann_core_word=0x01810220  programmed_weight=1
+[36094000] Phase: VERIFY  ann_core_word=0x01810220  expected_weight=1  read_weight=1
+[36142000] Phase: PROG  ann_core_word=0x03810420  programmed_weight=3
+[36190000] Phase: VERIFY  ann_core_word=0x03810420  expected_weight=3  read_weight=3
+[36238000] Phase: PROG  ann_core_word=0x07810820  programmed_weight=7
+[36282000] Phase: VERIFY  ann_core_word=0x07810820  expected_weight=7  read_weight=7
+[36330000] Phase: PROG  ann_core_word=0x07811020  programmed_weight=7
+[36374000] Phase: VERIFY  ann_core_word=0x07811020  expected_weight=7  read_weight=7
+[36422000] Phase: PROG  ann_core_word=0x08812020  programmed_weight=8
+[36482000] Phase: VERIFY  ann_core_word=0x08812020  expected_weight=8  read_weight=8
+[36530000] Phase: PROG  ann_core_word=0x05814020  programmed_weight=5
+[36570000] Phase: VERIFY  ann_core_word=0x05814020  expected_weight=5  read_weight=5
+[36618000] Phase: PROG  ann_core_word=0x02818020  programmed_weight=2
+[36654000] Phase: VERIFY  ann_core_word=0x02818020  expected_weight=2  read_weight=2
+[36702000] Phase: PROG  ann_core_word=0x02820120  programmed_weight=2
+[36738000] Phase: VERIFY  ann_core_word=0x02820120  expected_weight=2  read_weight=2
+[36786000] Phase: PROG  ann_core_word=0x01820220  programmed_weight=1
+[36830000] Phase: VERIFY  ann_core_word=0x01820220  expected_weight=1  read_weight=1
+[36878000] Phase: PROG  ann_core_word=0x03820420  programmed_weight=3
+[36926000] Phase: VERIFY  ann_core_word=0x03820420  expected_weight=3  read_weight=3
+[36974000] Phase: PROG  ann_core_word=0x07820820  programmed_weight=7
+[37018000] Phase: VERIFY  ann_core_word=0x07820820  expected_weight=7  read_weight=7
+[37066000] Phase: PROG  ann_core_word=0x07821020  programmed_weight=7
+[37110000] Phase: VERIFY  ann_core_word=0x07821020  expected_weight=7  read_weight=7
+[37158000] Phase: PROG  ann_core_word=0x08822020  programmed_weight=8
+[37218000] Phase: VERIFY  ann_core_word=0x08822020  expected_weight=8  read_weight=8
+[37266000] Phase: PROG  ann_core_word=0x05824020  programmed_weight=5
+[37306000] Phase: VERIFY  ann_core_word=0x05824020  expected_weight=5  read_weight=5
+[37354000] Phase: PROG  ann_core_word=0x02828020  programmed_weight=2
+[37390000] Phase: VERIFY  ann_core_word=0x02828020  expected_weight=2  read_weight=2
+[37438000] Phase: PROG  ann_core_word=0x02110140  programmed_weight=2
+[37474000] Phase: VERIFY  ann_core_word=0x02110140  expected_weight=2  read_weight=2
+[37522000] Phase: PROG  ann_core_word=0x02110240  programmed_weight=2
+[37558000] Phase: VERIFY  ann_core_word=0x02110240  expected_weight=2  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence START [37574000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[37574000] Phase: REPROG  ann_core_word=0x02110240  programmed_weight=2
+[37602000] Phase: VERIFY  ann_core_word=0x02110240  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [37610000]  (DUT idle)
+//------------------------------------------------------------------------------
+[37650000] Phase: PROG  ann_core_word=0x04110440  programmed_weight=4
+[37702000] Phase: VERIFY  ann_core_word=0x04110440  expected_weight=4  read_weight=4
+[37750000] Phase: PROG  ann_core_word=0x05110840  programmed_weight=5
+[37790000] Phase: VERIFY  ann_core_word=0x05110840  expected_weight=5  read_weight=5
+[37838000] Phase: PROG  ann_core_word=0x00111040  programmed_weight=0
+[37870000] Phase: VERIFY  ann_core_word=0x00111040  expected_weight=0  read_weight=0
+[37918000] Phase: PROG  ann_core_word=0x03112040  programmed_weight=3
+[37966000] Phase: VERIFY  ann_core_word=0x03112040  expected_weight=3  read_weight=3
+[38014000] Phase: PROG  ann_core_word=0x05114040  programmed_weight=5
+[38054000] Phase: VERIFY  ann_core_word=0x05114040  expected_weight=5  read_weight=5
+[38102000] Phase: PROG  ann_core_word=0x01118040  programmed_weight=1
+[38146000] Phase: VERIFY  ann_core_word=0x01118040  expected_weight=1  read_weight=1
+[38194000] Phase: PROG  ann_core_word=0x02120140  programmed_weight=2
+[38230000] Phase: VERIFY  ann_core_word=0x02120140  expected_weight=2  read_weight=2
+[38278000] Phase: PROG  ann_core_word=0x02120240  programmed_weight=2
+[38314000] Phase: VERIFY  ann_core_word=0x02120240  expected_weight=2  read_weight=2
+[38362000] Phase: PROG  ann_core_word=0x04120440  programmed_weight=4
+[38414000] Phase: VERIFY  ann_core_word=0x04120440  expected_weight=4  read_weight=4
+[38462000] Phase: PROG  ann_core_word=0x05120840  programmed_weight=5
+[38502000] Phase: VERIFY  ann_core_word=0x05120840  expected_weight=5  read_weight=6
+//------------------------------------------------------------------------------
+// ERASE sequence START [38518000]
+//------------------------------------------------------------------------------
+[38518000] Phase: ERASE  ann_core_word=0x05120840  programmed_weight=5
+//------------------------------------------------------------------------------
+// ERASE sequence END   [38526000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [38546000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[38546000] Phase: REPROG  ann_core_word=0x05120840  programmed_weight=5
+[38586000] Phase: VERIFY  ann_core_word=0x05120840  expected_weight=5  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence END [38594000]  (DUT idle)
+//------------------------------------------------------------------------------
+[38634000] Phase: PROG  ann_core_word=0x00121040  programmed_weight=0
+[38666000] Phase: VERIFY  ann_core_word=0x00121040  expected_weight=0  read_weight=0
+[38714000] Phase: PROG  ann_core_word=0x03122040  programmed_weight=3
+[38762000] Phase: VERIFY  ann_core_word=0x03122040  expected_weight=3  read_weight=3
+[38810000] Phase: PROG  ann_core_word=0x05124040  programmed_weight=5
+[38850000] Phase: VERIFY  ann_core_word=0x05124040  expected_weight=5  read_weight=5
+[38898000] Phase: PROG  ann_core_word=0x01128040  programmed_weight=1
+[38942000] Phase: VERIFY  ann_core_word=0x01128040  expected_weight=1  read_weight=1
+[38990000] Phase: PROG  ann_core_word=0x02210140  programmed_weight=2
+[39026000] Phase: VERIFY  ann_core_word=0x02210140  expected_weight=2  read_weight=2
+[39074000] Phase: PROG  ann_core_word=0x02210240  programmed_weight=2
+[39110000] Phase: VERIFY  ann_core_word=0x02210240  expected_weight=2  read_weight=2
+[39158000] Phase: PROG  ann_core_word=0x04210440  programmed_weight=4
+[39210000] Phase: VERIFY  ann_core_word=0x04210440  expected_weight=4  read_weight=4
+[39258000] Phase: PROG  ann_core_word=0x05210840  programmed_weight=5
+[39298000] Phase: VERIFY  ann_core_word=0x05210840  expected_weight=5  read_weight=5
+[39346000] Phase: PROG  ann_core_word=0x00211040  programmed_weight=0
+[39378000] Phase: VERIFY  ann_core_word=0x00211040  expected_weight=0  read_weight=0
+[39426000] Phase: PROG  ann_core_word=0x03212040  programmed_weight=3
+[39474000] Phase: VERIFY  ann_core_word=0x03212040  expected_weight=3  read_weight=3
+[39522000] Phase: PROG  ann_core_word=0x05214040  programmed_weight=5
+[39562000] Phase: VERIFY  ann_core_word=0x05214040  expected_weight=5  read_weight=5
+[39610000] Phase: PROG  ann_core_word=0x01218040  programmed_weight=1
+[39654000] Phase: VERIFY  ann_core_word=0x01218040  expected_weight=1  read_weight=1
+[39702000] Phase: PROG  ann_core_word=0x02220140  programmed_weight=2
+[39738000] Phase: VERIFY  ann_core_word=0x02220140  expected_weight=2  read_weight=2
+[39786000] Phase: PROG  ann_core_word=0x02220240  programmed_weight=2
+[39822000] Phase: VERIFY  ann_core_word=0x02220240  expected_weight=2  read_weight=2
+[39870000] Phase: PROG  ann_core_word=0x04220440  programmed_weight=4
+[39922000] Phase: VERIFY  ann_core_word=0x04220440  expected_weight=4  read_weight=4
+[39970000] Phase: PROG  ann_core_word=0x05220840  programmed_weight=5
+[40010000] Phase: VERIFY  ann_core_word=0x05220840  expected_weight=5  read_weight=5
+[40058000] Phase: PROG  ann_core_word=0x00221040  programmed_weight=0
+[40090000] Phase: VERIFY  ann_core_word=0x00221040  expected_weight=0  read_weight=0
+[40138000] Phase: PROG  ann_core_word=0x03222040  programmed_weight=3
+[40186000] Phase: VERIFY  ann_core_word=0x03222040  expected_weight=3  read_weight=3
+[40234000] Phase: PROG  ann_core_word=0x05224040  programmed_weight=5
+[40274000] Phase: VERIFY  ann_core_word=0x05224040  expected_weight=5  read_weight=5
+[40322000] Phase: PROG  ann_core_word=0x01228040  programmed_weight=1
+[40366000] Phase: VERIFY  ann_core_word=0x01228040  expected_weight=1  read_weight=1
+[40414000] Phase: PROG  ann_core_word=0x02410140  programmed_weight=2
+[40450000] Phase: VERIFY  ann_core_word=0x02410140  expected_weight=2  read_weight=2
+[40498000] Phase: PROG  ann_core_word=0x02410240  programmed_weight=2
+[40534000] Phase: VERIFY  ann_core_word=0x02410240  expected_weight=2  read_weight=2
+[40582000] Phase: PROG  ann_core_word=0x04410440  programmed_weight=4
+[40634000] Phase: VERIFY  ann_core_word=0x04410440  expected_weight=4  read_weight=4
+[40682000] Phase: PROG  ann_core_word=0x05410840  programmed_weight=5
+[40722000] Phase: VERIFY  ann_core_word=0x05410840  expected_weight=5  read_weight=5
+[40770000] Phase: PROG  ann_core_word=0x00411040  programmed_weight=0
+[40802000] Phase: VERIFY  ann_core_word=0x00411040  expected_weight=0  read_weight=0
+[40850000] Phase: PROG  ann_core_word=0x03412040  programmed_weight=3
+[40898000] Phase: VERIFY  ann_core_word=0x03412040  expected_weight=3  read_weight=3
+[40946000] Phase: PROG  ann_core_word=0x05414040  programmed_weight=5
+[40986000] Phase: VERIFY  ann_core_word=0x05414040  expected_weight=5  read_weight=5
+[41034000] Phase: PROG  ann_core_word=0x01418040  programmed_weight=1
+[41078000] Phase: VERIFY  ann_core_word=0x01418040  expected_weight=1  read_weight=1
+[41126000] Phase: PROG  ann_core_word=0x02420140  programmed_weight=2
+[41162000] Phase: VERIFY  ann_core_word=0x02420140  expected_weight=2  read_weight=2
+[41210000] Phase: PROG  ann_core_word=0x02420240  programmed_weight=2
+[41246000] Phase: VERIFY  ann_core_word=0x02420240  expected_weight=2  read_weight=2
+[41294000] Phase: PROG  ann_core_word=0x04420440  programmed_weight=4
+[41346000] Phase: VERIFY  ann_core_word=0x04420440  expected_weight=4  read_weight=4
+[41394000] Phase: PROG  ann_core_word=0x05420840  programmed_weight=5
+[41434000] Phase: VERIFY  ann_core_word=0x05420840  expected_weight=5  read_weight=5
+[41482000] Phase: PROG  ann_core_word=0x00421040  programmed_weight=0
+[41514000] Phase: VERIFY  ann_core_word=0x00421040  expected_weight=0  read_weight=0
+[41562000] Phase: PROG  ann_core_word=0x03422040  programmed_weight=3
+[41610000] Phase: VERIFY  ann_core_word=0x03422040  expected_weight=3  read_weight=3
+[41658000] Phase: PROG  ann_core_word=0x05424040  programmed_weight=5
+[41698000] Phase: VERIFY  ann_core_word=0x05424040  expected_weight=5  read_weight=5
+[41746000] Phase: PROG  ann_core_word=0x01428040  programmed_weight=1
+[41790000] Phase: VERIFY  ann_core_word=0x01428040  expected_weight=1  read_weight=1
+[41838000] Phase: PROG  ann_core_word=0x02810140  programmed_weight=2
+[41874000] Phase: VERIFY  ann_core_word=0x02810140  expected_weight=2  read_weight=2
+[41922000] Phase: PROG  ann_core_word=0x02810240  programmed_weight=2
+[41958000] Phase: VERIFY  ann_core_word=0x02810240  expected_weight=2  read_weight=2
+[42006000] Phase: PROG  ann_core_word=0x04810440  programmed_weight=4
+[42058000] Phase: VERIFY  ann_core_word=0x04810440  expected_weight=4  read_weight=4
+[42106000] Phase: PROG  ann_core_word=0x05810840  programmed_weight=5
+[42146000] Phase: VERIFY  ann_core_word=0x05810840  expected_weight=5  read_weight=5
+[42194000] Phase: PROG  ann_core_word=0x00811040  programmed_weight=0
+[42226000] Phase: VERIFY  ann_core_word=0x00811040  expected_weight=0  read_weight=0
+[42274000] Phase: PROG  ann_core_word=0x03812040  programmed_weight=3
+[42322000] Phase: VERIFY  ann_core_word=0x03812040  expected_weight=3  read_weight=3
+[42370000] Phase: PROG  ann_core_word=0x05814040  programmed_weight=5
+[42410000] Phase: VERIFY  ann_core_word=0x05814040  expected_weight=5  read_weight=5
+[42458000] Phase: PROG  ann_core_word=0x01818040  programmed_weight=1
+[42502000] Phase: VERIFY  ann_core_word=0x01818040  expected_weight=1  read_weight=1
+[42550000] Phase: PROG  ann_core_word=0x02820140  programmed_weight=2
+[42586000] Phase: VERIFY  ann_core_word=0x02820140  expected_weight=2  read_weight=3
+//------------------------------------------------------------------------------
+// ERASE sequence START [42602000]
+//------------------------------------------------------------------------------
+[42602000] Phase: ERASE  ann_core_word=0x02820140  programmed_weight=2
+//------------------------------------------------------------------------------
+// ERASE sequence END   [42610000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [42630000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[42630000] Phase: REPROG  ann_core_word=0x02820140  programmed_weight=2
+[42666000] Phase: VERIFY  ann_core_word=0x02820140  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [42674000]  (DUT idle)
+//------------------------------------------------------------------------------
+[42714000] Phase: PROG  ann_core_word=0x02820240  programmed_weight=2
+[42750000] Phase: VERIFY  ann_core_word=0x02820240  expected_weight=2  read_weight=2
+[42798000] Phase: PROG  ann_core_word=0x04820440  programmed_weight=4
+[42850000] Phase: VERIFY  ann_core_word=0x04820440  expected_weight=4  read_weight=4
+[42898000] Phase: PROG  ann_core_word=0x05820840  programmed_weight=5
+[42938000] Phase: VERIFY  ann_core_word=0x05820840  expected_weight=5  read_weight=5
+[42986000] Phase: PROG  ann_core_word=0x00821040  programmed_weight=0
+[43018000] Phase: VERIFY  ann_core_word=0x00821040  expected_weight=0  read_weight=0
+[43066000] Phase: PROG  ann_core_word=0x03822040  programmed_weight=3
+[43114000] Phase: VERIFY  ann_core_word=0x03822040  expected_weight=3  read_weight=3
+[43162000] Phase: PROG  ann_core_word=0x05824040  programmed_weight=5
+[43202000] Phase: VERIFY  ann_core_word=0x05824040  expected_weight=5  read_weight=5
+[43250000] Phase: PROG  ann_core_word=0x01828040  programmed_weight=1
+[43294000] Phase: VERIFY  ann_core_word=0x01828040  expected_weight=1  read_weight=1
+[43342000] Phase: PROG  ann_core_word=0x02110180  programmed_weight=2
+[43378000] Phase: VERIFY  ann_core_word=0x02110180  expected_weight=2  read_weight=2
+[43426000] Phase: PROG  ann_core_word=0x02110280  programmed_weight=2
+[43462000] Phase: VERIFY  ann_core_word=0x02110280  expected_weight=2  read_weight=2
+[43510000] Phase: PROG  ann_core_word=0x06110480  programmed_weight=6
+[43566000] Phase: VERIFY  ann_core_word=0x06110480  expected_weight=6  read_weight=6
+[43614000] Phase: PROG  ann_core_word=0x0a110880  programmed_weight=10
+[43678000] Phase: VERIFY  ann_core_word=0x0a110880  expected_weight=10  read_weight=10
+[43726000] Phase: PROG  ann_core_word=0x06111080  programmed_weight=6
+[43782000] Phase: VERIFY  ann_core_word=0x06111080  expected_weight=6  read_weight=6
+[43830000] Phase: PROG  ann_core_word=0x05112080  programmed_weight=5
+[43870000] Phase: VERIFY  ann_core_word=0x05112080  expected_weight=5  read_weight=5
+[43918000] Phase: PROG  ann_core_word=0x01114080  programmed_weight=1
+[43962000] Phase: VERIFY  ann_core_word=0x01114080  expected_weight=1  read_weight=1
+[44010000] Phase: PROG  ann_core_word=0x01118080  programmed_weight=1
+[44054000] Phase: VERIFY  ann_core_word=0x01118080  expected_weight=1  read_weight=0
+//------------------------------------------------------------------------------
+// re-PROG sequence START [44070000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[44070000] Phase: REPROG  ann_core_word=0x01118080  programmed_weight=1
+[44098000] Phase: VERIFY  ann_core_word=0x01118080  expected_weight=1  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence END [44106000]  (DUT idle)
+//------------------------------------------------------------------------------
+[44146000] Phase: PROG  ann_core_word=0x02120180  programmed_weight=2
+[44182000] Phase: VERIFY  ann_core_word=0x02120180  expected_weight=2  read_weight=2
+[44230000] Phase: PROG  ann_core_word=0x02120280  programmed_weight=2
+[44266000] Phase: VERIFY  ann_core_word=0x02120280  expected_weight=2  read_weight=2
+[44314000] Phase: PROG  ann_core_word=0x06120480  programmed_weight=6
+[44370000] Phase: VERIFY  ann_core_word=0x06120480  expected_weight=6  read_weight=6
+[44418000] Phase: PROG  ann_core_word=0x0a120880  programmed_weight=10
+[44482000] Phase: VERIFY  ann_core_word=0x0a120880  expected_weight=10  read_weight=10
+[44530000] Phase: PROG  ann_core_word=0x06121080  programmed_weight=6
+[44586000] Phase: VERIFY  ann_core_word=0x06121080  expected_weight=6  read_weight=6
+[44634000] Phase: PROG  ann_core_word=0x05122080  programmed_weight=5
+[44674000] Phase: VERIFY  ann_core_word=0x05122080  expected_weight=5  read_weight=5
+[44722000] Phase: PROG  ann_core_word=0x01124080  programmed_weight=1
+[44766000] Phase: VERIFY  ann_core_word=0x01124080  expected_weight=1  read_weight=1
+[44814000] Phase: PROG  ann_core_word=0x01128080  programmed_weight=1
+[44858000] Phase: VERIFY  ann_core_word=0x01128080  expected_weight=1  read_weight=1
+[44906000] Phase: PROG  ann_core_word=0x02210180  programmed_weight=2
+[44942000] Phase: VERIFY  ann_core_word=0x02210180  expected_weight=2  read_weight=2
+[44990000] Phase: PROG  ann_core_word=0x02210280  programmed_weight=2
+[45026000] Phase: VERIFY  ann_core_word=0x02210280  expected_weight=2  read_weight=2
+[45074000] Phase: PROG  ann_core_word=0x06210480  programmed_weight=6
+[45130000] Phase: VERIFY  ann_core_word=0x06210480  expected_weight=6  read_weight=6
+[45178000] Phase: PROG  ann_core_word=0x0a210880  programmed_weight=10
+[45242000] Phase: VERIFY  ann_core_word=0x0a210880  expected_weight=10  read_weight=10
+[45290000] Phase: PROG  ann_core_word=0x06211080  programmed_weight=6
+[45346000] Phase: VERIFY  ann_core_word=0x06211080  expected_weight=6  read_weight=6
+[45394000] Phase: PROG  ann_core_word=0x05212080  programmed_weight=5
+[45434000] Phase: VERIFY  ann_core_word=0x05212080  expected_weight=5  read_weight=5
+[45482000] Phase: PROG  ann_core_word=0x01214080  programmed_weight=1
+[45526000] Phase: VERIFY  ann_core_word=0x01214080  expected_weight=1  read_weight=1
+[45574000] Phase: PROG  ann_core_word=0x01218080  programmed_weight=1
+[45618000] Phase: VERIFY  ann_core_word=0x01218080  expected_weight=1  read_weight=1
+[45666000] Phase: PROG  ann_core_word=0x02220180  programmed_weight=2
+[45702000] Phase: VERIFY  ann_core_word=0x02220180  expected_weight=2  read_weight=2
+[45750000] Phase: PROG  ann_core_word=0x02220280  programmed_weight=2
+[45786000] Phase: VERIFY  ann_core_word=0x02220280  expected_weight=2  read_weight=2
+[45834000] Phase: PROG  ann_core_word=0x06220480  programmed_weight=6
+[45890000] Phase: VERIFY  ann_core_word=0x06220480  expected_weight=6  read_weight=6
+[45938000] Phase: PROG  ann_core_word=0x0a220880  programmed_weight=10
+[46002000] Phase: VERIFY  ann_core_word=0x0a220880  expected_weight=10  read_weight=11
+//------------------------------------------------------------------------------
+// ERASE sequence START [46018000]
+//------------------------------------------------------------------------------
+[46018000] Phase: ERASE  ann_core_word=0x0a220880  programmed_weight=10
+//------------------------------------------------------------------------------
+// ERASE sequence END   [46026000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [46046000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[46046000] Phase: REPROG  ann_core_word=0x0a220880  programmed_weight=10
+[46110000] Phase: VERIFY  ann_core_word=0x0a220880  expected_weight=10  read_weight=10
+//------------------------------------------------------------------------------
+// re-PROG sequence END [46118000]  (DUT idle)
+//------------------------------------------------------------------------------
+[46158000] Phase: PROG  ann_core_word=0x06221080  programmed_weight=6
+[46214000] Phase: VERIFY  ann_core_word=0x06221080  expected_weight=6  read_weight=6
+[46262000] Phase: PROG  ann_core_word=0x05222080  programmed_weight=5
+[46302000] Phase: VERIFY  ann_core_word=0x05222080  expected_weight=5  read_weight=5
+[46350000] Phase: PROG  ann_core_word=0x01224080  programmed_weight=1
+[46394000] Phase: VERIFY  ann_core_word=0x01224080  expected_weight=1  read_weight=1
+[46442000] Phase: PROG  ann_core_word=0x01228080  programmed_weight=1
+[46486000] Phase: VERIFY  ann_core_word=0x01228080  expected_weight=1  read_weight=1
+[46534000] Phase: PROG  ann_core_word=0x02410180  programmed_weight=2
+[46570000] Phase: VERIFY  ann_core_word=0x02410180  expected_weight=2  read_weight=2
+[46618000] Phase: PROG  ann_core_word=0x02410280  programmed_weight=2
+[46654000] Phase: VERIFY  ann_core_word=0x02410280  expected_weight=2  read_weight=2
+[46702000] Phase: PROG  ann_core_word=0x06410480  programmed_weight=6
+[46758000] Phase: VERIFY  ann_core_word=0x06410480  expected_weight=6  read_weight=6
+[46806000] Phase: PROG  ann_core_word=0x0a410880  programmed_weight=10
+[46870000] Phase: VERIFY  ann_core_word=0x0a410880  expected_weight=10  read_weight=10
+[46918000] Phase: PROG  ann_core_word=0x06411080  programmed_weight=6
+[46974000] Phase: VERIFY  ann_core_word=0x06411080  expected_weight=6  read_weight=6
+[47022000] Phase: PROG  ann_core_word=0x05412080  programmed_weight=5
+[47062000] Phase: VERIFY  ann_core_word=0x05412080  expected_weight=5  read_weight=5
+[47110000] Phase: PROG  ann_core_word=0x01414080  programmed_weight=1
+[47154000] Phase: VERIFY  ann_core_word=0x01414080  expected_weight=1  read_weight=1
+[47202000] Phase: PROG  ann_core_word=0x01418080  programmed_weight=1
+[47246000] Phase: VERIFY  ann_core_word=0x01418080  expected_weight=1  read_weight=1
+[47294000] Phase: PROG  ann_core_word=0x02420180  programmed_weight=2
+[47330000] Phase: VERIFY  ann_core_word=0x02420180  expected_weight=2  read_weight=2
+[47378000] Phase: PROG  ann_core_word=0x02420280  programmed_weight=2
+[47414000] Phase: VERIFY  ann_core_word=0x02420280  expected_weight=2  read_weight=2
+[47462000] Phase: PROG  ann_core_word=0x06420480  programmed_weight=6
+[47518000] Phase: VERIFY  ann_core_word=0x06420480  expected_weight=6  read_weight=5
+//------------------------------------------------------------------------------
+// re-PROG sequence START [47534000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[47534000] Phase: REPROG  ann_core_word=0x06420480  programmed_weight=6
+[47562000] Phase: VERIFY  ann_core_word=0x06420480  expected_weight=6  read_weight=6
+//------------------------------------------------------------------------------
+// re-PROG sequence END [47570000]  (DUT idle)
+//------------------------------------------------------------------------------
+[47610000] Phase: PROG  ann_core_word=0x0a420880  programmed_weight=10
+[47674000] Phase: VERIFY  ann_core_word=0x0a420880  expected_weight=10  read_weight=10
+[47722000] Phase: PROG  ann_core_word=0x06421080  programmed_weight=6
+[47778000] Phase: VERIFY  ann_core_word=0x06421080  expected_weight=6  read_weight=6
+[47826000] Phase: PROG  ann_core_word=0x05422080  programmed_weight=5
+[47866000] Phase: VERIFY  ann_core_word=0x05422080  expected_weight=5  read_weight=5
+[47914000] Phase: PROG  ann_core_word=0x01424080  programmed_weight=1
+[47958000] Phase: VERIFY  ann_core_word=0x01424080  expected_weight=1  read_weight=1
+[48006000] Phase: PROG  ann_core_word=0x01428080  programmed_weight=1
+[48050000] Phase: VERIFY  ann_core_word=0x01428080  expected_weight=1  read_weight=1
+[48098000] Phase: PROG  ann_core_word=0x02810180  programmed_weight=2
+[48134000] Phase: VERIFY  ann_core_word=0x02810180  expected_weight=2  read_weight=2
+[48182000] Phase: PROG  ann_core_word=0x02810280  programmed_weight=2
+[48218000] Phase: VERIFY  ann_core_word=0x02810280  expected_weight=2  read_weight=2
+[48266000] Phase: PROG  ann_core_word=0x06810480  programmed_weight=6
+[48322000] Phase: VERIFY  ann_core_word=0x06810480  expected_weight=6  read_weight=6
+[48370000] Phase: PROG  ann_core_word=0x0a810880  programmed_weight=10
+[48434000] Phase: VERIFY  ann_core_word=0x0a810880  expected_weight=10  read_weight=10
+[48482000] Phase: PROG  ann_core_word=0x06811080  programmed_weight=6
+[48538000] Phase: VERIFY  ann_core_word=0x06811080  expected_weight=6  read_weight=6
+[48586000] Phase: PROG  ann_core_word=0x05812080  programmed_weight=5
+[48626000] Phase: VERIFY  ann_core_word=0x05812080  expected_weight=5  read_weight=5
+[48674000] Phase: PROG  ann_core_word=0x01814080  programmed_weight=1
+[48718000] Phase: VERIFY  ann_core_word=0x01814080  expected_weight=1  read_weight=1
+[48766000] Phase: PROG  ann_core_word=0x01818080  programmed_weight=1
+[48810000] Phase: VERIFY  ann_core_word=0x01818080  expected_weight=1  read_weight=1
+[48858000] Phase: PROG  ann_core_word=0x02820180  programmed_weight=2
+[48894000] Phase: VERIFY  ann_core_word=0x02820180  expected_weight=2  read_weight=2
+[48942000] Phase: PROG  ann_core_word=0x02820280  programmed_weight=2
+[48978000] Phase: VERIFY  ann_core_word=0x02820280  expected_weight=2  read_weight=2
+[49026000] Phase: PROG  ann_core_word=0x06820480  programmed_weight=6
+[49082000] Phase: VERIFY  ann_core_word=0x06820480  expected_weight=6  read_weight=6
+[49130000] Phase: PROG  ann_core_word=0x0a820880  programmed_weight=10
+[49194000] Phase: VERIFY  ann_core_word=0x0a820880  expected_weight=10  read_weight=10
+[49242000] Phase: PROG  ann_core_word=0x06821080  programmed_weight=6
+[49298000] Phase: VERIFY  ann_core_word=0x06821080  expected_weight=6  read_weight=6
+[49346000] Phase: PROG  ann_core_word=0x05822080  programmed_weight=5
+[49386000] Phase: VERIFY  ann_core_word=0x05822080  expected_weight=5  read_weight=5
+[49434000] Phase: PROG  ann_core_word=0x01824080  programmed_weight=1
+[49478000] Phase: VERIFY  ann_core_word=0x01824080  expected_weight=1  read_weight=2
+//------------------------------------------------------------------------------
+// ERASE sequence START [49494000]
+//------------------------------------------------------------------------------
+[49494000] Phase: ERASE  ann_core_word=0x01824080  programmed_weight=1
+//------------------------------------------------------------------------------
+// ERASE sequence END   [49502000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [49522000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[49522000] Phase: REPROG  ann_core_word=0x01824080  programmed_weight=1
+[49566000] Phase: VERIFY  ann_core_word=0x01824080  expected_weight=1  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence END [49574000]  (DUT idle)
+//------------------------------------------------------------------------------
+[49614000] Phase: PROG  ann_core_word=0x01828080  programmed_weight=1
+[49658000] Phase: VERIFY  ann_core_word=0x01828080  expected_weight=1  read_weight=1
+[49706000] Phase: PROG  ann_core_word=0x02140101  programmed_weight=2
+[49742000] Phase: VERIFY  ann_core_word=0x02140101  expected_weight=2  read_weight=2
+[49790000] Phase: PROG  ann_core_word=0x02140201  programmed_weight=2
+[49826000] Phase: VERIFY  ann_core_word=0x02140201  expected_weight=2  read_weight=2
+[49874000] Phase: PROG  ann_core_word=0x05140401  programmed_weight=5
+[49914000] Phase: VERIFY  ann_core_word=0x05140401  expected_weight=5  read_weight=5
+[49962000] Phase: PROG  ann_core_word=0x0a140801  programmed_weight=10
+[50026000] Phase: VERIFY  ann_core_word=0x0a140801  expected_weight=10  read_weight=10
+[50074000] Phase: PROG  ann_core_word=0x0c141001  programmed_weight=12
+[50114000] Phase: VERIFY  ann_core_word=0x0c141001  expected_weight=12  read_weight=12
+[50162000] Phase: PROG  ann_core_word=0x0a142001  programmed_weight=10
+[50226000] Phase: VERIFY  ann_core_word=0x0a142001  expected_weight=10  read_weight=10
+[50274000] Phase: PROG  ann_core_word=0x05144001  programmed_weight=5
+[50314000] Phase: VERIFY  ann_core_word=0x05144001  expected_weight=5  read_weight=5
+[50362000] Phase: PROG  ann_core_word=0x02148001  programmed_weight=2
+[50398000] Phase: VERIFY  ann_core_word=0x02148001  expected_weight=2  read_weight=2
+[50446000] Phase: PROG  ann_core_word=0x02180101  programmed_weight=2
+[50482000] Phase: VERIFY  ann_core_word=0x02180101  expected_weight=2  read_weight=2
+[50530000] Phase: PROG  ann_core_word=0x02180201  programmed_weight=2
+[50566000] Phase: VERIFY  ann_core_word=0x02180201  expected_weight=2  read_weight=2
+[50614000] Phase: PROG  ann_core_word=0x05180401  programmed_weight=5
+[50654000] Phase: VERIFY  ann_core_word=0x05180401  expected_weight=5  read_weight=5
+[50702000] Phase: PROG  ann_core_word=0x0a180801  programmed_weight=10
+[50766000] Phase: VERIFY  ann_core_word=0x0a180801  expected_weight=10  read_weight=10
+[50814000] Phase: PROG  ann_core_word=0x0c181001  programmed_weight=12
+[50854000] Phase: VERIFY  ann_core_word=0x0c181001  expected_weight=12  read_weight=12
+[50902000] Phase: PROG  ann_core_word=0x0a182001  programmed_weight=10
+[50966000] Phase: VERIFY  ann_core_word=0x0a182001  expected_weight=10  read_weight=10
+[51014000] Phase: PROG  ann_core_word=0x05184001  programmed_weight=5
+[51054000] Phase: VERIFY  ann_core_word=0x05184001  expected_weight=5  read_weight=5
+[51102000] Phase: PROG  ann_core_word=0x02188001  programmed_weight=2
+[51138000] Phase: VERIFY  ann_core_word=0x02188001  expected_weight=2  read_weight=2
+[51186000] Phase: PROG  ann_core_word=0x02240101  programmed_weight=2
+[51222000] Phase: VERIFY  ann_core_word=0x02240101  expected_weight=2  read_weight=2
+[51270000] Phase: PROG  ann_core_word=0x02240201  programmed_weight=2
+[51306000] Phase: VERIFY  ann_core_word=0x02240201  expected_weight=2  read_weight=2
+[51354000] Phase: PROG  ann_core_word=0x05240401  programmed_weight=5
+[51394000] Phase: VERIFY  ann_core_word=0x05240401  expected_weight=5  read_weight=5
+[51442000] Phase: PROG  ann_core_word=0x0a240801  programmed_weight=10
+[51506000] Phase: VERIFY  ann_core_word=0x0a240801  expected_weight=10  read_weight=10
+[51554000] Phase: PROG  ann_core_word=0x0c241001  programmed_weight=12
+[51594000] Phase: VERIFY  ann_core_word=0x0c241001  expected_weight=12  read_weight=12
+[51642000] Phase: PROG  ann_core_word=0x0a242001  programmed_weight=10
+[51706000] Phase: VERIFY  ann_core_word=0x0a242001  expected_weight=10  read_weight=10
+[51754000] Phase: PROG  ann_core_word=0x05244001  programmed_weight=5
+[51794000] Phase: VERIFY  ann_core_word=0x05244001  expected_weight=5  read_weight=5
+[51842000] Phase: PROG  ann_core_word=0x02248001  programmed_weight=2
+[51878000] Phase: VERIFY  ann_core_word=0x02248001  expected_weight=2  read_weight=1
+//------------------------------------------------------------------------------
+// re-PROG sequence START [51894000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[51894000] Phase: REPROG  ann_core_word=0x02248001  programmed_weight=2
+[51922000] Phase: VERIFY  ann_core_word=0x02248001  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [51930000]  (DUT idle)
+//------------------------------------------------------------------------------
+[51970000] Phase: PROG  ann_core_word=0x02280101  programmed_weight=2
+[52006000] Phase: VERIFY  ann_core_word=0x02280101  expected_weight=2  read_weight=2
+[52054000] Phase: PROG  ann_core_word=0x02280201  programmed_weight=2
+[52090000] Phase: VERIFY  ann_core_word=0x02280201  expected_weight=2  read_weight=2
+[52138000] Phase: PROG  ann_core_word=0x05280401  programmed_weight=5
+[52178000] Phase: VERIFY  ann_core_word=0x05280401  expected_weight=5  read_weight=5
+[52226000] Phase: PROG  ann_core_word=0x0a280801  programmed_weight=10
+[52290000] Phase: VERIFY  ann_core_word=0x0a280801  expected_weight=10  read_weight=10
+[52338000] Phase: PROG  ann_core_word=0x0c281001  programmed_weight=12
+[52378000] Phase: VERIFY  ann_core_word=0x0c281001  expected_weight=12  read_weight=12
+[52426000] Phase: PROG  ann_core_word=0x0a282001  programmed_weight=10
+[52490000] Phase: VERIFY  ann_core_word=0x0a282001  expected_weight=10  read_weight=10
+[52538000] Phase: PROG  ann_core_word=0x05284001  programmed_weight=5
+[52578000] Phase: VERIFY  ann_core_word=0x05284001  expected_weight=5  read_weight=5
+[52626000] Phase: PROG  ann_core_word=0x02288001  programmed_weight=2
+[52662000] Phase: VERIFY  ann_core_word=0x02288001  expected_weight=2  read_weight=2
+[52710000] Phase: PROG  ann_core_word=0x02440101  programmed_weight=2
+[52746000] Phase: VERIFY  ann_core_word=0x02440101  expected_weight=2  read_weight=2
+[52794000] Phase: PROG  ann_core_word=0x02440201  programmed_weight=2
+[52830000] Phase: VERIFY  ann_core_word=0x02440201  expected_weight=2  read_weight=2
+[52878000] Phase: PROG  ann_core_word=0x05440401  programmed_weight=5
+[52918000] Phase: VERIFY  ann_core_word=0x05440401  expected_weight=5  read_weight=5
+[52966000] Phase: PROG  ann_core_word=0x0a440801  programmed_weight=10
+[53030000] Phase: VERIFY  ann_core_word=0x0a440801  expected_weight=10  read_weight=10
+[53078000] Phase: PROG  ann_core_word=0x0c441001  programmed_weight=12
+[53118000] Phase: VERIFY  ann_core_word=0x0c441001  expected_weight=12  read_weight=12
+[53166000] Phase: PROG  ann_core_word=0x0a442001  programmed_weight=10
+[53230000] Phase: VERIFY  ann_core_word=0x0a442001  expected_weight=10  read_weight=10
+[53278000] Phase: PROG  ann_core_word=0x05444001  programmed_weight=5
+[53318000] Phase: VERIFY  ann_core_word=0x05444001  expected_weight=5  read_weight=5
+[53366000] Phase: PROG  ann_core_word=0x02448001  programmed_weight=2
+[53402000] Phase: VERIFY  ann_core_word=0x02448001  expected_weight=2  read_weight=2
+[53450000] Phase: PROG  ann_core_word=0x02480101  programmed_weight=2
+[53486000] Phase: VERIFY  ann_core_word=0x02480101  expected_weight=2  read_weight=2
+[53534000] Phase: PROG  ann_core_word=0x02480201  programmed_weight=2
+[53570000] Phase: VERIFY  ann_core_word=0x02480201  expected_weight=2  read_weight=2
+[53618000] Phase: PROG  ann_core_word=0x05480401  programmed_weight=5
+[53658000] Phase: VERIFY  ann_core_word=0x05480401  expected_weight=5  read_weight=5
+[53706000] Phase: PROG  ann_core_word=0x0a480801  programmed_weight=10
+[53770000] Phase: VERIFY  ann_core_word=0x0a480801  expected_weight=10  read_weight=11
+//------------------------------------------------------------------------------
+// ERASE sequence START [53786000]
+//------------------------------------------------------------------------------
+[53786000] Phase: ERASE  ann_core_word=0x0a480801  programmed_weight=10
+//------------------------------------------------------------------------------
+// ERASE sequence END   [53794000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [53814000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[53814000] Phase: REPROG  ann_core_word=0x0a480801  programmed_weight=10
+[53878000] Phase: VERIFY  ann_core_word=0x0a480801  expected_weight=10  read_weight=10
+//------------------------------------------------------------------------------
+// re-PROG sequence END [53886000]  (DUT idle)
+//------------------------------------------------------------------------------
+[53926000] Phase: PROG  ann_core_word=0x0c481001  programmed_weight=12
+[53966000] Phase: VERIFY  ann_core_word=0x0c481001  expected_weight=12  read_weight=12
+[54014000] Phase: PROG  ann_core_word=0x0a482001  programmed_weight=10
+[54078000] Phase: VERIFY  ann_core_word=0x0a482001  expected_weight=10  read_weight=10
+[54126000] Phase: PROG  ann_core_word=0x05484001  programmed_weight=5
+[54166000] Phase: VERIFY  ann_core_word=0x05484001  expected_weight=5  read_weight=5
+[54214000] Phase: PROG  ann_core_word=0x02488001  programmed_weight=2
+[54250000] Phase: VERIFY  ann_core_word=0x02488001  expected_weight=2  read_weight=2
+[54298000] Phase: PROG  ann_core_word=0x02840101  programmed_weight=2
+[54334000] Phase: VERIFY  ann_core_word=0x02840101  expected_weight=2  read_weight=2
+[54382000] Phase: PROG  ann_core_word=0x02840201  programmed_weight=2
+[54418000] Phase: VERIFY  ann_core_word=0x02840201  expected_weight=2  read_weight=2
+[54466000] Phase: PROG  ann_core_word=0x05840401  programmed_weight=5
+[54506000] Phase: VERIFY  ann_core_word=0x05840401  expected_weight=5  read_weight=5
+[54554000] Phase: PROG  ann_core_word=0x0a840801  programmed_weight=10
+[54618000] Phase: VERIFY  ann_core_word=0x0a840801  expected_weight=10  read_weight=10
+[54666000] Phase: PROG  ann_core_word=0x0c841001  programmed_weight=12
+[54706000] Phase: VERIFY  ann_core_word=0x0c841001  expected_weight=12  read_weight=12
+[54754000] Phase: PROG  ann_core_word=0x0a842001  programmed_weight=10
+[54818000] Phase: VERIFY  ann_core_word=0x0a842001  expected_weight=10  read_weight=10
+[54866000] Phase: PROG  ann_core_word=0x05844001  programmed_weight=5
+[54906000] Phase: VERIFY  ann_core_word=0x05844001  expected_weight=5  read_weight=5
+[54954000] Phase: PROG  ann_core_word=0x02848001  programmed_weight=2
+[54990000] Phase: VERIFY  ann_core_word=0x02848001  expected_weight=2  read_weight=2
+[55038000] Phase: PROG  ann_core_word=0x02880101  programmed_weight=2
+[55074000] Phase: VERIFY  ann_core_word=0x02880101  expected_weight=2  read_weight=2
+[55122000] Phase: PROG  ann_core_word=0x02880201  programmed_weight=2
+[55158000] Phase: VERIFY  ann_core_word=0x02880201  expected_weight=2  read_weight=2
+[55206000] Phase: PROG  ann_core_word=0x05880401  programmed_weight=5
+[55246000] Phase: VERIFY  ann_core_word=0x05880401  expected_weight=5  read_weight=5
+[55294000] Phase: PROG  ann_core_word=0x0a880801  programmed_weight=10
+[55358000] Phase: VERIFY  ann_core_word=0x0a880801  expected_weight=10  read_weight=10
+[55406000] Phase: PROG  ann_core_word=0x0c881001  programmed_weight=12
+[55446000] Phase: VERIFY  ann_core_word=0x0c881001  expected_weight=12  read_weight=12
+[55494000] Phase: PROG  ann_core_word=0x0a882001  programmed_weight=10
+[55558000] Phase: VERIFY  ann_core_word=0x0a882001  expected_weight=10  read_weight=10
+[55606000] Phase: PROG  ann_core_word=0x05884001  programmed_weight=5
+[55646000] Phase: VERIFY  ann_core_word=0x05884001  expected_weight=5  read_weight=5
+[55694000] Phase: PROG  ann_core_word=0x02888001  programmed_weight=2
+[55730000] Phase: VERIFY  ann_core_word=0x02888001  expected_weight=2  read_weight=2
+[55778000] Phase: PROG  ann_core_word=0x02140102  programmed_weight=2
+[55814000] Phase: VERIFY  ann_core_word=0x02140102  expected_weight=2  read_weight=2
+[55862000] Phase: PROG  ann_core_word=0x03140202  programmed_weight=3
+[55910000] Phase: VERIFY  ann_core_word=0x03140202  expected_weight=3  read_weight=3
+[55958000] Phase: PROG  ann_core_word=0x0c140402  programmed_weight=12
+[55998000] Phase: VERIFY  ann_core_word=0x0c140402  expected_weight=12  read_weight=12
+[56046000] Phase: PROG  ann_core_word=0x08140802  programmed_weight=8
+[56106000] Phase: VERIFY  ann_core_word=0x08140802  expected_weight=8  read_weight=8
+[56154000] Phase: PROG  ann_core_word=0x04141002  programmed_weight=4
+[56206000] Phase: VERIFY  ann_core_word=0x04141002  expected_weight=4  read_weight=3
+//------------------------------------------------------------------------------
+// re-PROG sequence START [56222000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[56222000] Phase: REPROG  ann_core_word=0x04141002  programmed_weight=4
+[56250000] Phase: VERIFY  ann_core_word=0x04141002  expected_weight=4  read_weight=4
+//------------------------------------------------------------------------------
+// re-PROG sequence END [56258000]  (DUT idle)
+//------------------------------------------------------------------------------
+[56298000] Phase: PROG  ann_core_word=0x09142002  programmed_weight=9
+[56346000] Phase: VERIFY  ann_core_word=0x09142002  expected_weight=9  read_weight=9
+[56394000] Phase: PROG  ann_core_word=0x06144002  programmed_weight=6
+[56450000] Phase: VERIFY  ann_core_word=0x06144002  expected_weight=6  read_weight=6
+[56498000] Phase: PROG  ann_core_word=0x02148002  programmed_weight=2
+[56534000] Phase: VERIFY  ann_core_word=0x02148002  expected_weight=2  read_weight=2
+[56582000] Phase: PROG  ann_core_word=0x02180102  programmed_weight=2
+[56618000] Phase: VERIFY  ann_core_word=0x02180102  expected_weight=2  read_weight=2
+[56666000] Phase: PROG  ann_core_word=0x03180202  programmed_weight=3
+[56714000] Phase: VERIFY  ann_core_word=0x03180202  expected_weight=3  read_weight=3
+[56762000] Phase: PROG  ann_core_word=0x0c180402  programmed_weight=12
+[56802000] Phase: VERIFY  ann_core_word=0x0c180402  expected_weight=12  read_weight=12
+[56850000] Phase: PROG  ann_core_word=0x08180802  programmed_weight=8
+[56910000] Phase: VERIFY  ann_core_word=0x08180802  expected_weight=8  read_weight=8
+[56958000] Phase: PROG  ann_core_word=0x04181002  programmed_weight=4
+[57010000] Phase: VERIFY  ann_core_word=0x04181002  expected_weight=4  read_weight=4
+[57058000] Phase: PROG  ann_core_word=0x09182002  programmed_weight=9
+[57106000] Phase: VERIFY  ann_core_word=0x09182002  expected_weight=9  read_weight=9
+[57154000] Phase: PROG  ann_core_word=0x06184002  programmed_weight=6
+[57210000] Phase: VERIFY  ann_core_word=0x06184002  expected_weight=6  read_weight=6
+[57258000] Phase: PROG  ann_core_word=0x02188002  programmed_weight=2
+[57294000] Phase: VERIFY  ann_core_word=0x02188002  expected_weight=2  read_weight=2
+[57342000] Phase: PROG  ann_core_word=0x02240102  programmed_weight=2
+[57378000] Phase: VERIFY  ann_core_word=0x02240102  expected_weight=2  read_weight=2
+[57426000] Phase: PROG  ann_core_word=0x03240202  programmed_weight=3
+[57474000] Phase: VERIFY  ann_core_word=0x03240202  expected_weight=3  read_weight=3
+[57522000] Phase: PROG  ann_core_word=0x0c240402  programmed_weight=12
+[57562000] Phase: VERIFY  ann_core_word=0x0c240402  expected_weight=12  read_weight=12
+[57610000] Phase: PROG  ann_core_word=0x08240802  programmed_weight=8
+[57670000] Phase: VERIFY  ann_core_word=0x08240802  expected_weight=8  read_weight=8
+[57718000] Phase: PROG  ann_core_word=0x04241002  programmed_weight=4
+[57770000] Phase: VERIFY  ann_core_word=0x04241002  expected_weight=4  read_weight=4
+[57818000] Phase: PROG  ann_core_word=0x09242002  programmed_weight=9
+[57866000] Phase: VERIFY  ann_core_word=0x09242002  expected_weight=9  read_weight=9
+[57914000] Phase: PROG  ann_core_word=0x06244002  programmed_weight=6
+[57970000] Phase: VERIFY  ann_core_word=0x06244002  expected_weight=6  read_weight=6
+[58018000] Phase: PROG  ann_core_word=0x02248002  programmed_weight=2
+[58054000] Phase: VERIFY  ann_core_word=0x02248002  expected_weight=2  read_weight=2
+[58102000] Phase: PROG  ann_core_word=0x02280102  programmed_weight=2
+[58138000] Phase: VERIFY  ann_core_word=0x02280102  expected_weight=2  read_weight=3
+//------------------------------------------------------------------------------
+// ERASE sequence START [58154000]
+//------------------------------------------------------------------------------
+[58154000] Phase: ERASE  ann_core_word=0x02280102  programmed_weight=2
+//------------------------------------------------------------------------------
+// ERASE sequence END   [58162000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [58182000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[58182000] Phase: REPROG  ann_core_word=0x02280102  programmed_weight=2
+[58218000] Phase: VERIFY  ann_core_word=0x02280102  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [58226000]  (DUT idle)
+//------------------------------------------------------------------------------
+[58266000] Phase: PROG  ann_core_word=0x03280202  programmed_weight=3
+[58314000] Phase: VERIFY  ann_core_word=0x03280202  expected_weight=3  read_weight=3
+[58362000] Phase: PROG  ann_core_word=0x0c280402  programmed_weight=12
+[58402000] Phase: VERIFY  ann_core_word=0x0c280402  expected_weight=12  read_weight=12
+[58450000] Phase: PROG  ann_core_word=0x08280802  programmed_weight=8
+[58510000] Phase: VERIFY  ann_core_word=0x08280802  expected_weight=8  read_weight=8
+[58558000] Phase: PROG  ann_core_word=0x04281002  programmed_weight=4
+[58610000] Phase: VERIFY  ann_core_word=0x04281002  expected_weight=4  read_weight=4
+[58658000] Phase: PROG  ann_core_word=0x09282002  programmed_weight=9
+[58706000] Phase: VERIFY  ann_core_word=0x09282002  expected_weight=9  read_weight=8
+//------------------------------------------------------------------------------
+// re-PROG sequence START [58722000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[58722000] Phase: REPROG  ann_core_word=0x09282002  programmed_weight=9
+[58750000] Phase: VERIFY  ann_core_word=0x09282002  expected_weight=9  read_weight=9
+//------------------------------------------------------------------------------
+// re-PROG sequence END [58758000]  (DUT idle)
+//------------------------------------------------------------------------------
+[58798000] Phase: PROG  ann_core_word=0x06284002  programmed_weight=6
+[58854000] Phase: VERIFY  ann_core_word=0x06284002  expected_weight=6  read_weight=6
+[58902000] Phase: PROG  ann_core_word=0x02288002  programmed_weight=2
+[58938000] Phase: VERIFY  ann_core_word=0x02288002  expected_weight=2  read_weight=2
+[58986000] Phase: PROG  ann_core_word=0x02440102  programmed_weight=2
+[59022000] Phase: VERIFY  ann_core_word=0x02440102  expected_weight=2  read_weight=2
+[59070000] Phase: PROG  ann_core_word=0x03440202  programmed_weight=3
+[59118000] Phase: VERIFY  ann_core_word=0x03440202  expected_weight=3  read_weight=3
+[59166000] Phase: PROG  ann_core_word=0x0c440402  programmed_weight=12
+[59206000] Phase: VERIFY  ann_core_word=0x0c440402  expected_weight=12  read_weight=12
+[59254000] Phase: PROG  ann_core_word=0x08440802  programmed_weight=8
+[59314000] Phase: VERIFY  ann_core_word=0x08440802  expected_weight=8  read_weight=8
+[59362000] Phase: PROG  ann_core_word=0x04441002  programmed_weight=4
+[59414000] Phase: VERIFY  ann_core_word=0x04441002  expected_weight=4  read_weight=4
+[59462000] Phase: PROG  ann_core_word=0x09442002  programmed_weight=9
+[59510000] Phase: VERIFY  ann_core_word=0x09442002  expected_weight=9  read_weight=9
+[59558000] Phase: PROG  ann_core_word=0x06444002  programmed_weight=6
+[59614000] Phase: VERIFY  ann_core_word=0x06444002  expected_weight=6  read_weight=6
+[59662000] Phase: PROG  ann_core_word=0x02448002  programmed_weight=2
+[59698000] Phase: VERIFY  ann_core_word=0x02448002  expected_weight=2  read_weight=3
+//------------------------------------------------------------------------------
+// ERASE sequence START [59714000]
+//------------------------------------------------------------------------------
+[59714000] Phase: ERASE  ann_core_word=0x02448002  programmed_weight=2
+//------------------------------------------------------------------------------
+// ERASE sequence END   [59722000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [59742000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[59742000] Phase: REPROG  ann_core_word=0x02448002  programmed_weight=2
+[59778000] Phase: VERIFY  ann_core_word=0x02448002  expected_weight=2  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence END [59786000]  (DUT idle)
+//------------------------------------------------------------------------------
+[59826000] Phase: PROG  ann_core_word=0x02480102  programmed_weight=2
+[59862000] Phase: VERIFY  ann_core_word=0x02480102  expected_weight=2  read_weight=2
+[59910000] Phase: PROG  ann_core_word=0x03480202  programmed_weight=3
+[59958000] Phase: VERIFY  ann_core_word=0x03480202  expected_weight=3  read_weight=3
+[60006000] Phase: PROG  ann_core_word=0x0c480402  programmed_weight=12
+[60046000] Phase: VERIFY  ann_core_word=0x0c480402  expected_weight=12  read_weight=12
+[60094000] Phase: PROG  ann_core_word=0x08480802  programmed_weight=8
+[60154000] Phase: VERIFY  ann_core_word=0x08480802  expected_weight=8  read_weight=8
+[60202000] Phase: PROG  ann_core_word=0x04481002  programmed_weight=4
+[60254000] Phase: VERIFY  ann_core_word=0x04481002  expected_weight=4  read_weight=4
+[60302000] Phase: PROG  ann_core_word=0x09482002  programmed_weight=9
+[60350000] Phase: VERIFY  ann_core_word=0x09482002  expected_weight=9  read_weight=9
+[60398000] Phase: PROG  ann_core_word=0x06484002  programmed_weight=6
+[60454000] Phase: VERIFY  ann_core_word=0x06484002  expected_weight=6  read_weight=6
+[60502000] Phase: PROG  ann_core_word=0x02488002  programmed_weight=2
+[60538000] Phase: VERIFY  ann_core_word=0x02488002  expected_weight=2  read_weight=2
+[60586000] Phase: PROG  ann_core_word=0x02840102  programmed_weight=2
+[60622000] Phase: VERIFY  ann_core_word=0x02840102  expected_weight=2  read_weight=2
+[60670000] Phase: PROG  ann_core_word=0x03840202  programmed_weight=3
+[60718000] Phase: VERIFY  ann_core_word=0x03840202  expected_weight=3  read_weight=2
+//------------------------------------------------------------------------------
+// re-PROG sequence START [60734000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[60734000] Phase: REPROG  ann_core_word=0x03840202  programmed_weight=3
+[60762000] Phase: VERIFY  ann_core_word=0x03840202  expected_weight=3  read_weight=3
+//------------------------------------------------------------------------------
+// re-PROG sequence END [60770000]  (DUT idle)
+//------------------------------------------------------------------------------
+[60810000] Phase: PROG  ann_core_word=0x0c840402  programmed_weight=12
+[60850000] Phase: VERIFY  ann_core_word=0x0c840402  expected_weight=12  read_weight=12
+[60898000] Phase: PROG  ann_core_word=0x08840802  programmed_weight=8
+[60958000] Phase: VERIFY  ann_core_word=0x08840802  expected_weight=8  read_weight=8
+[61006000] Phase: PROG  ann_core_word=0x04841002  programmed_weight=4
+[61058000] Phase: VERIFY  ann_core_word=0x04841002  expected_weight=4  read_weight=4
+[61106000] Phase: PROG  ann_core_word=0x09842002  programmed_weight=9
+[61154000] Phase: VERIFY  ann_core_word=0x09842002  expected_weight=9  read_weight=9
+[61202000] Phase: PROG  ann_core_word=0x06844002  programmed_weight=6
+[61258000] Phase: VERIFY  ann_core_word=0x06844002  expected_weight=6  read_weight=6
+[61306000] Phase: PROG  ann_core_word=0x02848002  programmed_weight=2
+[61342000] Phase: VERIFY  ann_core_word=0x02848002  expected_weight=2  read_weight=2
+[61390000] Phase: PROG  ann_core_word=0x02880102  programmed_weight=2
+[61426000] Phase: VERIFY  ann_core_word=0x02880102  expected_weight=2  read_weight=2
+[61474000] Phase: PROG  ann_core_word=0x03880202  programmed_weight=3
+[61522000] Phase: VERIFY  ann_core_word=0x03880202  expected_weight=3  read_weight=3
+[61570000] Phase: PROG  ann_core_word=0x0c880402  programmed_weight=12
+[61610000] Phase: VERIFY  ann_core_word=0x0c880402  expected_weight=12  read_weight=12
+[61658000] Phase: PROG  ann_core_word=0x08880802  programmed_weight=8
+[61718000] Phase: VERIFY  ann_core_word=0x08880802  expected_weight=8  read_weight=9
+//------------------------------------------------------------------------------
+// ERASE sequence START [61734000]
+//------------------------------------------------------------------------------
+[61734000] Phase: ERASE  ann_core_word=0x08880802  programmed_weight=8
+//------------------------------------------------------------------------------
+// ERASE sequence END   [61742000]  (next phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// re-PROG sequence START [61762000]  (after phase: CHECK_DONE)
+//------------------------------------------------------------------------------
+[61762000] Phase: REPROG  ann_core_word=0x08880802  programmed_weight=8
+[61822000] Phase: VERIFY  ann_core_word=0x08880802  expected_weight=8  read_weight=8
+//------------------------------------------------------------------------------
+// re-PROG sequence END [61830000]  (DUT idle)
+//------------------------------------------------------------------------------
+[61870000] Phase: PROG  ann_core_word=0x04881002  programmed_weight=4
+[61922000] Phase: VERIFY  ann_core_word=0x04881002  expected_weight=4  read_weight=4
+[61970000] Phase: PROG  ann_core_word=0x09882002  programmed_weight=9
+[62018000] Phase: VERIFY  ann_core_word=0x09882002  expected_weight=9  read_weight=9
+[62066000] Phase: PROG  ann_core_word=0x06884002  programmed_weight=6
+[62122000] Phase: VERIFY  ann_core_word=0x06884002  expected_weight=6  read_weight=6
+[62170000] Phase: PROG  ann_core_word=0x02888002  programmed_weight=2
+[62206000] Phase: VERIFY  ann_core_word=0x02888002  expected_weight=2  read_weight=2
+// Total weights programmed: 640
+
+//------------------------------------------------------------------------------
+// Verification: Compare programmed weights to expected
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+// Final ANN Core Cells Weights (10 rows x 64 cols, 4-bit each)
+//------------------------------------------------------------------------------
+// Row 0: [2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2]
+// Row 1: [2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2]
+// Row 2: [2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2 2 3 11 3 3 10 4 2]
+// Row 3: [2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2 2 1 10 15 15 12 3 2]
+// Row 4: [2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2 2 0 7 15 13 12 4 2]
+// Row 5: [2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2 2 1 3 7 7 8 5 2]
+// Row 6: [2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1 2 2 4 5 0 3 5 1]
+// Row 7: [2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1 2 2 6 10 6 5 1 1]
+// Row 8: [2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2 2 2 5 10 12 10 5 2]
+// Row 9: [2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2 2 3 12 8 4 9 6 2]
+
+//------------------------------------------------------------------------------
+// Asymmetric flow coverage:
+//   ERASE path (read>expected): 14
+//   re-PROG path (read<expected): 27 (PROG after VERIFY)
+//------------------------------------------------------------------------------
+// Summary: 0 errors in 640 weights
+//------------------------------------------------------------------------------
