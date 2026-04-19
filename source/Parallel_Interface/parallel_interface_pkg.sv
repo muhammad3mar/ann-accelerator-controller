@@ -54,6 +54,29 @@ package parallel_interface_pkg;
         endcase
     endfunction
 
+    function automatic logic pi_is_onehot4(input logic [3:0] oh);
+        unique case (oh)
+            4'b0001, 4'b0010, 4'b0100, 4'b1000: return 1'b1;
+            default: return 1'b0;
+        endcase
+    endfunction
+
+    function automatic logic pi_is_onehot8(input logic [7:0] oh);
+        unique case (oh)
+            8'b00000001, 8'b00000010, 8'b00000100, 8'b00001000,
+            8'b00010000, 8'b00100000, 8'b01000000, 8'b10000000: return 1'b1;
+            default: return 1'b0;
+        endcase
+    endfunction
+
+    // Host ann-tail validity: each field must be strictly one-hot.
+    function automatic logic ann_tail_is_valid_onehot(input logic [23:0] tail);
+        return pi_is_onehot4(tail[23:20]) &&
+               pi_is_onehot4(tail[19:16]) &&
+               pi_is_onehot8(tail[15:8])  &&
+               pi_is_onehot8(tail[7:0]);
+    endfunction
+
     // Decode ann_core_word-style tail → 16-bit address field (parse_ann_address layout)
     function automatic logic [15:0] ann_tail_to_parallel_addr(logic [23:0] tail);
         logic [1:0] blk, sb;

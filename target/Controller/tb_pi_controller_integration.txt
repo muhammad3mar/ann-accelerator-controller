@@ -1,13 +1,306 @@
-// PI + controller + input_buffer integration
+// PI + controller + input_buffer integration (verbose report)
+//
+// Per case: host 32b + host_cmd | PI->controller (valid,data,address,cmd) |
+//   busy cycle count | pulses + ann_core_word (exp vs saw) | input_buffer 8x8 dump | idle.
 
-PASS 01_READ pulses=001 word=00281080
-PASS 02_PROG pulses=001 word=0c110101
-PASS 03_ERASE pulses=001 word=00810120
-PASS 04_INF pulses=100 word=00120420
-PASS 05_READ pulses=001 word=00410110
-PASS 06_PROG pulses=001 word=0e210201
-PASS 07_ERASE pulses=001 word=00420101
-PASS 08_READ pulses=001 word=00810101
-PASS 09_PROG pulses=001 word=0f288080
-PASS 10_ERASE pulses=001 word=00188010
+
+//==============================================================================
+// 01_READ
+//==============================================================================
+  // Host packet: host_cmd=CMD_READ (001)
+  //   host_data:
+  //     00000000-0010-1000-00010000-10000000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00281080
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_READ (001)
+  //   address[15:0]:
+  //     000000-01-11-100-111
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x01e7  |  parallel_addr idx: blk=1 sub_blk=3 col=4 row=7
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 2 posedge cycles (then idle)
+  //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x00281080  saw_last_nonzero=0x00281080  saw_match_exp=1
+  // input_buffer after 01_READ — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  00 00 00 00 00 00 00 00
+  //   row1  00 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 01_READ
+
+//==============================================================================
+// 02_PROG
+//==============================================================================
+  // Host packet: host_cmd=CMD_PROG (010)
+  //   host_data:
+  //     00001100-0001-0001-00000001-00000001
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x0c110101
+  // PI -> controller:
+  //   valid=1  data(bin)=00001100  cmd=CMD_PROG (010)
+  //   address[15:0]:
+  //     000000-00-00-000-000
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0000  |  parallel_addr idx: blk=0 sub_blk=0 col=0 row=0
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 14 posedge cycles (then idle)
+  //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x0c110101  saw_last_nonzero=0x0c110101  saw_match_exp=1
+  // input_buffer after 02_PROG — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  0c 00 00 00 00 00 00 00
+  //   row1  00 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 02_PROG
+
+//==============================================================================
+// 03_ERASE
+//==============================================================================
+  // Host packet: host_cmd=CMD_ERASE (011)
+  //   host_data:
+  //     00000000-1000-0001-00000001-00100000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00810120
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_ERASE (011)
+  //   address[15:0]:
+  //     000000-11-00-000-101
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0305  |  parallel_addr idx: blk=3 sub_blk=0 col=0 row=5
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 8 posedge cycles (then idle)
+  //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
+  //   ann_core_word: exp=0x00810120  saw_last_nonzero=0x00810120  saw_match_exp=1
+  // input_buffer after 03_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  0c 00 00 00 00 00 00 00
+  //   row1  00 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 03_ERASE
+
+//==============================================================================
+// 04_INF  (INF: 9 clk host_cmd=CMD_INF, same host_data each cycle)
+//==============================================================================
+  // Host packet: host_cmd=CMD_INF (100)
+  //   host_data:
+  //     10101010-0001-0010-00000100-00100000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0xaa120420
+  // PI -> controller:
+  //   valid=1  data(bin)=10101010  cmd=CMD_INF (100)
+  //   address[15:0]:
+  //     000000-00-01-010-101
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0055  |  parallel_addr idx: blk=0 sub_blk=1 col=2 row=5
+  // INF: buffer loads 8 pixels (CTRL_DATA_LOAD), then COMPUTE issues INF pulses.
+  // DUT: controller busy for 18 posedge cycles (INF COLLECT + COMPUTE + ...)
+  //   pulses: expected INF (100)  |  last non-zero saw INF (100)  pulse_ok=1
+  //   ann_core_word: exp=0xaa120420  saw_last_nonzero=0x00120420  saw_match_exp=1  (INF may toggle word during COLLECT vs COMPUTE)
+  // input_buffer after 04_INF — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  00 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 04_INF
+
+//==============================================================================
+// 05_READ
+//==============================================================================
+  // Host packet: host_cmd=CMD_READ (001)
+  //   host_data:
+  //     00000000-0100-0001-00000001-00010000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00410110
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_READ (001)
+  //   address[15:0]:
+  //     000000-10-00-000-100
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0204  |  parallel_addr idx: blk=2 sub_blk=0 col=0 row=4
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 2 posedge cycles (then idle)
+  //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x00410110  saw_last_nonzero=0x00410110  saw_match_exp=1
+  // input_buffer after 05_READ — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  00 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 05_READ
+
+//==============================================================================
+// 06_PROG
+//==============================================================================
+  // Host packet: host_cmd=CMD_PROG (010)
+  //   host_data:
+  //     00001110-0010-0001-00000010-00000001
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x0e210201
+  // PI -> controller:
+  //   valid=1  data(bin)=00001110  cmd=CMD_PROG (010)
+  //   address[15:0]:
+  //     000000-01-00-001-000
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0108  |  parallel_addr idx: blk=1 sub_blk=0 col=1 row=0
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 13 posedge cycles (then idle)
+  //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x0e210201  saw_last_nonzero=0x0e210201  saw_match_exp=1
+  // input_buffer after 06_PROG — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  0e 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 06_PROG
+
+//==============================================================================
+// 07_ERASE
+//==============================================================================
+  // Host packet: host_cmd=CMD_ERASE (011)
+  //   host_data:
+  //     00000000-0100-0010-00000001-00000001
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00420101
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_ERASE (011)
+  //   address[15:0]:
+  //     000000-10-01-000-000
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0240  |  parallel_addr idx: blk=2 sub_blk=1 col=0 row=0
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 7 posedge cycles (then idle)
+  //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
+  //   ann_core_word: exp=0x00420101  saw_last_nonzero=0x00420101  saw_match_exp=1
+  // input_buffer after 07_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  0e 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 07_ERASE
+
+//==============================================================================
+// 08_READ
+//==============================================================================
+  // Host packet: host_cmd=CMD_READ (001)
+  //   host_data:
+  //     00000000-1000-0001-00000001-00000001
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00810101
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_READ (001)
+  //   address[15:0]:
+  //     000000-11-00-000-000
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x0300  |  parallel_addr idx: blk=3 sub_blk=0 col=0 row=0
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 2 posedge cycles (then idle)
+  //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x00810101  saw_last_nonzero=0x00810101  saw_match_exp=1
+  // input_buffer after 08_READ — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  0e 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 00
+  // Return to idle: busy=0
+PASS 08_READ
+
+//==============================================================================
+// 09_PROG
+//==============================================================================
+  // Host packet: host_cmd=CMD_PROG (010)
+  //   host_data:
+  //     00001111-0010-1000-10000000-10000000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x0f288080
+  // PI -> controller:
+  //   valid=1  data(bin)=00001111  cmd=CMD_PROG (010)
+  //   address[15:0]:
+  //     000000-01-11-111-111
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x01ff  |  parallel_addr idx: blk=1 sub_blk=3 col=7 row=7
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 13 posedge cycles (then idle)
+  //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
+  //   ann_core_word: exp=0x0f288080  saw_last_nonzero=0x0f288080  saw_match_exp=1
+  // input_buffer after 09_PROG — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  0e 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 0f
+  // Return to idle: busy=0
+PASS 09_PROG
+
+//==============================================================================
+// 10_ERASE
+//==============================================================================
+  // Host packet: host_cmd=CMD_ERASE (011)
+  //   host_data:
+  //     00000000-0001-1000-10000000-00010000
+  //     data[7:0] - PE[3:0] - SA[3:0] - col_onehot[7:0] - row_onehot[7:0]
+  //   host_data (hex): 0x00188010
+  // PI -> controller:
+  //   valid=1  data(bin)=00000000  cmd=CMD_ERASE (011)
+  //   address[15:0]:
+  //     000000-00-11-111-100
+  //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
+  //   address (hex): 0x00fc  |  parallel_addr idx: blk=0 sub_blk=3 col=7 row=4
+  // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
+  // DUT: controller busy for 7 posedge cycles (then idle)
+  //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
+  //   ann_core_word: exp=0x00188010  saw_last_nonzero=0x00188010  saw_match_exp=1
+  // input_buffer after 10_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
+  //   row0  aa aa aa aa aa aa aa aa
+  //   row1  0e 00 00 00 00 00 00 00
+  //   row2  00 00 00 00 00 00 00 00
+  //   row3  00 00 00 00 00 00 00 00
+  //   row4  00 00 00 00 00 00 00 00
+  //   row5  00 00 00 00 00 00 00 00
+  //   row6  00 00 00 00 00 00 00 00
+  //   row7  00 00 00 00 00 00 00 0f
+  // Return to idle: busy=0
+PASS 10_ERASE
 // Summary: PASS=10 FAIL=0

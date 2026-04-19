@@ -7,41 +7,41 @@ z2
 !i10e 25
 !i10f 100
 cModel Technology
-dc:/Users/Asus X415/Desktop/ann-accelerator-controller
+Z0 dc:/Users/Asus X415/Desktop/ann-accelerator-controller
 vann_controller
-Z0 DXx6 sv_std 3 std 0 22 AD7iAPLo6nTIKk<N0eo=D3
-Z1 DXx4 work 22 parallel_interface_pkg 0 22 kMVYCGm09;W1AGLOT:B4<1
-Z2 DXx4 work 14 controller_pkg 0 22 RXL?O515PZhg4<FhTXMGg3
-Z3 DXx4 work 16 input_buffer_pkg 0 22 cDl3P=f92bWJVf=z<8he00
-DXx4 work 18 controller_sv_unit 0 22 0zYdJEBL209V8]ZTae3k^3
-Z4 VDg1SIo80bB@j0V0VzS_@n1
+Z1 DXx6 sv_std 3 std 0 22 AD7iAPLo6nTIKk<N0eo=D3
+Z2 DXx4 work 22 parallel_interface_pkg 0 22 8F:@2c1>Yz4TNAb7`aGV32
+Z3 DXx4 work 14 controller_pkg 0 22 N4J?HkQ8_K9?[AQjhoRBa0
+Z4 DXx4 work 16 input_buffer_pkg 0 22 cDl3P=f92bWJVf=z<8he00
+DXx4 work 18 controller_sv_unit 0 22 6DE`MZLj0N^6J;8:;iSQ_2
+Z5 VDg1SIo80bB@j0V0VzS_@n1
 r1
 !s85 0
 31
 !i10b 1
-!s100 0CY3Y:K4@kHXW^;I;W:AP1
-IOlImN>;oDQUAP=io[Cee51
+!s100 D7RDKnZ38E8N=B3?<38=N2
+IQ8<am0oT]bO@9l?>CAHHU3
 !s105 controller_sv_unit
 S1
-Z5 dC:/Users/Asus X415/Desktop/ann-accelerator-controller
-Z6 w1775398504
-Z7 8source/Controller/controller.sv
-Z8 Fsource/Controller/controller.sv
-Z9 L0 12
-Z10 OV;L;10.5b;63
-Z11 !s108 1775398841.000000
-Z12 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv|verif/Controller/tb/waves/controller_program_state_waves_tb_waves_tb.sv|verif/Controller/tb/waves/controller_prog_verify_tb_waves_tb.sv|verif/Controller/tb/waves/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/ann_controller_unit_tb.sv|verif/Controller/tb/controller_program_state_waves_tb.sv|verif/Controller/tb/controller_prog_verify_lut_tb.sv|verif/Controller/tb/controller_prog_verify_tb.sv|verif/Controller/tb/controller_addr_pulse_tb.sv|verif/Controller/tb/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
-Z13 !s90 -sv|-work|work|-f|verif/Controller/file_list/controller_verif_list.f|
+Z6 dC:/Users/Asus X415/Desktop/ann-accelerator-controller
+Z7 w1776619897
+Z8 8source/Controller/controller.sv
+Z9 Fsource/Controller/controller.sv
+Z10 L0 12
+Z11 OV;L;10.5b;63
+Z12 !s108 1776628613.000000
+Z13 !s107 verif\Controller\tb\regular\inf\..\..\..\..\..\source\common\macros.svh|verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/regular/read/controller_host_read_reorder_tb.sv|verif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+Z14 !s90 -sv|-work|work|-f|verif/Controller/file_list/controller_verif_list.f|
 !i113 1
-Z14 o-sv -work work
-Z15 tCvgOpt 0
+Z15 o-sv -work work
+Z16 tCvgOpt 0
 vann_controller_unit_tb
-R0
 R1
-R2
-R3
-DXx4 work 30 ann_controller_unit_tb_sv_unit 0 22 4n[lUAKoQeLmONK9obP9_3
+Z17 DXx4 work 22 parallel_interface_pkg 0 22 kMVYCGm09;W1AGLOT:B4<1
+Z18 DXx4 work 14 controller_pkg 0 22 RXL?O515PZhg4<FhTXMGg3
 R4
+DXx4 work 30 ann_controller_unit_tb_sv_unit 0 22 4n[lUAKoQeLmONK9obP9_3
+R5
 r1
 !s85 0
 31
@@ -50,23 +50,23 @@ r1
 I5H_Gj<zL4KI0[cAJA^[@O1
 !s105 ann_controller_unit_tb_sv_unit
 S1
-R5
-Z16 w1775397437
-Z17 8verif/Controller/tb/ann_controller_unit_tb.sv
-Z18 Fverif/Controller/tb/ann_controller_unit_tb.sv
-Z19 L0 14
-R10
+R6
+Z19 w1776440270
+Z20 8verif/Controller/tb/ann_controller_unit_tb.sv
+Z21 Fverif/Controller/tb/ann_controller_unit_tb.sv
+Z22 L0 14
 R11
-R12
-R13
-!i113 1
+Z23 !s108 1776529627.000000
+Z24 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/ann_controller_unit_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|verif/Controller/tb/regular/prog/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 Xann_controller_unit_tb_sv_unit
-R0
 R1
-R2
-R3
+R17
+R18
+R4
 V4n[lUAKoQeLmONK9obP9_3
 r1
 !s85 0
@@ -76,128 +76,128 @@ r1
 I4n[lUAKoQeLmONK9obP9_3
 !i103 1
 S1
-R5
-R16
-R17
-R18
-Z20 Fverif\Controller\tb\..\..\..\source\common\macros.svh
-Z21 L0 10
-R10
+R6
+R19
+R20
+R21
+Z25 Fverif\Controller\tb\..\..\..\source\common\macros.svh
+Z26 L0 10
 R11
-R12
-R13
-!i113 1
+R23
+R24
 R14
+!i113 1
 R15
+R16
 vann_controller_unit_tb_waves_tb
-R0
-Z22 !s110 1775398842
+R1
+!s110 1776529627
 !i10b 1
 !s100 cF;Enm2`jAUUmkPSIUj[f3
 I[jEm>NYH=JHR[iY177oNH0
-R4
+R5
 !s105 ann_controller_unit_tb_waves_tb_sv_unit
 S1
-R5
-R16
+R6
+R19
 8verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv
 Fverif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R23
+R24
 R14
+!i113 1
 R15
+R16
 vcontroller_addr_pulse_tb
-R0
 R1
 R2
 R3
-DXx4 work 32 controller_addr_pulse_tb_sv_unit 0 22 Z86elVDII6KS=8olMW0c<3
 R4
+DXx4 work 32 controller_addr_pulse_tb_sv_unit 0 22 @2zA`UMTz]PAES<V9Q]]<3
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 S1Ka03CHPZUD@_SOe^D413
-I<@gCj`_C`f3]`bTFlQYBU1
+!s100 nh@<zbCW@J<RkUR<ThnCc3
+In>8QYMfbcJm714XC[_dXL3
 !s105 controller_addr_pulse_tb_sv_unit
 S1
-R5
-Z23 w1775398822
-Z24 8verif/Controller/tb/controller_addr_pulse_tb.sv
-Z25 Fverif/Controller/tb/controller_addr_pulse_tb.sv
-Z26 L0 21
-R10
+R6
+Z27 w1776531842
+Z28 8verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv
+Z29 Fverif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv
+Z30 L0 21
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 Xcontroller_addr_pulse_tb_sv_unit
-R0
 R1
 R2
 R3
-VZ86elVDII6KS=8olMW0c<3
+R4
+V@2zA`UMTz]PAES<V9Q]]<3
 r1
 !s85 0
 31
 !i10b 1
 !s100 G0XkoPHYH?1@RnLl>g2=>1
-IZ86elVDII6KS=8olMW0c<3
+I@2zA`UMTz]PAES<V9Q]]<3
 !i103 1
 S1
-R5
-R23
-R24
-R25
-R20
-Z27 L0 17
-R10
+R6
+R27
+R28
+R29
+Z31 Fsource/common/macros.svh
+Z32 L0 17
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vcontroller_addr_pulse_tb_waves_tb
-R0
-R22
+R1
+!s110 1776623046
 !i10b 1
 !s100 d^_Df2GhiaoLLk`gbg5a10
-IT72LLONTM9f0_2nUZ;eRn1
-R4
+I_8BK2J_0AXgziSNb?MLiH2
+R5
 !s105 controller_addr_pulse_tb_waves_tb_sv_unit
 S1
-R5
-R16
-8verif/Controller/tb/waves/controller_addr_pulse_tb_waves_tb.sv
-Fverif/Controller/tb/waves/controller_addr_pulse_tb_waves_tb.sv
+R6
+w1776531702
+8verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv
+Fverif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+!s108 1776623046.000000
+!s107 verif\Controller\tb\regular\inf\..\..\..\..\..\source\common\macros.svh|verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/regular/read/controller_host_read_reorder_tb.sv|verif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 vcontroller_buffer_integration_tb
-R0
 R1
-R2
-R3
-DXx4 work 40 controller_buffer_integration_tb_sv_unit 0 22 <FKZ<J_FX4DClP90=><A61
+R17
+R18
 R4
+DXx4 work 40 controller_buffer_integration_tb_sv_unit 0 22 <FKZ<J_FX4DClP90=><A61
+R5
 r1
 !s85 0
 31
@@ -206,23 +206,23 @@ r1
 I1VoJYgkbbR0;T0>2KAYW^1
 !s105 controller_buffer_integration_tb_sv_unit
 S1
-R5
-R16
-Z28 8verif/Controller/tb/controller_buffer_integration_tb.sv
-Z29 Fverif/Controller/tb/controller_buffer_integration_tb.sv
+R6
 R19
-R10
+Z33 8verif/Controller/tb/controller_buffer_integration_tb.sv
+Z34 Fverif/Controller/tb/controller_buffer_integration_tb.sv
+R22
 R11
-R12
-R13
-!i113 1
+Z35 !s108 1776596503.000000
+Z36 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/regular/read/controller_host_read_reorder_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 Xcontroller_buffer_integration_tb_sv_unit
-R0
 R1
-R2
-R3
+R17
+R18
+R4
 V<FKZ<J_FX4DClP90=><A61
 r1
 !s85 0
@@ -232,50 +232,236 @@ r1
 I<FKZ<J_FX4DClP90=><A61
 !i103 1
 S1
-R5
-R16
-R28
-R29
-R20
-R21
-R10
+R6
+R19
+R33
+R34
+R25
+R26
 R11
-R12
-R13
-!i113 1
+R35
+R36
 R14
+!i113 1
 R15
+R16
 vcontroller_buffer_integration_tb_waves_tb
-R0
-R22
+R1
+Z37 !s110 1776596504
 !i10b 1
 !s100 cZKLa_6IANKIV5jIQ7Pj_2
 Iain7XAg?@1HRj`76ba^Ta2
-R4
+R5
 !s105 controller_buffer_integration_tb_waves_tb_sv_unit
 S1
-R5
-R16
+R6
+R19
 8verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv
 Fverif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R35
+R36
 R14
+!i113 1
 R15
-vcontroller_integration_smoke_tb
-R0
+R16
+vcontroller_host_erase_tb
 R1
 R2
 R3
-DXx4 work 39 controller_integration_smoke_tb_sv_unit 0 22 zm<>6E1@AB`GTE^dUKeEJ2
 R4
+DXx4 work 32 controller_host_erase_tb_sv_unit 0 22 AVaOlofhkh;kD?WS=KWo10
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 @LMbb1f0HNPaE8bcH8?;@0
+IAG0O]U7zN3E=o7ekeieg03
+!s105 controller_host_erase_tb_sv_unit
+S1
+R6
+Z38 w1776528655
+Z39 8verif/Controller/tb/regular/erase/controller_host_erase_tb.sv
+Z40 Fverif/Controller/tb/regular/erase/controller_host_erase_tb.sv
+R22
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+Xcontroller_host_erase_tb_sv_unit
+R1
+R2
+R3
+R4
+VAVaOlofhkh;kD?WS=KWo10
+r1
+!s85 0
+31
+!i10b 1
+!s100 U^OK7joT[XihoXF9e<[`Z2
+IAVaOlofhkh;kD?WS=KWo10
+!i103 1
+S1
+R6
+R38
+R39
+R40
+R31
+R26
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+vcontroller_host_erase_tb_waves_tb
+R1
+Z41 !s110 1776628613
+!i10b 1
+!s100 m<V@_@SLNOBFg9=o25YFa3
+IbkIoKYa>Q;[;TAH3zYi?63
+R5
+!s105 controller_host_erase_tb_waves_tb_sv_unit
+S1
+R6
+R19
+8verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv
+Fverif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv
+L0 3
+R11
+r1
+!s85 0
+31
+R12
+R13
+R14
+!i113 1
+R15
+R16
+vcontroller_host_read_reorder_tb
+R1
+R2
+R3
+R4
+DXx4 work 39 controller_host_read_reorder_tb_sv_unit 0 22 5afR^iAh[DNHWJA64WlJ@3
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 9CkN;?^M2W^lJS73XTcNM0
+IdSBQ9m7LOE:?Ig7eR;hmP2
+!s105 controller_host_read_reorder_tb_sv_unit
+S1
+R6
+Z42 w1776596447
+Z43 8verif/Controller/tb/regular/read/controller_host_read_reorder_tb.sv
+Z44 Fverif/Controller/tb/regular/read/controller_host_read_reorder_tb.sv
+R22
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+Xcontroller_host_read_reorder_tb_sv_unit
+R1
+R2
+R3
+R4
+V5afR^iAh[DNHWJA64WlJ@3
+r1
+!s85 0
+31
+!i10b 1
+!s100 2eDiL?Wd1dRfFNGF@3dB13
+I5afR^iAh[DNHWJA64WlJ@3
+!i103 1
+S1
+R6
+R42
+R43
+R44
+R31
+R26
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+vcontroller_inf_buffer_flow_tb
+R1
+R2
+R3
+R4
+DXx4 work 37 controller_inf_buffer_flow_tb_sv_unit 0 22 <_a6DSjO9;JE;0Xc?JMO_2
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 G>Wbh3ecdlO>MPAfAPQAa2
+IAUPPDJMQ?]Q3@l<Scz;;d3
+!s105 controller_inf_buffer_flow_tb_sv_unit
+S1
+R6
+Z45 w1776619300
+Z46 8verif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv
+Z47 Fverif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv
+Z48 L0 18
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+Xcontroller_inf_buffer_flow_tb_sv_unit
+R1
+R2
+R3
+R4
+V<_a6DSjO9;JE;0Xc?JMO_2
+r1
+!s85 0
+31
+!i10b 1
+!s100 ;M>A1k:o=ceddUgo^]@eh2
+I<_a6DSjO9;JE;0Xc?JMO_2
+!i103 1
+S1
+R6
+R45
+R46
+R47
+Fverif\Controller\tb\regular\inf\..\..\..\..\..\source\common\macros.svh
+R22
+R11
+R12
+R13
+R14
+!i113 1
+R15
+R16
+vcontroller_integration_smoke_tb
+R1
+R17
+R18
+R4
+DXx4 work 39 controller_integration_smoke_tb_sv_unit 0 22 zm<>6E1@AB`GTE^dUKeEJ2
+R5
 r1
 !s85 0
 31
@@ -284,23 +470,23 @@ r1
 I5ibK@H7`UibbD=[Jj63JZ0
 !s105 controller_integration_smoke_tb_sv_unit
 S1
-R5
-R16
-Z30 8verif/Controller/tb/controller_integration_smoke_tb.sv
-Z31 Fverif/Controller/tb/controller_integration_smoke_tb.sv
+R6
 R19
-R10
+Z49 8verif/Controller/tb/controller_integration_smoke_tb.sv
+Z50 Fverif/Controller/tb/controller_integration_smoke_tb.sv
+R22
 R11
-R12
-R13
-!i113 1
+R35
+R36
 R14
+!i113 1
 R15
+R16
 Xcontroller_integration_smoke_tb_sv_unit
-R0
 R1
-R2
-R3
+R17
+R18
+R4
 Vzm<>6E1@AB`GTE^dUKeEJ2
 r1
 !s85 0
@@ -310,74 +496,74 @@ r1
 Izm<>6E1@AB`GTE^dUKeEJ2
 !i103 1
 S1
-R5
-R16
-R30
-R31
-R20
-R21
-R10
+R6
+R19
+R49
+R50
+R25
+R26
 R11
-R12
-R13
-!i113 1
+R35
+R36
 R14
+!i113 1
 R15
+R16
 vcontroller_integration_smoke_tb_waves_tb
-R0
-R22
+R1
+R37
 !i10b 1
 !s100 4We`QN_eic<lY^maVi]Ci0
 IYeZ0mPXB:<Wbono<P94=V2
-R4
+R5
 !s105 controller_integration_smoke_tb_waves_tb_sv_unit
 S1
-R5
-R16
+R6
+R19
 8verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv
 Fverif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R35
+R36
 R14
+!i113 1
 R15
+R16
 Xcontroller_pkg
-R0
 R1
-Z32 !s110 1775398841
+R2
+R41
 !i10b 1
 !s100 >ZIP6@iUIWjSO5=C7;I`^1
-IRXL?O515PZhg4<FhTXMGg3
-VRXL?O515PZhg4<FhTXMGg3
+IN4J?HkQ8_K9?[AQjhoRBa0
+VN4J?HkQ8_K9?[AQjhoRBa0
 S1
-R5
-R16
+R6
+R19
 8source/Controller/controller_pkg.sv
 Fsource/Controller/controller_pkg.sv
 L0 6
-R10
+R11
 r1
 !s85 0
 31
-R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vcontroller_prog_new_arch_tb
-R0
-Z33 DXx4 work 22 parallel_interface_pkg 0 22 nQhaB7a>a82[J=IV392=K2
-Z34 DXx4 work 14 controller_pkg 0 22 2EOhiP]g>ADQ1Ti`O6QM?2
-Z35 DXx4 work 16 input_buffer_pkg 0 22 V=PP:OF_=lMeBDckc:g`22
+R1
+Z51 DXx4 work 22 parallel_interface_pkg 0 22 nQhaB7a>a82[J=IV392=K2
+Z52 DXx4 work 14 controller_pkg 0 22 2EOhiP]g>ADQ1Ti`O6QM?2
+Z53 DXx4 work 16 input_buffer_pkg 0 22 V=PP:OF_=lMeBDckc:g`22
 DXx4 work 35 controller_prog_new_arch_tb_sv_unit 0 22 :0U`<Ub6Y27HZf?6ogVnM3
-R4
+R5
 r1
 !s85 0
 31
@@ -386,23 +572,23 @@ r1
 InC0SCDRB2VNKb1DWb_izS0
 !s105 controller_prog_new_arch_tb_sv_unit
 S1
-R5
-Z36 w1768750394
-Z37 8verif/Controller/tb/controller_prog_new_arch_tb.sv
-Z38 Fverif/Controller/tb/controller_prog_new_arch_tb.sv
+R6
+Z54 w1768750394
+Z55 8verif/Controller/tb/controller_prog_new_arch_tb.sv
+Z56 Fverif/Controller/tb/controller_prog_new_arch_tb.sv
 L0 19
-R10
-Z39 !s108 1768750864.000000
-Z40 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/controller_prog_new_arch_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
-Z41 !s90 -f|verif/Controller/file_list/controller_verif_list.f|-work|work|
+R11
+Z57 !s108 1768750864.000000
+Z58 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/controller_prog_new_arch_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+Z59 !s90 -f|verif/Controller/file_list/controller_verif_list.f|-work|work|
 !i113 1
-Z42 o-work work
-R15
+Z60 o-work work
+R16
 Xcontroller_prog_new_arch_tb_sv_unit
-R0
-R33
-R34
-R35
+R1
+R51
+R52
+R53
 V:0U`<Ub6Y27HZf?6ogVnM3
 r1
 !s85 0
@@ -412,339 +598,441 @@ r1
 I:0U`<Ub6Y27HZf?6ogVnM3
 !i103 1
 S1
-R5
-R36
-R37
-R38
-R20
-L0 15
-R10
-R39
-R40
-R41
+R6
+R54
+R55
+R56
+R25
+Z61 L0 15
+R11
+R57
+R58
+R59
 !i113 1
-R42
-R15
+R60
+R16
 vcontroller_prog_verify_lut_tb
-R0
 R1
 R2
 R3
-DXx4 work 37 controller_prog_verify_lut_tb_sv_unit 0 22 QXIXBjDK`_M@3TbRGMcG61
 R4
+DXx4 work 37 controller_prog_verify_lut_tb_sv_unit 0 22 e0FP4`8524;8fmDf<8oW01
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 :6<T3]jY[Y@>R24XaQa@M2
-I6]Dj;R^QBiD0KbY2`VWeI2
+!s100 nhO^^[2LYMKR6zB2I;cl>2
+IXhm2nYFcofIknYaEId38z0
 !s105 controller_prog_verify_lut_tb_sv_unit
 S1
-R5
-Z43 w1775398542
-Z44 8verif/Controller/tb/controller_prog_verify_lut_tb.sv
-Z45 Fverif/Controller/tb/controller_prog_verify_lut_tb.sv
-R26
-R10
+R6
+Z62 w1776606296
+Z63 8verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv
+Z64 Fverif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv
+L0 22
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 Xcontroller_prog_verify_lut_tb_sv_unit
-R0
 R1
 R2
 R3
-VQXIXBjDK`_M@3TbRGMcG61
+R4
+Ve0FP4`8524;8fmDf<8oW01
 r1
 !s85 0
 31
 !i10b 1
-!s100 C@Sif1RK:XgI9[WO9MkCM1
-IQXIXBjDK`_M@3TbRGMcG61
+!s100 WKVDM7?RTiGWPY<PJ^dH^0
+Ie0FP4`8524;8fmDf<8oW01
 !i103 1
 S1
-R5
-R43
-R44
-R45
-R20
-R27
-R10
+R6
+R62
+R63
+R64
+R31
+R48
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
-vcontroller_prog_verify_tb
-R0
+R16
+vcontroller_prog_verify_lut_tb_waves_tb
 R1
-R2
-R3
-DXx4 work 33 controller_prog_verify_tb_sv_unit 0 22 5>T9eJb[i63;ijeoZlYkz0
+R41
+!i10b 1
+!s100 g22V7^LP]n5oE^0L5UaQ=0
+Ih@1d1Re1[4m9I>WD4SnzU3
+R5
+!s105 controller_prog_verify_lut_tb_waves_tb_sv_unit
+S1
+R6
+w1776528656
+8verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv
+Fverif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv
+L0 3
+R11
+r1
+!s85 0
+31
+R12
+R13
+R14
+!i113 1
+R15
+R16
+vcontroller_prog_verify_tb
+R1
+R17
+R18
 R4
+DXx4 work 33 controller_prog_verify_tb_sv_unit 0 22 o7noUgYYD7mTHEZTN?Pm[2
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 5:YAmn_JEX>4cQcGAOfNM3
-IQ8P@?A3OWB:HH`cOWK;lh1
+!s100 63`[n>=IaW2m`QH8H;c:M2
+IoO1>f3c;6R_X=dYOiUdGD1
 !s105 controller_prog_verify_tb_sv_unit
 S1
-R5
-R16
-Z46 8verif/Controller/tb/controller_prog_verify_tb.sv
-Z47 Fverif/Controller/tb/controller_prog_verify_tb.sv
-Z48 L0 20
-R10
+R6
+Z65 w1776442710
+Z66 8verif/Controller/tb/regular/prog/controller_prog_verify_tb.sv
+Z67 Fverif/Controller/tb/regular/prog/controller_prog_verify_tb.sv
+L0 20
 R11
-R12
-R13
-!i113 1
+Z68 !s108 1776527548.000000
+Z69 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_pulse_lut_demo_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/ann_controller_unit_tb.sv|verif/Controller/tb/regular/prog/controller_weight_pulse_lut_demo_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|verif/Controller/tb/regular/prog/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 Xcontroller_prog_verify_tb_sv_unit
-R0
 R1
-R2
-R3
-V5>T9eJb[i63;ijeoZlYkz0
+R17
+R18
+R4
+Vo7noUgYYD7mTHEZTN?Pm[2
 r1
 !s85 0
 31
 !i10b 1
 !s100 dVJOO12CO:>z7dgZbmVY@0
-I5>T9eJb[i63;ijeoZlYkz0
+Io7noUgYYD7mTHEZTN?Pm[2
 !i103 1
 S1
-R5
-R16
-R46
-R47
-R20
-Z49 L0 16
-R10
+R6
+R65
+R66
+R67
+R31
+Z70 L0 16
 R11
-R12
-R13
-!i113 1
+R68
+R69
 R14
+!i113 1
 R15
+R16
 vcontroller_prog_verify_tb_waves_tb
-R0
-R22
+R1
+!s110 1776527548
 !i10b 1
 !s100 JH0RhNVJJ?Gcm;ZJI<T4d1
-IBjJ;ZLXE@hfgD^_Fe`Uzl0
-R4
+Ik[=53E7`AI]3gdK@GK5@V3
+R5
 !s105 controller_prog_verify_tb_waves_tb_sv_unit
 S1
-R5
-R16
-8verif/Controller/tb/waves/controller_prog_verify_tb_waves_tb.sv
-Fverif/Controller/tb/waves/controller_prog_verify_tb_waves_tb.sv
+R6
+R19
+8verif/Controller/tb/waves/prog/controller_prog_verify_tb_waves_tb.sv
+Fverif/Controller/tb/waves/prog/controller_prog_verify_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R68
+R69
 R14
+!i113 1
 R15
+R16
 vcontroller_program_state_waves_tb
-R0
 R1
-R2
-R3
-DXx4 work 41 controller_program_state_waves_tb_sv_unit 0 22 7GL8KZjN8M6Y6PRWDJ`lZ3
+R17
+R18
 R4
+DXx4 work 41 controller_program_state_waves_tb_sv_unit 0 22 S`MdE5bhRH:OM``T7O4Mg2
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 l8;=H18R>O3WH]ZYgPgHN0
-I0gmJeS@M0NBb`^YCdfH:_3
+!s100 ]`8K<[]?b549E8o`I>QLi0
+IAU:N>N0KE[GzlWe]D6o`[1
 !s105 controller_program_state_waves_tb_sv_unit
 S1
-R5
-R16
-Z50 8verif/Controller/tb/controller_program_state_waves_tb.sv
-Z51 Fverif/Controller/tb/controller_program_state_waves_tb.sv
-L0 24
-R10
+R6
+Z71 w1776522211
+Z72 8verif/Controller/tb/controller_program_state_waves_tb.sv
+Z73 Fverif/Controller/tb/controller_program_state_waves_tb.sv
+L0 25
 R11
-R12
-R13
-!i113 1
+Z74 !s108 1776525217.000000
+Z75 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv|verif/Controller/tb/waves/controller_program_state_waves_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_pulse_lut_demo_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/ann_controller_unit_tb.sv|verif/Controller/tb/controller_program_state_waves_tb.sv|verif/Controller/tb/regular/prog/controller_weight_pulse_lut_demo_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|verif/Controller/tb/regular/prog/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 Xcontroller_program_state_waves_tb_sv_unit
-R0
 R1
-R2
-R3
-V7GL8KZjN8M6Y6PRWDJ`lZ3
+R17
+R18
+R4
+VS`MdE5bhRH:OM``T7O4Mg2
 r1
 !s85 0
 31
 !i10b 1
-!s100 ^U?V>c=jgZ_`QLBN<?AiY2
-I7GL8KZjN8M6Y6PRWDJ`lZ3
+!s100 IZmmDljZmGe_H;IhUR@I90
+IS`MdE5bhRH:OM``T7O4Mg2
 !i103 1
 S1
-R5
-R16
-R50
-R51
-R20
-R48
-R10
+R6
+R71
+R72
+R73
+R25
+R30
 R11
-R12
-R13
-!i113 1
+R74
+R75
 R14
+!i113 1
 R15
+R16
 vcontroller_program_state_waves_tb_waves_tb
-R0
-R22
+R1
+!s110 1776525218
 !i10b 1
 !s100 FmP@YcVlhDaFDJ^EGSaza2
 I;hbc6V1Da8a0F0`L<F_?c0
-R4
+R5
 !s105 controller_program_state_waves_tb_waves_tb_sv_unit
 S1
-R5
-R16
+R6
+R19
 8verif/Controller/tb/waves/controller_program_state_waves_tb_waves_tb.sv
 Fverif/Controller/tb/waves/controller_program_state_waves_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R74
+R75
 R14
+!i113 1
 R15
+R16
 Xcontroller_sv_unit
-R0
 R1
 R2
 R3
-V0zYdJEBL209V8]ZTae3k^3
+R4
+V6DE`MZLj0N^6J;8:;iSQ_2
 r1
 !s85 0
 31
 !i10b 1
-!s100 B98D^dT<d19IRk9006K;@3
-I0zYdJEBL209V8]ZTae3k^3
+!s100 c`L>JThoC09Z^]VB6?mg81
+I6DE`MZLj0N^6J;8:;iSQ_2
 !i103 1
 S1
-R5
 R6
 R7
 R8
+R9
 Fsource\Controller\..\common\macros.svh
 L0 8
-R10
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vcontroller_weight_program_tb
-R0
 R1
-R2
-R3
-DXx4 work 36 controller_weight_program_tb_sv_unit 0 22 XPgg2_0EYY?=P2AJ8L_jF1
+R17
+R18
 R4
+DXx4 work 36 controller_weight_program_tb_sv_unit 0 22 nXC?EO=5_Bb?nOfZ4JIha3
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 `n16N2EM7Q8PQ@a[[nfCL3
-I@IO5a[Gj^z@RmZbgYez>T0
+!s100 [>c]1_>Y60@B];DYXA84e1
+Ij?75W60iEBJ9`hYzMgRC=2
 !s105 controller_weight_program_tb_sv_unit
 S1
-R5
-R16
-Z52 8verif/Controller/tb/controller_weight_program_tb.sv
-Z53 Fverif/Controller/tb/controller_weight_program_tb.sv
-R26
-R10
+R6
+R38
+Z76 8verif/Controller/tb/regular/prog/controller_weight_program_tb.sv
+Z77 Fverif/Controller/tb/regular/prog/controller_weight_program_tb.sv
+R30
 R11
-R12
-R13
-!i113 1
+Z78 !s108 1776530517.000000
+Z79 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|verif/Controller/tb/regular/prog/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
 R14
+!i113 1
 R15
+R16
 Xcontroller_weight_program_tb_sv_unit
-R0
 R1
-R2
-R3
-VXPgg2_0EYY?=P2AJ8L_jF1
+R17
+R18
+R4
+VnXC?EO=5_Bb?nOfZ4JIha3
 r1
 !s85 0
 31
 !i10b 1
 !s100 AMWKdMHJMP:eHz0g0D4N=3
-IXPgg2_0EYY?=P2AJ8L_jF1
+InXC?EO=5_Bb?nOfZ4JIha3
 !i103 1
 S1
-R5
-R16
-R52
-R53
-R20
-R27
-R10
+R6
+R38
+R76
+R77
+R31
+R32
 R11
-R12
-R13
-!i113 1
+R78
+R79
 R14
+!i113 1
 R15
+R16
 vcontroller_weight_program_tb_waves_tb
-R0
-R22
+R1
+!s110 1776530518
 !i10b 1
 !s100 FQXHhC1JKXz<gCVG46^6F0
-INiQJhF`5jlLC[JYFYCFhM0
-R4
+IUMA:b9JPTKTZFT4]I9K021
+R5
 !s105 controller_weight_program_tb_waves_tb_sv_unit
 S1
-R5
-R16
-8verif/Controller/tb/waves/controller_weight_program_tb_waves_tb.sv
-Fverif/Controller/tb/waves/controller_weight_program_tb_waves_tb.sv
+R6
+R19
+8verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv
+Fverif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
-R12
-R13
-!i113 1
+R78
+R79
 R14
+!i113 1
 R15
-vinput_buffer
-R0
-R3
-DXx4 work 20 input_buffer_sv_unit 0 22 jY7da:XCU=ai8jHROfUI=3
+R16
+vcontroller_weight_pulse_lut_demo_tb
+R1
+R17
+R18
 R4
+DXx4 work 43 controller_weight_pulse_lut_demo_tb_sv_unit 0 22 f7<V5G]AH92hj]JW=U]jE1
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 YPSfjBFWBD1JZW>d2NhJf0
+IU9Dio6K<:^H]3h?@ACOLL3
+!s105 controller_weight_pulse_lut_demo_tb_sv_unit
+S1
+R6
+R38
+Z80 8verif/Controller/tb/regular/prog/controller_weight_pulse_lut_demo_tb.sv
+Z81 Fverif/Controller/tb/regular/prog/controller_weight_pulse_lut_demo_tb.sv
+R32
+R11
+Z82 !s108 1776528741.000000
+Z83 !s107 verif\Controller\tb\..\..\..\source\common\macros.svh|source\Controller\..\common\macros.svh|source\Input_Buffer\..\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Controller/tb/waves/erase/controller_host_erase_tb_waves_tb.sv|verif/Controller/tb/waves/controller_integration_smoke_tb_waves_tb.sv|verif/Controller/tb/waves/controller_buffer_integration_tb_waves_tb.sv|verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv|verif/Controller/tb/waves/ann_controller_unit_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_pulse_lut_demo_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_prog_verify_lut_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_addr_pulse_tb_waves_tb.sv|verif/Controller/tb/waves/prog/controller_weight_program_tb_waves_tb.sv|verif/Controller/tb/regular/erase/controller_host_erase_tb.sv|verif/Controller/tb/controller_integration_smoke_tb.sv|verif/Controller/tb/controller_buffer_integration_tb.sv|verif/Controller/tb/parallel_interface_controller_integration_tb.sv|verif/Controller/tb/ann_controller_unit_tb.sv|verif/Controller/tb/regular/prog/controller_weight_pulse_lut_demo_tb.sv|verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv|verif/Controller/tb/regular/prog/controller_addr_pulse_tb.sv|verif/Controller/tb/regular/prog/controller_weight_program_tb.sv|source/Controller/controller.sv|source/Controller/controller_pkg.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+R14
+!i113 1
+R15
+R16
+Xcontroller_weight_pulse_lut_demo_tb_sv_unit
+R1
+R17
+R18
+R4
+Vf7<V5G]AH92hj]JW=U]jE1
+r1
+!s85 0
+31
+!i10b 1
+!s100 =DlPmk0[5bRiM28[:Pb_`2
+If7<V5G]AH92hj]JW=U]jE1
+!i103 1
+S1
+R6
+R38
+R80
+R81
+R31
+Z84 L0 13
+R11
+R82
+R83
+R14
+!i113 1
+R15
+R16
+vcontroller_weight_pulse_lut_demo_tb_waves_tb
+R1
+!s110 1776528742
+!i10b 1
+!s100 f9aVdfm6MO1`Fkb>:XV^I1
+I<P9aOVLk@?`Go@`TaPH@C2
+R5
+!s105 controller_weight_pulse_lut_demo_tb_waves_tb_sv_unit
+S1
+R6
+R38
+8verif/Controller/tb/waves/prog/controller_weight_pulse_lut_demo_tb_waves_tb.sv
+Fverif/Controller/tb/waves/prog/controller_weight_pulse_lut_demo_tb_waves_tb.sv
+L0 4
+R11
+r1
+!s85 0
+31
+R82
+R83
+R14
+!i113 1
+R15
+R16
+vinput_buffer
+R1
+R4
+DXx4 work 20 input_buffer_sv_unit 0 22 jY7da:XCU=ai8jHROfUI=3
+R5
 r1
 !s85 0
 31
@@ -753,46 +1041,46 @@ r1
 IkooF_VREcj=]<l@;:dDlo2
 !s105 input_buffer_sv_unit
 S1
-R5
-Z54 w1771853111
-Z55 8source/Input_Buffer/input_buffer.sv
-Z56 Fsource/Input_Buffer/input_buffer.sv
-R21
-R10
+R6
+Z85 w1771853111
+Z86 8source/Input_Buffer/input_buffer.sv
+Z87 Fsource/Input_Buffer/input_buffer.sv
+R26
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vinput_buffer_bit_serial_tb
-R0
-R3
-DXx4 work 34 input_buffer_bit_serial_tb_sv_unit 0 22 @Zd6kl<H]Uc=S:<LXjKU[0
+R1
 R4
+DXx4 work 34 input_buffer_bit_serial_tb_sv_unit 0 22 @Zd6kl<H]Uc=S:<LXjKU[0
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 ncI5=mkmS[a?VN:h93hF_2
-Iim6F6e11RXnT3TfDK8NhO2
+!s100 ]EXbH1P3gllcB;>P2GcU@1
+IUN?HUR=I71lzZ@l:Cg8X>0
 !s105 input_buffer_bit_serial_tb_sv_unit
 S1
-R5
-Z57 w1772062686
-Z58 8verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
-Z59 Fverif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
-R19
-R10
-Z60 !s108 1774890791.000000
-Z61 !s107 verif\Input_Buffer\tb\..\..\..\source\common\macros.svh|source\Input_Buffer\..\common\macros.svh|verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv|verif/Input_Buffer/tb/waves/input_buffer_write_read_tb_waves_tb.sv|verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv|verif/Input_Buffer/tb/input_buffer_write_read_tb.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/common/macros.svh|
-Z62 !s90 -sv|-work|work|-f|verif/Input_Buffer/file_list/input_buffer_verif_list.f|
+R6
+Z88 w1776607819
+Z89 8verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
+Z90 Fverif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv
+R22
+R11
+Z91 !s108 1776626063.000000
+Z92 !s107 verif\Input_Buffer\tb\..\..\..\source\common\macros.svh|source\Input_Buffer\..\common\macros.svh|verif/Input_Buffer/tb/waves/input_buffer_reset_behavior_tb_waves_tb.sv|verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv|verif/Input_Buffer/tb/input_buffer_full_overwrite_tb.sv|verif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv|verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/common/macros.svh|
+Z93 !s90 -sv|-work|work|-f|verif/Input_Buffer/file_list/input_buffer_verif_list.f|
 !i113 1
-R14
 R15
+R16
 Xinput_buffer_bit_serial_tb_sv_unit
-R0
-R3
+R1
+R4
 V@Zd6kl<H]Uc=S:<LXjKU[0
 r1
 !s85 0
@@ -802,69 +1090,193 @@ r1
 I@Zd6kl<H]Uc=S:<LXjKU[0
 !i103 1
 S1
-R5
-R57
-R58
-R59
-Z63 Fverif\Input_Buffer\tb\..\..\..\source\common\macros.svh
-R9
+R6
+R88
+R89
+R90
+Z94 Fverif\Input_Buffer\tb\..\..\..\source\common\macros.svh
 R10
-R60
-R61
-R62
+R11
+R91
+R92
+R93
 !i113 1
-R14
 R15
+R16
 vinput_buffer_bit_serial_tb_waves_tb
-R0
-Z64 !s110 1774890791
+R1
+Z95 !s110 1776626063
 !i10b 1
 !s100 >1TGbgZQM5W[X?=AImJd]2
 IbPh=dTTc^5Hl49;jRPPHi2
-R4
+R5
 !s105 input_buffer_bit_serial_tb_waves_tb_sv_unit
 S1
-R5
-w1774887137
+R6
+R19
 8verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv
 Fverif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R60
-R61
-R62
+R91
+R92
+R93
 !i113 1
-R14
 R15
-Xinput_buffer_pkg
-R0
+R16
+vinput_buffer_full_overwrite_tb
+R1
+R4
+DXx4 work 38 input_buffer_full_overwrite_tb_sv_unit 0 22 n05V_mUmnFmUaB3Tf2=hj3
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 5dRGeASa:KJRS4ajM1TA`2
+I]k19i<M[W90<3UmB;:CO71
+!s105 input_buffer_full_overwrite_tb_sv_unit
+S1
+R6
+Z96 w1776617564
+Z97 8verif/Input_Buffer/tb/input_buffer_full_overwrite_tb.sv
+Z98 Fverif/Input_Buffer/tb/input_buffer_full_overwrite_tb.sv
 R32
+R11
+R91
+R92
+R93
+!i113 1
+R15
+R16
+Xinput_buffer_full_overwrite_tb_sv_unit
+R1
+R4
+Vn05V_mUmnFmUaB3Tf2=hj3
+r1
+!s85 0
+31
+!i10b 1
+!s100 eYA]mjZ9Q=ocI8<YJQ]YM0
+In05V_mUmnFmUaB3Tf2=hj3
+!i103 1
+S1
+R6
+R96
+R97
+R98
+R94
+R61
+R11
+R91
+R92
+R93
+!i113 1
+R15
+R16
+Xinput_buffer_pkg
+R1
+R41
 !i10b 1
 !s100 GPb>JTR0NN]E@b=aW61gM0
 IcDl3P=f92bWJVf=z<8he00
 VcDl3P=f92bWJVf=z<8he00
 S1
-R5
+R6
 w1771853183
 8source/Input_Buffer/input_buffer_pkg.sv
 Fsource/Input_Buffer/input_buffer_pkg.sv
 L0 6
-R10
+R11
 r1
 !s85 0
 31
-R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
+vinput_buffer_reset_behavior_tb
+R1
+R4
+DXx4 work 38 input_buffer_reset_behavior_tb_sv_unit 0 22 bj[Ckhk265Z^UP]XkD>SH0
+R5
+r1
+!s85 0
+31
+!i10b 1
+!s100 KXY<DbNeJY3jPngFVd61S0
+IHAE2zHBOHU4[f;g<?Id5S3
+!s105 input_buffer_reset_behavior_tb_sv_unit
+S1
+R6
+Z99 w1776607839
+Z100 8verif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv
+Z101 Fverif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv
+R61
+R11
+R91
+R92
+R93
+!i113 1
+R15
+R16
+Xinput_buffer_reset_behavior_tb_sv_unit
+R1
+R4
+Vbj[Ckhk265Z^UP]XkD>SH0
+r1
+!s85 0
+31
+!i10b 1
+!s100 :al9:gd_`d]@Po=;45l<03
+Ibj[Ckhk265Z^UP]XkD>SH0
+!i103 1
+S1
+R6
+R99
+R100
+R101
+R94
+R84
+R11
+R91
+R92
+R93
+!i113 1
+R15
+R16
+vinput_buffer_reset_behavior_tb_waves_tb
+R1
+R95
+!i10b 1
+!s100 [A3CHeYdl6M`6S?<I<W;]1
+I?`KQ5HfV>JmY4EIMl>Bb52
+R5
+!s105 input_buffer_reset_behavior_tb_waves_tb_sv_unit
+S1
+R6
+R19
+8verif/Input_Buffer/tb/waves/input_buffer_reset_behavior_tb_waves_tb.sv
+Fverif/Input_Buffer/tb/waves/input_buffer_reset_behavior_tb_waves_tb.sv
+L0 3
+R11
+r1
+!s85 0
+31
+R91
+R92
+R93
+!i113 1
+R15
+R16
 Xinput_buffer_sv_unit
-R0
-R3
+R1
+R4
 VjY7da:XCU=ai8jHROfUI=3
 r1
 !s85 0
@@ -874,24 +1286,24 @@ r1
 IjY7da:XCU=ai8jHROfUI=3
 !i103 1
 S1
-R5
-R54
-R55
-R56
+R6
+R85
+R86
+R87
 Fsource\Input_Buffer\..\common\macros.svh
 L0 8
-R10
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vinput_buffer_write_read_tb
-R0
-R3
-DXx4 work 34 input_buffer_write_read_tb_sv_unit 0 22 @77>oUfkK2:GWQCNI6a[B0
+R1
 R4
+DXx4 work 34 input_buffer_write_read_tb_sv_unit 0 22 @77>oUfkK2:GWQCNI6a[B0
+R5
 r1
 !s85 0
 31
@@ -900,21 +1312,21 @@ r1
 I95AGVk^]i3QgeV`7DOeZ23
 !s105 input_buffer_write_read_tb_sv_unit
 S1
-R5
-Z65 w1772062684
-Z66 8verif/Input_Buffer/tb/input_buffer_write_read_tb.sv
-Z67 Fverif/Input_Buffer/tb/input_buffer_write_read_tb.sv
-R19
-R10
-R60
-R61
-R62
+R6
+Z102 w1772062684
+Z103 8verif/Input_Buffer/tb/input_buffer_write_read_tb.sv
+Z104 Fverif/Input_Buffer/tb/input_buffer_write_read_tb.sv
+R22
+R11
+Z105 !s108 1776609262.000000
+Z106 !s107 verif\Input_Buffer\tb\..\..\..\source\common\macros.svh|source\Input_Buffer\..\common\macros.svh|verif/Input_Buffer/tb/waves/input_buffer_reset_behavior_tb_waves_tb.sv|verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv|verif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv|verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv|verif/Input_Buffer/tb/input_buffer_write_read_tb.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/common/macros.svh|
+R93
 !i113 1
-R14
 R15
+R16
 Xinput_buffer_write_read_tb_sv_unit
-R0
-R3
+R1
+R4
 V@77>oUfkK2:GWQCNI6a[B0
 r1
 !s85 0
@@ -924,341 +1336,413 @@ r1
 I@77>oUfkK2:GWQCNI6a[B0
 !i103 1
 S1
-R5
-R65
-R66
-R67
-R63
-R9
+R6
+R102
+R103
+R104
+R94
 R10
-R60
-R61
-R62
+R11
+R105
+R106
+R93
 !i113 1
-R14
 R15
+R16
 vinput_buffer_write_read_tb_waves_tb
-R0
-R64
+R1
+!s110 1775493168
 !i10b 1
 !s100 Ri6U?`<Yo0d1>[HBjdhg]2
 I>Q[CbM><R2`jSIF1lM7783
-R4
+R5
 !s105 input_buffer_write_read_tb_waves_tb_sv_unit
 S1
-R5
-w1774887131
+R6
+Z107 w1775402121
 8verif/Input_Buffer/tb/waves/input_buffer_write_read_tb_waves_tb.sv
 Fverif/Input_Buffer/tb/waves/input_buffer_write_read_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R60
-R61
-R62
+!s108 1775493168.000000
+!s107 verif\Input_Buffer\tb\..\..\..\source\common\macros.svh|source\Input_Buffer\..\common\macros.svh|verif/Input_Buffer/tb/waves/input_buffer_reset_behavior_tb_waves_tb.sv|verif/Input_Buffer/tb/waves/input_buffer_bit_serial_tb_waves_tb.sv|verif/Input_Buffer/tb/waves/input_buffer_write_read_tb_waves_tb.sv|verif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv|verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv|verif/Input_Buffer/tb/input_buffer_write_read_tb.sv|source/Input_Buffer/input_buffer.sv|source/Input_Buffer/input_buffer_pkg.sv|source/common/macros.svh|
+R93
 !i113 1
-R14
 R15
+R16
 vparallel_interface
-R0
 R1
-DXx4 work 26 parallel_interface_sv_unit 0 22 ?S5KHTNP>K_1YzA@9XKYX0
-R4
+R2
+DXx4 work 26 parallel_interface_sv_unit 0 22 1e<VCNhlb^CEIGo=TK6NK0
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 ?HPJmW`CDOoiKnzR5Wh:43
-Iz[X<hIjR`7ZPzNZfTD6>f2
+!s100 =3:9J;KGkK;`k?TLhiQ2a3
+I90Y;<G[Xj<b]jQD;PV;8D2
 !s105 parallel_interface_sv_unit
 S1
-R5
-R16
-Z68 8source/Parallel_Interface/parallel_interface.sv
-Z69 Fsource/Parallel_Interface/parallel_interface.sv
-R49
-R10
+R6
+Z108 w1776622633
+Z109 8source/Parallel_Interface/parallel_interface.sv
+Z110 Fsource/Parallel_Interface/parallel_interface.sv
+R70
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vparallel_interface_commands_tb
-R0
-Z70 DXx4 work 22 parallel_interface_pkg 0 22 ^lWQC@;Z7[iMK7:<fi58W2
-DXx4 work 38 parallel_interface_commands_tb_sv_unit 0 22 _873k;0IYAj7TldmR]cK01
-R4
+R1
+R17
+DXx4 work 38 parallel_interface_commands_tb_sv_unit 0 22 7@OJn7kNUf1jC4i?]a4781
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 Xdz>MC>L5eNieHehJ>2M[2
-IfN0VVlk;V]aCDBMRJ8CR:3
+!s100 48F8me9f84;RD_F1OcTiA2
+IjN1KO?5R^II20jRkjG=ZT1
 !s105 parallel_interface_commands_tb_sv_unit
 S1
-R5
-R65
-Z71 8verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
-Z72 Fverif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
-R19
-R10
-Z73 !s108 1772062712.000000
-Z74 !s107 verif\Parallel_Interface\tb\..\..\..\source\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv|verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv|verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
-Z75 !s90 -sv|-work|work|-f|verif/Parallel_Interface/file_list/parallel_interface_verif_list.f|
+R6
+Z111 w1776184006
+Z112 8verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
+Z113 Fverif/Parallel_Interface/tb/parallel_interface_commands_tb.sv
+R22
+R11
+Z114 !s108 1776184025.000000
+Z115 !s107 verif\Parallel_Interface\tb\..\..\..\source\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Parallel_Interface/tb/waves/parallel_interface_commands_tb_waves_tb.sv|verif/Parallel_Interface/tb/waves/parallel_interface_valid_tb_waves_tb.sv|verif/Parallel_Interface/tb/parallel_interface_commands_tb.sv|verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+Z116 !s90 -sv|-work|work|-f|verif/Parallel_Interface/file_list/parallel_interface_verif_list.f|
 !i113 1
-R14
 R15
+R16
 Xparallel_interface_commands_tb_sv_unit
-R0
-R70
-V_873k;0IYAj7TldmR]cK01
+R1
+R17
+V7@OJn7kNUf1jC4i?]a4781
 r1
 !s85 0
 31
 !i10b 1
 !s100 8bS7@dAg]kH6b6_lIkEIC3
-I_873k;0IYAj7TldmR]cK01
+I7@OJn7kNUf1jC4i?]a4781
 !i103 1
 S1
-R5
-R65
-R71
-R72
-Z76 Fverif\Parallel_Interface\tb\..\..\..\source\common\macros.svh
-R9
+R6
+R111
+R112
+R113
+Z117 Fverif\Parallel_Interface\tb\..\..\..\source\common\macros.svh
 R10
-R73
-R74
-R75
+R11
+R114
+R115
+R116
 !i113 1
-R14
 R15
+R16
+vparallel_interface_commands_tb_waves_tb
+R1
+Z118 !s110 1776184025
+!i10b 1
+!s100 FAS@nPAQ]o28PYc]4d>db1
+IY<CYB]`3]2YF:`gU@VKO11
+R5
+!s105 parallel_interface_commands_tb_waves_tb_sv_unit
+S1
+R6
+R107
+8verif/Parallel_Interface/tb/waves/parallel_interface_commands_tb_waves_tb.sv
+Fverif/Parallel_Interface/tb/waves/parallel_interface_commands_tb_waves_tb.sv
+L0 3
+R11
+r1
+!s85 0
+31
+R114
+R115
+R116
+!i113 1
+R15
+R16
 vparallel_interface_controller_integration_tb
-R0
 R1
 R2
 R3
-DXx4 work 52 parallel_interface_controller_integration_tb_sv_unit 0 22 LgDV9Ri;X0cLi9IFiRP4c1
 R4
+DXx4 work 52 parallel_interface_controller_integration_tb_sv_unit 0 22 5C`aKb^N@JV<DdfCXG:kH1
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 k:e1KEU[`eP6:Y;D_UAOB2
-IS3c0_<lhnFF_WA1h8ZP_[1
+!s100 nZl4JEnaIl<aO>38OAKoX1
+IG[]Cldajm50N;m:iA]G;L0
 !s105 parallel_interface_controller_integration_tb_sv_unit
 S1
-R5
-R16
-Z77 8verif/Controller/tb/parallel_interface_controller_integration_tb.sv
-Z78 Fverif/Controller/tb/parallel_interface_controller_integration_tb.sv
-R19
-R10
+R6
+Z119 w1776602804
+Z120 8verif/Controller/tb/parallel_interface_controller_integration_tb.sv
+Z121 Fverif/Controller/tb/parallel_interface_controller_integration_tb.sv
+R22
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 Xparallel_interface_controller_integration_tb_sv_unit
-R0
 R1
 R2
 R3
-VLgDV9Ri;X0cLi9IFiRP4c1
+R4
+V5C`aKb^N@JV<DdfCXG:kH1
 r1
 !s85 0
 31
 !i10b 1
 !s100 hWYH>W67jLHd8QSaRhS:Z3
-ILgDV9Ri;X0cLi9IFiRP4c1
+I5C`aKb^N@JV<DdfCXG:kH1
 !i103 1
 S1
-R5
-R16
-R77
-R78
-R20
-R21
-R10
+R6
+R119
+R120
+R121
+R25
+R26
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vparallel_interface_controller_integration_tb_waves_tb
-R0
-R22
+R1
+R41
 !i10b 1
 !s100 :U9``HF5:Po0Iakz9FT_T1
 Io6UbFN5kbh]^hNCKb`JdA2
-R4
+R5
 !s105 parallel_interface_controller_integration_tb_waves_tb_sv_unit
 S1
-R5
-R16
+R6
+R19
 8verif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv
 Fverif/Controller/tb/waves/parallel_interface_controller_integration_tb_waves_tb.sv
 L0 3
-R10
+R11
 r1
 !s85 0
 31
-R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vparallel_interface_extract_tb
-R0
-R70
-DXx4 work 37 parallel_interface_extract_tb_sv_unit 0 22 Mo2FDHMaNii?9T[U4mZ:40
-R4
+R1
+R2
+DXx4 work 37 parallel_interface_extract_tb_sv_unit 0 22 MJNa:ID51O=<m5OL88`QZ0
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 Q_4mH]=NO^dWG^3HaOE=F1
-In5nTUP<]4U2gUibQjEQ;;2
+!s100 JGB[kacQ<?=QlbL98k=793
+I2bS4`]o]>cl;>cCLEKKE:1
 !s105 parallel_interface_extract_tb_sv_unit
 S1
-R5
-R65
-Z79 8verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
-Z80 Fverif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
-R19
-R10
-R73
-R74
-R75
+R6
+Z122 w1776622648
+Z123 8verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
+Z124 Fverif/Parallel_Interface/tb/parallel_interface_extract_tb.sv
+R22
+R11
+Z125 !s108 1776626886.000000
+Z126 !s107 verif\Parallel_Interface\tb\..\..\..\source\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+R116
 !i113 1
-R14
 R15
+R16
 Xparallel_interface_extract_tb_sv_unit
-R0
-R70
-VMo2FDHMaNii?9T[U4mZ:40
+R1
+R2
+VMJNa:ID51O=<m5OL88`QZ0
 r1
 !s85 0
 31
 !i10b 1
 !s100 Lh1?AQfG58RK@WmFD^[7]0
-IMo2FDHMaNii?9T[U4mZ:40
+IMJNa:ID51O=<m5OL88`QZ0
 !i103 1
 S1
-R5
-R65
-R79
-R80
-R76
-R9
+R6
+R122
+R123
+R124
+R117
 R10
-R73
-R74
-R75
+R11
+R125
+R126
+R116
 !i113 1
-R14
 R15
-Xparallel_interface_pkg
-R0
-R32
-!i10b 1
-!s100 X975A3:LH5Z6zk1@:EJGg1
-IkMVYCGm09;W1AGLOT:B4<1
-VkMVYCGm09;W1AGLOT:B4<1
-S1
-R5
 R16
-8source/Parallel_Interface/parallel_interface_pkg.sv
-Fsource/Parallel_Interface/parallel_interface_pkg.sv
-L0 5
-R10
+vparallel_interface_extract_tb_waves_tb
+R1
+!s110 1776622663
+!i10b 1
+!s100 ddbQc?RfcozMXbn4VoX?J0
+I?[:=7D<Ek]Xn9ESVHSc;j3
+R5
+!s105 parallel_interface_extract_tb_waves_tb_sv_unit
+S1
+R0
+R19
+8verif/Parallel_Interface/tb/waves/parallel_interface_extract_tb_waves_tb.sv
+Fverif/Parallel_Interface/tb/waves/parallel_interface_extract_tb_waves_tb.sv
+L0 3
+R11
 r1
 !s85 0
 31
+!s108 1776622663.000000
+!s107 verif\Parallel_Interface\tb\..\..\..\source\common\macros.svh|source\Parallel_Interface\..\common\macros.svh|verif/Parallel_Interface/tb/waves/parallel_interface_extract_tb_waves_tb.sv|verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv|source/Parallel_Interface/parallel_interface.sv|source/Parallel_Interface/parallel_interface_pkg.sv|source/common/macros.svh|
+R116
+!i113 1
+R15
+R16
+Xparallel_interface_pkg
+R1
+R41
+!i10b 1
+!s100 ^AP6]W7I2Bb0j5LKzld;b1
+I8F:@2c1>Yz4TNAb7`aGV32
+V8F:@2c1>Yz4TNAb7`aGV32
+S1
+R6
+w1776622622
+8source/Parallel_Interface/parallel_interface_pkg.sv
+Fsource/Parallel_Interface/parallel_interface_pkg.sv
+L0 5
 R11
+r1
+!s85 0
+31
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 Xparallel_interface_sv_unit
-R0
 R1
-V?S5KHTNP>K_1YzA@9XKYX0
+R2
+V1e<VCNhlb^CEIGo=TK6NK0
 r1
 !s85 0
 31
 !i10b 1
 !s100 WjWeoWF^UPc>=?P5aj[BV2
-I?S5KHTNP>K_1YzA@9XKYX0
+I1e<VCNhlb^CEIGo=TK6NK0
 !i103 1
 S1
-R5
-R16
-R68
-R69
+R6
+R108
+R109
+R110
 Fsource\Parallel_Interface\..\common\macros.svh
-R19
-R10
+R22
 R11
 R12
 R13
-!i113 1
 R14
+!i113 1
 R15
+R16
 vparallel_interface_valid_tb
-R0
-R70
-DXx4 work 35 parallel_interface_valid_tb_sv_unit 0 22 3N6SNJ<7MnX<Q;MCi:0dU0
-R4
+R1
+R17
+DXx4 work 35 parallel_interface_valid_tb_sv_unit 0 22 [j_QPX=NLNbJIBD>OZz8m3
+R5
 r1
 !s85 0
 31
 !i10b 1
-!s100 S>Mc]=5STT;]C<`;Yo^733
-Ih:ZNNH5Sji@Ve1gD3Y^PD3
+!s100 0@?M6YDc0Pci]Xl3TSLXc3
+IN>7gS7JzOH35ji6B;XL`E2
 !s105 parallel_interface_valid_tb_sv_unit
 S1
-R5
-R65
-Z81 8verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
-Z82 Fverif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
-R19
-R10
-R73
-R74
-R75
+R6
+Z127 w1776183893
+Z128 8verif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
+Z129 Fverif/Parallel_Interface/tb/parallel_interface_valid_tb.sv
+R84
+R11
+R114
+R115
+R116
 !i113 1
-R14
 R15
+R16
 Xparallel_interface_valid_tb_sv_unit
-R0
-R70
-V3N6SNJ<7MnX<Q;MCi:0dU0
+R1
+R17
+V[j_QPX=NLNbJIBD>OZz8m3
 r1
 !s85 0
 31
 !i10b 1
-!s100 ZlP0jo1nmfB6P]P0I@NSA1
-I3N6SNJ<7MnX<Q;MCi:0dU0
+!s100 JcV@XL`:6Gom;1iGPHKAU3
+I[j_QPX=NLNbJIBD>OZz8m3
 !i103 1
 S1
-R5
-R65
-R81
-R82
-R76
-R9
-R10
-R73
-R74
-R75
+R6
+R127
+R128
+R129
+R117
+L0 11
+R11
+R114
+R115
+R116
 !i113 1
-R14
 R15
+R16
+vparallel_interface_valid_tb_waves_tb
+R1
+R118
+!i10b 1
+!s100 ZHm8_4Ij5c<JYzUV[zf^K1
+IBWj>C0:SW]@NPO@2VCo3:2
+R5
+!s105 parallel_interface_valid_tb_waves_tb_sv_unit
+S1
+R6
+R107
+8verif/Parallel_Interface/tb/waves/parallel_interface_valid_tb_waves_tb.sv
+Fverif/Parallel_Interface/tb/waves/parallel_interface_valid_tb_waves_tb.sv
+L0 3
+R11
+r1
+!s85 0
+31
+R114
+R115
+R116
+!i113 1
+R15
+R16

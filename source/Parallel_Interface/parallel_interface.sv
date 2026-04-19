@@ -39,6 +39,7 @@ module parallel_interface(
     assign address = ann_tail_to_parallel_addr(host_data[23:0]);
     assign cmd     = host_cmd;
 
-    assign valid = (host_cmd != CMD_HIZ);
+    // Command is considered valid only when cmd is active and host ann-tail is well-formed one-hot.
+    assign valid = (host_cmd != CMD_HIZ) && ann_tail_is_valid_onehot(host_data[23:0]);
 
 endmodule

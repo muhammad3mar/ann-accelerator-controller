@@ -3,7 +3,7 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # 10.5b
 
 # vsim -c -do "run -all; quit" work.parallel_interface_extract_tb 
-# Start time: 01:38:33 on Feb 26,2026
+# Start time: 21:17:45 on Apr 19,2026
 # Loading sv_std.std
 # Loading work.parallel_interface_pkg
 # Loading work.parallel_interface_extract_tb_sv_unit
@@ -13,19 +13,54 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # run -all
 # ----------------------------------------
 # Parallel Interface Field Extraction Tests
-# Summary: Tests extraction of data=host_data[7:0], address=host_data[23:8],
-#          cmd=host_data[26:24] for various host_data patterns.
+# Summary: data=host_data[31:24], addr=decode tail[23:0], cmd=host_cmd.
 # ----------------------------------------
-#   Test: host_data=0 | Expected: data=0 addr=0 cmd=000 | Actual: data=0x00 addr=0x0000 cmd=000 | PASS
-#   Test: data field 0xA5 | Expected: 0xA5 | Actual: 0xa5 | PASS
-#   Test: address field 0x1234 | Expected: 0x1234 | Actual: 0x1234 | PASS
-#   Test: cmd field 101 | Expected: 101 | Actual: 101 | PASS
-#   Test: host_data=all_ones | Expected: data=0xFF addr=0xFFFF cmd=111 | Actual: data=0xff addr=0xffff cmd=111 | PASS
-#   Test: cmd=PROG addr=0xFF00 data=0x0F | Expected: data=0x0F addr=0xFF00 cmd=010 | Actual: data=0x0f addr=0xff00 cmd=010 | PASS
+#   Test: idle
+#     host_data hex : 0x00000000
+#     host_data bin : 00000000-0000-0000-00000000-00000000
+#     host_cmd      : 000
+#     PI outputs    : data=0x00 addr=0x0000 cmd=000 valid=0
+#     decoded idx   : PA(block)=0 SA(sub)=0 col=0 row=0
+#     RESULT: PASS
+#   Test: data 0xA5 tail=0 cmd=READ
+#     host_data hex : 0xa5000000
+#     host_data bin : 10100101-0000-0000-00000000-00000000
+#     host_cmd      : 001
+#     PI outputs    : data=0xa5 addr=0x0000 cmd=001 valid=0
+#     decoded idx   : PA(block)=0 SA(sub)=0 col=0 row=0
+#     RESULT: PASS
+#   Test: addr tail decode (arg=1234)
+#     host_data hex : 0x00414010
+#     host_data bin : 00000000-0100-0001-01000000-00010000
+#     host_cmd      : 001
+#     PI outputs    : data=0x00 addr=0x0234 cmd=001 valid=1
+#     decoded idx   : PA(block)=2 SA(sub)=0 col=6 row=4
+#     RESULT: PASS (exp addr=0234)
+#   Test: cmd 101 (payload zero)
+#     host_data hex : 0x00000000
+#     host_data bin : 00000000-0000-0000-00000000-00000000
+#     host_cmd      : 101
+#     PI outputs    : data=0x00 addr=0x0000 cmd=101 valid=0
+#     decoded idx   : PA(block)=0 SA(sub)=0 col=0 row=0
+#     RESULT: PASS
+#   Test: host_data all 1s
+#     host_data hex : 0xffffffff
+#     host_data bin : 11111111-1111-1111-11111111-11111111
+#     host_cmd      : 111
+#     PI outputs    : data=0xff addr=0x0000 cmd=111 valid=0
+#     decoded idx   : PA(block)=0 SA(sub)=0 col=0 row=0
+#     RESULT: PASS
+#   Test: PROG packed addr (arg=ff00) data=0x0F
+#     host_data hex : 0x0f810101
+#     host_data bin : 00001111-1000-0001-00000001-00000001
+#     host_cmd      : 010
+#     PI outputs    : data=0x0f addr=0x0300 cmd=010 valid=1
+#     decoded idx   : PA(block)=3 SA(sub)=0 col=0 row=0
+#     RESULT: PASS (exp addr=0300)
 # ----------------------------------------
 # SUMMARY: 6 passed, 0 failed
 # RESULT: PASS (all 6 checks passed)
-# ** Note: $finish    : verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv(94)
+# ** Note: $finish    : verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv(142)
 #    Time: 36 ns  Iteration: 0  Instance: /parallel_interface_extract_tb
-# End time: 01:38:35 on Feb 26,2026, Elapsed time: 0:00:02
+# End time: 21:17:46 on Apr 19,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0

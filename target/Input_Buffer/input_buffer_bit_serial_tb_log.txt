@@ -3,7 +3,7 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # 10.5b
 
 # vsim -c -do "run -all; quit" work.input_buffer_bit_serial_tb 
-# Start time: 01:38:30 on Feb 26,2026
+# Start time: 21:09:31 on Apr 19,2026
 # Loading sv_std.std
 # Loading work.input_buffer_pkg
 # Loading work.input_buffer_bit_serial_tb_sv_unit
@@ -13,8 +13,7 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # run -all
 # ----------------------------------------
 # Input Buffer Bit-Serial (D0-D7) Tests
-# Summary: Tests bit-serial read: D0-D7 output one bit per channel per cycle
-#          (LSB-first). Block 1: addr 0-7. Block 2: addr 8-15 (buf_reg_add=8).
+# Summary: 32 pixels, bit-serial read over 4 address blocks
 # ----------------------------------------
 # --- Block 1: buf_reg_add=0, addr 0-7 ---
 #   Test: bit_sel=0 (addr 0-7) | Expected: 10101010 | Actual: 10101010 | PASS
@@ -34,10 +33,32 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 #   Test: bit_sel=5 (addr 8-15) | Expected: 01100011 | Actual: 01100011 | PASS
 #   Test: bit_sel=6 (addr 8-15) | Expected: 00011111 | Actual: 00011111 | PASS
 #   Test: bit_sel=7 (addr 8-15) | Expected: 00000000 | Actual: 00000000 | PASS
-# ----------------------------------------
-# SUMMARY: 16 passed, 0 failed
-# RESULT: PASS (bit-serial: 16 checks, both blocks)
-# ** Note: $finish    : verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv(143)
-#    Time: 535 ns  Iteration: 0  Instance: /input_buffer_bit_serial_tb
-# End time: 01:38:32 on Feb 26,2026, Elapsed time: 0:00:02
+# --- Block 3: buf_reg_add=16, addr 16-23 ---
+#   Test: bit_sel=0 (addr 16-23) | Expected: 01010101 | Actual: 01010101 | PASS
+#   Test: bit_sel=1 (addr 16-23) | Expected: 00110011 | Actual: 00110011 | PASS
+#   Test: bit_sel=2 (addr 16-23) | Expected: 00001111 | Actual: 00001111 | PASS
+#   Test: bit_sel=3 (addr 16-23) | Expected: 01010101 | Actual: 01010101 | PASS
+#   Test: bit_sel=4 (addr 16-23) | Expected: 11001100 | Actual: 11001100 | PASS
+#   Test: bit_sel=5 (addr 16-23) | Expected: 11000011 | Actual: 11000011 | PASS
+#   Test: bit_sel=6 (addr 16-23) | Expected: 00111111 | Actual: 00111111 | PASS
+#   Test: bit_sel=7 (addr 16-23) | Expected: 00000000 | Actual: 00000000 | PASS
+# --- Block 4: buf_reg_add=24, addr 24-31 ---
+#   Test: bit_sel=0 (addr 24-31) | Expected: 01010101 | Actual: 01010101 | PASS
+#   Test: bit_sel=1 (addr 24-31) | Expected: 10011001 | Actual: 10011001 | PASS
+#   Test: bit_sel=2 (addr 24-31) | Expected: 01001011 | Actual: 01001011 | PASS
+#   Test: bit_sel=3 (addr 24-31) | Expected: 01101101 | Actual: 01101101 | PASS
+#   Test: bit_sel=4 (addr 24-31) | Expected: 11011011 | Actual: 11011011 | PASS
+#   Test: bit_sel=5 (addr 24-31) | Expected: 00111000 | Actual: 00111000 | PASS
+#   Test: bit_sel=6 (addr 24-31) | Expected: 11111000 | Actual: 11111000 | PASS
+#   Test: bit_sel=7 (addr 24-31) | Expected: 00000111 | Actual: 00000111 | PASS
+# 
+# ** Note: $finish    : verif/Input_Buffer/tb/input_buffer_bit_serial_tb.sv(211)
+#    Time: 1015 ns  Iteration: 0  Instance: /input_buffer_bit_serial_tb
+# End time: 21:09:31 on Apr 19,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
+# //==============================================================================
+# // TB REPORT  input_buffer_bit_serial_tb
+# // Bit-serial D0..D7: four 8-pixel blocks (addrs 0-7, 8-15, 16-23, 24-31)
+# //==============================================================================
+# SUMMARY: 32 passed, 0 failed
+# RESULT: PASS (bit-serial checks)

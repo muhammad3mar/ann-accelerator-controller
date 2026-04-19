@@ -1,11 +1,11 @@
-# vsim -c -do "run -all; quit" work.controller_addr_pulse_tb 
-# Start time: 17:20:43 on Apr 05,2026
+# vsim -c -do "run -all; quit" work.controller_prog_verify_lut_tb 
+# Start time: 22:56:54 on Apr 19,2026
 # Loading sv_std.std
 # Loading work.input_buffer_pkg
 # Loading work.parallel_interface_pkg
 # Loading work.controller_pkg
-# Loading work.controller_addr_pulse_tb_sv_unit
-# Loading work.controller_addr_pulse_tb
+# Loading work.controller_prog_verify_lut_tb_sv_unit
+# Loading work.controller_prog_verify_lut_tb
 # Loading work.parallel_interface_sv_unit
 # Loading work.parallel_interface
 # Loading work.controller_sv_unit
@@ -13,8 +13,11 @@
 # Loading work.input_buffer_sv_unit
 # Loading work.input_buffer
 # run -all
-# [2354000] Verification complete. Results in target/Controller/controller_addr_pulse_verify.txt
-# ** Note: $finish    : verif/Controller/tb/controller_addr_pulse_tb.sv(239)
-#    Time: 2374 ns  Iteration: 1  Instance: /controller_addr_pulse_tb
-# End time: 17:20:44 on Apr 05,2026, Elapsed time: 0:00:01
+# [38000] Loaded 640 weights from target/Controller/programming_inputs/weight_matrix.txt
+# [38000] Programming 640 weights (PROG->VERIFY cycle)...
+# [62246000] Verification complete: 0 errors
+# [62246000] Report: target/Controller/prog/prog_verify_report.txt
+# ** Note: $finish    : verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv(414)
+#    Time: 62286 ns  Iteration: 1  Instance: /controller_prog_verify_lut_tb
+# End time: 22:56:55 on Apr 19,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0
