@@ -2,6 +2,8 @@
 
 This document matches the main FSM and sub-FSMs in [`source/Controller/controller.sv`](../../source/Controller/controller.sv) as of the current RTL.
 
+**Memristor-focused block diagrams** (program / verify / erase / read): [`../block_diagram/MEMRISTOR_FSMS.md`](../block_diagram/MEMRISTOR_FSMS.md).
+
 ## Command dispatch (from `S_IDLE`)
 
 When `valid` is high:
@@ -79,11 +81,12 @@ Notes:
 stateDiagram-v2
   [*] --> PROG_HIZ
   PROG_HIZ --> PROG_SELECT
-  PROG_SELECT --> PROG_ENABLE
-  PROG_ENABLE --> PROG_WRITE
+  PROG_SELECT --> PROG_SELECT: until op_done
+  PROG_SELECT --> PROG_WRITE: op_done
   PROG_WRITE --> PROG_WRITE: until pulse_done
-  PROG_WRITE --> PROG_DISABLE: pulse_done
-  PROG_DISABLE --> PROG_COMPLETE
+  PROG_WRITE --> PROG_WAIT_ACK: pulse_done
+  PROG_WAIT_ACK --> PROG_WAIT_ACK: until op_done
+  PROG_WAIT_ACK --> PROG_COMPLETE: op_done
   PROG_COMPLETE --> PROG_HIZ: via transition to S_VERIFY
 ```
 
@@ -93,12 +96,13 @@ After `PROG_COMPLETE`, the **main** state goes to `S_VERIFY` and `next_prog_stat
 
 ```mermaid
 stateDiagram-v2
-  [*] --> VERIFY_READ
-  VERIFY_READ --> VERIFY_WAIT
-  VERIFY_WAIT --> VERIFY_WAIT: wait_cnt not zero
-  VERIFY_WAIT --> VERIFY_CHECK: wait_cnt zero
+  [*] --> VERIFY_IDLE
+  VERIFY_IDLE --> VERIFY_WAIT: PULSE_TOTAL_READ greater 1
+  VERIFY_IDLE --> VERIFY_CHECK: PULSE_TOTAL_READ le 1
+  VERIFY_WAIT --> VERIFY_WAIT: verify_pulse_idx not last
+  VERIFY_WAIT --> VERIFY_CHECK: read pulse train done
   VERIFY_CHECK --> VERIFY_DONE: read equals expected
-  VERIFY_CHECK --> VERIFY_READ: mismatch paths via S_PROGRAM or S_ERASE
+  VERIFY_CHECK --> VERIFY_IDLE: mismatch paths via S_PROGRAM or S_ERASE
   VERIFY_DONE --> [*]: main state to S_IDLE
 ```
 
@@ -108,17 +112,18 @@ stateDiagram-v2
 stateDiagram-v2
   [*] --> ERASE_HIZ
   ERASE_HIZ --> ERASE_SELECT
-  ERASE_SELECT --> ERASE_ENABLE
-  ERASE_ENABLE --> ERASE_PULSE
+  ERASE_SELECT --> ERASE_SELECT: until op_done
+  ERASE_SELECT --> ERASE_PULSE: op_done
   ERASE_PULSE --> ERASE_PULSE: until pulse_done
-  ERASE_PULSE --> ERASE_DISABLE
-  ERASE_DISABLE --> ERASE_COMPLETE
+  ERASE_PULSE --> ERASE_WAIT_ACK: pulse_done
+  ERASE_WAIT_ACK --> ERASE_WAIT_ACK: until op_done
+  ERASE_WAIT_ACK --> ERASE_COMPLETE: op_done
   ERASE_COMPLETE --> [*]: main state to S_PROGRAM or S_IDLE
 ```
 
 ## Pulse and `ann_core_word` summary
 
 - **`ann_core_word`:** For non-idle states, `{data_byte_for_ann, one_hot_tail}` via `pack_ann_core_word` (see RTL). In `S_COLLECT_DATA`, the data byte comes from **live** `data`; in `S_PROGRAM`/`S_VERIFY`/`S_READ`/`S_ERASE`, from **registered** `data_reg`.
-- **`pulses`:** PROG during `PROG_ENABLE`/`PROG_WRITE`; READ during `S_READ` and verify read/wait; ERASE during `ERASE_ENABLE`/`ERASE_PULSE`/`ERASE_DISABLE`; INF during `S_COMPUTE`.
+- **`pulses`:** PROG during `PROG_WRITE`; READ during `S_READ` and verify read/wait; ERASE during `ERASE_PULSE`; INF during `S_COMPUTE`. `op_done` from the core advances `PROG_SELECT`→`PROG_WRITE`, `PROG_WAIT_ACK`→`PROG_COMPLETE`, `ERASE_SELECT`→`ERASE_PULSE`, and `ERASE_WAIT_ACK`→`ERASE_COMPLETE`.
 
 Parameter names and cycle counts: [`controller_pkg`](../../source/Controller/controller_pkg.sv) (`TREAD`, `TPROG`, `TERASE`, `TINF`, pulse totals, `MAX_PROG_RETRIES`).
