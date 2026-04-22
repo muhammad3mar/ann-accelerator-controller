@@ -1,0 +1,263 @@
+% =============================================================================
+% Chapter 8 --- Limitations and Future Work
+% Grounded in Context 5 §3 (limitations / technical debt) and §4 (roadmap).
+% =============================================================================
+
+\chapter{Limitations and Future Work}
+\label{ch:limitations}
+
+This chapter catalogs the limitations of the present work and proposes
+a concrete engineering roadmap for follow-on verification effort. Every
+limitation below is traceable to the actual \sv{.sv} sources or to
+comments in the Context documents; no extra-repository device assumptions
+are used.
+
+\section{Limitations and Technical Debt}
+\label{sec:lim-limitations}
+
+\subsection{No Independent ANN Behavioral or Numerical Model}
+\label{sec:lim-nomodel}
+
+The testbenches implement a sparse 4D array
+\sv{ann\_weight\_matrix[...]} updated when programming is detected, and
+return \signame{weight\_read\_data} as a function of the
+\signame{ann\_core\_word} decode. That is a
+\emph{register-transfer-level mock}, not a memristor or MAC-array model.
+The following are therefore untested by this abstraction:
+
+\begin{itemize}
+    \item Real timing of \signame{op\_done} relative to array
+          settling --- the TBs use deterministic counters or immediate
+          assertions for many paths.
+    \item End-to-end numerical accuracy of an inference --- no
+          reference MAC against golden vectors is implemented in RTL.
+    \item Cross-talk, IR drop, and variability beyond the discrete
+          4-bit readback injection patterns used for recovery
+          coverage.
+\end{itemize}
+
+The scope of what is validated is explicitly \emph{control sequencing}
+and \emph{digital packet semantics} to a first-order memristor
+abstraction, not full accelerator accuracy~\cite{Ielmini2018RRAM,
+Sebastian2020IMC}.
+
+\subsection{\texttt{op\_done} is a Testbench-Controlled Artifact in Most Benches}
+\label{sec:lim-opdone}
+
+In \sv{controller\_host\_read\_reorder\_tb.sv} and the program/verify
+TBs, \signame{op\_done} is generated with cycle-count heuristics when
+certain \signame{pulses} and DUT states are active. The risk is that
+if a silicon \signame{op\_done} is late, early, or pulsed differently,
+PROG/ERASE sub-FSM timing in hardware may diverge from what the
+SystemVerilog mock proved. The repository does not include min/max
+delay characterization --- only the FSM's dependency on
+\signame{op\_done} in RTL is real. Concrete proposals for assertions
+that could guard against this are listed in \Cref{sec:future-sva}.
+
+\subsection{\stateval{S\_RESET} is Unreachable from \stateval{S\_IDLE}}
+\label{sec:lim-sreset}
+
+\stateval{S\_IDLE} decodes \sv{CMD\_*} into \stateval{S\_PROGRAM},
+\stateval{S\_ERASE}, \stateval{S\_READ}, or \stateval{S\_COLLECT\_DATA};
+it never sets \signame{next\_state} to \stateval{S\_RESET}. The state
+\stateval{S\_RESET} still exists, drives \signame{ann\_reset} for a
+cycle, and unconditionally forces \stateval{S\_PROGRAM} on exit. The
+sequential block retains legacy initialization of programming-related
+counters on the condition
+\signame{state}~=~\stateval{S\_IDLE}~\sv{\&\&}~\signame{next\_state}~=~\stateval{S\_RESET}
+(for example, \signame{weight\_count\_reg}, \signame{matrix\_rows},
+\signame{matrix\_cols}, \signame{buffer\_idx\_reg}), but because no
+path sets that transition, this code is dead in the current graph.
+
+\paragraph{Debt.}
+Either remove the dead transition after an audit, or add a host-visible
+reset command that \emph{does} enter \stateval{S\_RESET} if product
+needs global buffer/core reset from idle.
+
+\subsection{\signame{weight\_read\_en} is Assigned but Unused}
+\label{sec:lim-weightreaden}
+
+A local \signame{weight\_read\_en} is toggled in \stateval{S\_VERIFY}
+(sub-state \sv{VERIFY\_IDLE}) but the signal is not connected to a
+port and does not feed any other logic in the excerpted design. The
+actual verify path samples \signame{weight\_read\_data} in
+\sv{VERIFY\_CHECK}. \textbf{Debt:} delete the dead signal or connect
+it to a future explicit enable for the analog readback path.
+
+\subsection{Module Parameters \sv{ADDR\_WIDTH} / \sv{WEIGHT\_WIDTH} Not Driving Logic}
+\label{sec:lim-params}
+
+As noted in \Cref{sec:analysis-params}, these parameters are not used
+in the \sv{ann\_controller} body. \textbf{Debt:} either connect them to
+port widths or remove them from the public API to avoid misleading
+integrators who assume a width change re-parameterizes the core.
+
+\subsection{Direct-Address versus Legacy Buffer-Index Flow}
+\label{sec:lim-dual-flow}
+
+The RTL and its comments indicate two conceptual programming histories:
+a \emph{direct-address} path that uses \signame{address\_reg}[5:0] for
+buffer read/write in PROG and VERIFY, and \emph{legacy}
+\signame{buffer\_idx\_reg} / \signame{weight\_count\_reg} support that
+is ``kept for ERASE/VERIFY compatibility''. The signal
+\signame{weight\_prog\_done} is asserted in both the legacy
+``advance buffer on verify re-entry to program'' path and the direct
+\sv{PROG\_COMPLETE} path. \textbf{Debt:} a maintenance pass could unify
+or formally deprecate the unused path to reduce the double semantics.
+
+\subsection{\signame{retry\_cnt} in the Direct-Address Mode}
+\label{sec:lim-retry}
+
+\sv{controller\_prog\_verify\_lut\_10w\_tb.sv} documents that the
+\emph{erase max-retry give-up} path (\signame{erase\_max\_retries\_exhausted}
+/ \signame{retry\_cnt} accumulation) is not reachable in the
+direct-address flow as wired, because \sv{PROG\_COMPLETE} clears
+\signame{retry\_cnt} when \signame{buffer\_idx\_reg}~\(<\)~\signame{weight\_count\_reg}~\(-\)~1
+with the default 640 count. Erase retries therefore do not accumulate
+across PROG cycles in that configuration. The limitation is specific
+to the interaction of reset conditions and the default
+\signame{weight\_count\_reg}; it is not a claim about all possible
+parameterizations. A future test should either shrink
+\signame{weight\_count\_reg} in a contrived scenario or drive the
+legacy buffer sweep to hit \signame{erase\_max\_retries\_exhausted}.
+
+\subsection{Repository Scope}
+\label{sec:lim-scope}
+
+There is no UVM testbench, no checked-in formal property set, and no
+gate- or post-layout netlist in the explored tree. These absences are
+out of scope for the present project, not claims of impossibility.
+Suggested next steps are given in \Cref{sec:future-sva,sec:future-cr,sec:future-next}.
+
+\section{Future Work --- SystemVerilog Assertions}
+\label{sec:future-sva}
+
+Assertions should bind to \modname{ann\_controller} instances in
+testbenches (or a thin wrapper module) so that the RTL files remain
+lint-clean. Using \sv{bind} is appropriate if the compile flow
+supports it. Natural interfaces to watch are \signame{valid},
+\signame{cmd}, \signame{busy}, \signame{pulses}, \signame{op\_done},
+\signame{state}, \signame{prog\_state}, \signame{verify\_state}, and
+\signame{erase\_state} (the DUT is already referenced hierarchically in
+TBs, for example \signame{dut.state}).
+
+\Cref{tab:future-sva} lists concrete checks grounded in
+\Cref{ch:rtl}'s description of the RTL behavior.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Concrete SVA proposals, each grounded in a specific section
+        of \Cref{ch:rtl}.}
+    \label{tab:future-sva}
+    \begin{tabularx}{\linewidth}{X l}
+        \toprule
+        \textbf{Concern and suggested check} & \textbf{Grounding} \\
+        \midrule
+        \textbf{Handshake.} If \signame{valid} rises while
+            \signame{state}~=~\stateval{S\_IDLE} and a legal \signame{cmd}
+            is sampled, \signame{busy} or the main state must leave
+            \stateval{S\_IDLE} within a bounded number of cycles, unless
+            \signame{rst\_n} drops. &
+            \Cref{sec:rtl-controller-mainfsm} (\stateval{S\_IDLE} decode).
+        \\ \midrule
+        \textbf{\signame{op\_done} usage.} In \sv{PROG\_SELECT},
+            \sv{PROG\_WAIT\_ACK}, \sv{ERASE\_SELECT}, and
+            \sv{ERASE\_WAIT\_ACK}, simulation must not observe an \sv{X}
+            on \signame{op\_done}; the assertion can be strengthened into
+            a stability or toggle property once analog bounds are
+            supplied by a device team. &
+            \Cref{sec:rtl-controller-prog,sec:rtl-controller-erase}.
+        \\ \midrule
+        \textbf{Pulse / mode consistency.} When \signame{pulses} is a
+            non-HIZ mode, \signame{pulse\_cnt} stays within
+            \(0..\signame{pulse\_total}-1\) until \signame{pulse\_done}
+            asserts (one property per active command state). &
+            \Cref{sec:rtl-controller-pulses}.
+        \\ \midrule
+        \textbf{Invalid tail.} At the PI boundary,
+            \sv{ann\_tail\_is\_valid\_onehot(host\_data[23:0])} is a
+            precondition for \signame{valid}; mirror this as an assume
+            in random-stimulus TBs and as a cover in directed ones. &
+            \Cref{sec:rtl-pi-onehot}.
+        \\ \midrule
+        \textbf{INF handshake extension.} If INF is later extended to
+            sample \signame{op\_done}, add cases where \signame{op\_done}
+            is not tied low, unlike the present
+            \sv{controller\_inf\_buffer\_flow\_tb}. &
+            \Cref{sec:analysis-inf-opdone}.
+        \\ \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{Integration point.}
+The most natural first targets are the PI integration bench and the
+program--verify LUT bench: they already instantiate the DUT and
+reference internal state for \signame{op\_done} generation, so binding
+an assertion module introduces no new plumbing.
+
+\section{Future Work --- Constrained-Random Stimulus and Coverage}
+\label{sec:future-cr}
+
+The existing infrastructure already provides a \emph{legal-packet
+generator}: \sv{build\_host\_ann\_word} and
+\sv{ann\_tail\_is\_valid\_onehot} together can generate and filter
+random host packets. A concrete next step is:
+
+\begin{enumerate}
+    \item \textbf{Randomize.} Randomize \signame{host\_data}[31:0] and
+          \signame{host\_cmd} subject to one-hot tail validity and legal
+          \signame{cmd} values (from \sv{cmd\_t} in
+          \sv{parallel\_interface\_pkg}).
+    \item \textbf{Constrain.} Constrain sequences to the controller
+          FSM's protocol: do not send a new \signame{valid} while
+          \signame{busy} is high unless the protocol is extended to
+          allow pipelining. The current FSM does not, so \emph{idle-wait}
+          is the safe constraint.
+    \item \textbf{Cover.} Define covergroups on \signame{state},
+          \signame{prog\_state}, \signame{verify\_state},
+          \signame{erase\_state}, and on the three branches of
+          \sv{VERIFY\_CHECK} (match, under-programmed, over-programmed),
+          together with crosses of \signame{cmd} at idle.
+    \item \textbf{Self-checking.} Reuse the shadow-matrix pattern from
+          \sv{controller\_prog\_verify\_lut\_tb.sv} to compare
+          \signame{ann\_core\_word} decode to expected storage, and
+          keep the directed regressions as a shrinking baseline to
+          which random-found failures can be added.
+\end{enumerate}
+
+\section{Future Work --- Recovery and Corner-Case Expansion}
+\label{sec:future-recovery}
+
+The intentional \sv{read<expected} and \sv{read>expected} injection
+should be parameterized (indices, counts) so that
+\signame{prog\_retry\_cnt}~=~\sv{MAX\_PROG\_RETRIES} and multiple ERASE
+rounds can be reached without relying on a 640-weight runtime every
+time. In addition, host-initiated erase and verify-initiated erase
+should both be covered, observing the \signame{erase\_from\_host}
+register in waveforms to confirm which path is taken.
+
+\section{Future Work --- Consolidation and Documentation Alignment}
+\label{sec:future-next}
+
+\paragraph{Consolidation of programming modes.}
+If the product direction settles on a single programming interface
+(buffer-sweep only, or direct only), the dead \stateval{S\_RESET}
+path, the unused module-level parameters, and the dual
+\signame{weight\_prog\_done} semantics can be refactored against a
+written spec. This reduces the fan-out of any future SVA or
+constrained-random environment built on top.
+
+\paragraph{Documentation alignment.}
+The repository README uses the phrase \emph{in-memory computing} (IMC)
+at the project level; RTL comments refer to the parallel interface and
+the ANN core. The glossary in \Cref{app:fsm-diagrams} and the rest of
+the report relate those terms without attributing IMC behavior to a
+specific SystemVerilog module name, so that new readers are not misled
+into looking for an \sv{imc} module that does not exist in-tree.
+
+\paragraph{Gate-level flow.}
+Finally, once the RTL and functional verification stabilize, the
+natural next step in a VLSI flow is synthesis, static timing analysis,
+and power/area characterization. Those steps require a target cell
+library, clock/reset/timing constraints, and a top-level integrating
+module, none of which are in scope of the present project.

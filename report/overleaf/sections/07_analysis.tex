@@ -1,0 +1,316 @@
+% =============================================================================
+% Chapter 7 --- Analysis and Discussion
+% Grounded in Context 5 §1-2 (design choices, what the verification proves).
+% =============================================================================
+
+\chapter{Analysis and Discussion}
+\label{ch:analysis}
+
+This chapter ties the implementation of \Cref{ch:rtl} and the verification
+evidence of \Cref{ch:results} into a coherent engineering picture. It is
+deliberately interpretive --- explaining \emph{why} the design looks the
+way it does --- while staying tethered to the same sources.
+
+\section{Design Choices and Architectural Rationale}
+\label{sec:analysis-choices}
+
+\subsection{Module Parameters versus Package-Level Structure}
+\label{sec:analysis-params}
+
+\modname{ann\_controller} exposes \sv{ADDR\_WIDTH} and \sv{WEIGHT\_WIDTH}
+as instance parameters, defaulting respectively to
+\sv{controller\_pkg::DEFAULT\_ADDR\_WIDTH}~=~8 and
+\sv{DEFAULT\_WEIGHT\_WIDTH}~=~16. In the current \sv{controller.sv} body
+these two parameters are not referenced inside any combinational or
+sequential expression: the live datapath relies instead on package
+definitions such as \sv{WEIGHT\_ADDR\_WIDTH}~=~10 (for a packed ANN cell
+address), the 16-bit \signame{address} field from the parallel
+interface, 4-bit verification data on \signame{weight\_read\_data}, and
+buffer addressing via \sv{BUF\_ADDR\_WIDTH} and
+\sv{input\_buffer\_pkg::BUFFER\_ADDR\_WIDTH}. Practically, scalability
+and mapping logic are centralized in \sv{controller\_pkg} and in shared
+helpers, while the two module-level parameters function as a
+\emph{compatibility hook} for a future top-level that might unify width
+conventions; until they are wired into expressions, they do not, by
+themselves, change the generated logic.
+
+The practical modularity for different weight-matrix footprints is
+therefore implemented in \sv{controller\_pkg}. Constants such as
+\sv{MAX\_MATRIX\_ROWS}, \sv{MAX\_MATRIX\_COLS}, \sv{DEFAULT\_MATRIX\_ROWS}
+and \sv{DEFAULT\_MATRIX\_COLS}, and \sv{TOTAL\_WEIGHT\_LOCATIONS}~=~1024
+bound the intended addressable space, while \sv{buffer\_idx\_to\_matrix\_coords},
+\sv{matrix\_coords\_to\_ann\_addr}, and \sv{buffer\_idx\_to\_ann\_addr}
+implement deterministic mapping from a linear index to
+\sv{\{block, sub\_block, row, col\}} for programming-related flows. The
+code contains optimized branches for \sv{matrix\_cols} of 64, 32, 16,
+and 8 (\sv{buffer\_idx\_to\_matrix\_coords}), and the 10\,\(\times\)\,64
+geometry (640 weights) is the one exercised by current testbench data.
+
+\paragraph{Why this matters for robustness.}
+Centralizing pulse-timing math, address packing, and matrix-to-core
+mapping in a single package gives one place to keep all three in sync
+with the parallel interface's \sv{parse\_ann\_address} and
+\sv{ann\_tail\_to\_parallel\_addr} conventions. This reduces the risk
+that the controller emits an \signame{ann\_core\_word} the PI cannot
+round-trip, or that a given address decodes to a different cell than
+the buffer address used during verify.
+
+\subsection{Helper Functions, Pulse Trains, and the LUT Path}
+\label{sec:analysis-helpers}
+
+\sv{controller\_pkg} implements reusable, cycle-accurate building
+blocks for pulse-level control. \sv{pulse\_train\_total(T, N, G)} and
+\sv{pulse\_train\_active(cycle\_idx, T, N, G)} together formalize a
+\emph{burst model} --- \(N\) active phases of length \(T\) separated by
+\(G\) idle cycles --- and drive both the \signame{pulse\_cnt}
+comparison discipline of \signame{pulse\_done} and the individual
+\signame{PULSE\_MODE\_*} selection on \signame{pulses}[2:0]. When
+\sv{USE\_WEIGHT\_PULSE\_LUT} is set, two further helpers ---
+\sv{pulse\_lut\_macro\_repeat\_total} and
+\sv{pulse\_lut\_macro\_repeat\_active} --- repeat a \emph{macro} train
+(one PROG burst pattern) a variable number of times, \sv{Rlut}, with
+\sv{PULSE\_GAP} high-Z cycles between copies.
+
+The engineering rationale for the LUT path, as evidenced in the RTL
+itself, is threefold:
+
+\begin{itemize}
+    \item \textbf{Per-weight shaping without editing RTL constants.}
+          The first programming attempt for a given expected weight uses
+          \sv{weight\_pulse\_cycles\_lut[expected\_weight]} --- loaded
+          from \sv{WEIGHT\_PULSE\_LUT\_FILE} via \sv{\$readmemh} --- as
+          the repeat count \sv{Rlut} for the macro train. Re-synthesis
+          of the controller is not required to change how aggressively
+          a 4-bit code is programmed; only the memory image (the
+          \sv{target/Controller/programming\_inputs/weight\_pulse\_lut.mem}
+          file in this repository) needs to be changed. That is a
+          standard way to hand off calibration or recipe data from
+          device characterization flows to digital control.
+    \item \textbf{Contrast with the non-LUT path.} When
+          \sv{USE\_WEIGHT\_PULSE\_LUT} is 0,
+          \signame{pulse\_total} and \signame{pulses} in \sv{PROG\_WRITE}
+          follow fixed \sv{TPROG}, \sv{PULSE\_NUM\_PROG}, and
+          \sv{PULSE\_GAP} constants from the package, so every weight
+          experiences the same electrical programming footprint on the
+          first attempt.
+    \item \textbf{Staged programming via a short retry.} For
+          \signame{prog\_retry\_cnt}~\(>\)~0, the same combinational
+          block forces \sv{Tp}~=~1, \sv{Np}~=~1. Later attempts do not
+          blindly repeat the full LUT-scaled first pulse but apply
+          single-cycle nudges, so the controller is structured for a
+          strong first shot followed by incremental corrections.
+\end{itemize}
+
+The LUT file in the repository is a hexadecimal list of 16 lines (one
+per \signame{expected\_weight} index in the 4-bit range). This report
+does not interpret the LUT values in terms of a device conductance
+curve or analog yield --- that would require information outside the
+repository; it only states what the code does, namely that the macro
+repeat count is data-driven per expected weight.
+
+\subsection{\texttt{ann\_core\_word} and the Parallel Interface}
+\label{sec:analysis-annword}
+
+The 32-bit \signame{ann\_core\_word} is consistently described in the
+RTL and comments as a payload byte in the high byte (with the
+quantized weight nibble in \sv{[27:24]} during programming contexts)
+concatenated with a 24-bit one-hot tail holding \signame{PE}, \signame{SA},
+column, and row. The functions \sv{pack\_ann\_core\_word},
+\sv{host\_addr\_to\_ann\_addr\_out}, \sv{ann\_core\_word\_decode}, and
+\sv{parse\_ann\_address} keep the same bit-field contract across the
+controller, the parallel interface, and every testbench. In addition,
+\sv{ann\_tail\_is\_valid\_onehot} serves as a structural \emph{guardrail}:
+only strictly one-hot tails produce \signame{valid}~=~1 at the PI
+boundary, so the controller FSM can assume one-hot decodability whenever
+\signame{valid} is asserted. This is a deliberate architectural choice:
+invalid combinations are suppressed at the boundary, not silently
+``fixed'' inside the FSM, which would otherwise blur the responsibility
+of each module.
+
+\subsection{Sub-FSMs and Recovery}
+\label{sec:analysis-subfsms}
+
+Programming uses \sv{prog\_sequence\_state\_t}
+(\sv{HIZ}\,\(\rightarrow\)\,\sv{SELECT}\,\(\rightarrow\)\,\sv{WRITE}\,\(\rightarrow\)\,\sv{WAIT\_ACK}\,\(\rightarrow\)\,\sv{COMPLETE}).
+Verify uses \sv{verify\_state\_t} and erase uses \sv{erase\_state\_t}.
+The recovery policy is explicit in the RTL:
+\signame{weight\_read\_data}~\(<\)~\signame{expected\_weight} with a
+retry budget still available leads back to \stateval{S\_PROGRAM};
+\signame{weight\_read\_data}~\(>\)~\signame{expected\_weight} or an
+exhausted budget leads into \stateval{S\_ERASE}; and
+\signame{erase\_from\_host} distinguishes host-issued \sv{CMD\_ERASE}
+from verify-driven erase so that the two callers have different exit
+behavior. This structure is precisely what the 640-weight and 10-weight
+program--verify benches exercise by injecting misbehaving readbacks, as
+analyzed in the next section.
+
+\section{What the Verification Results Prove}
+\label{sec:analysis-proves}
+
+The repository records directed-test outcomes under \sv{target/}. The
+remainder of this section interprets what those outcomes \emph{prove},
+not merely that logs exist.
+
+\subsection{Address and Pulse Contract}
+\label{sec:analysis-addr-contract}
+
+The 30-case \sv{controller\_addr\_pulse\_verify.txt} (see
+\Cref{sec:results-addrpulse}) documents 30 distinct directed cases, each
+of which passes the expected \signame{ann\_core\_word} format and pulse
+encoding.
+
+\paragraph{Implication.}
+The controller's static I/O contract --- how host address bits become
+one-hot PE/SA/col/row, and how each command class requests
+READ/PROG/ERASE/INF on the 3-bit pulse bus --- is consistent with the
+\sv{controller\_pkg} parameters (\sv{TREAD}, \sv{TPROG},\ldots, listed
+in the report header). This mitigates integration risk with the
+parallel interface and ANN core pin semantics, as those are modeled in
+the SV sources.
+
+\subsection{Host Read Reorder}
+\label{sec:analysis-read-reorder}
+
+\sv{controller\_host\_read\_reorder\_tb} programs eight weights at eight
+different decoded addresses, then reads them in the permuted order
+\sv{4 0 7 2 1 6 3 5}. The mock ADC returns the memristor model value
+indexed by \sv{ann\_core\_word\_decode(ann\_core\_word)}. The report
+summary is \sv{PASS=8 FAIL=0} (\Cref{sec:results-readreorder}).
+
+\paragraph{Implication.}
+Correctness does not depend on reading cells in the same order they
+were programmed. The chain
+address~\(\rightarrow\)~\signame{ann\_core\_word} on READ~\(\rightarrow\)~cell
+selection in the mock~\(\rightarrow\)~4-bit data path is stable under
+reordering. A stale \signame{address\_reg} capture, a wrong one-hot
+field, or a read-pulse discipline that accidentally depended on program
+sequence would likely fail this test.
+
+\subsection{Program/Verify with LUT and Injected Failures}
+\label{sec:analysis-prog-verify}
+
+The 640-weight regression loads expected nibbles, drives \sv{CMD\_PROG}
+with LUT-based first PROG, and the testbench injects
+\signame{read\,<\,expected} and \signame{read\,>\,expected} on specific
+indices to force re-PROG and ERASE branches
+(\Cref{sec:verif-injection-under,sec:verif-injection-over}). The report
+ends with \sv{// Summary: 0 errors in 640 weights} and the explicit
+asymmetric-flow coverage line showing 14 ERASE triggers and 3017
+re-PROG events (\Cref{sec:results-640}).
+
+\paragraph{Implication.}
+The closed loop program \(\rightarrow\) verify \(\rightarrow\) compare
+\(\rightarrow\) optional re-PROG or erase-and-reprogram is exercised
+end-to-end in simulation for a full sweep, including stressed indices
+early and late in the run. The risk of subtle counter or state stuck
+conditions that only appear after many weights is partially reduced ---
+though not eliminated for all possible \signame{op\_done} or analog
+behaviors, as discussed in \Cref{ch:limitations}.
+
+The compact 10-weight bench (\Cref{sec:results-10w}) exists for faster
+waveform debug; it reports 10 of 10 PASS cases and 0 errors, with
+scenarios for match, under-read, over-read, and max re-PROG leading to
+erase.
+
+\subsection{Host Erase and Non-Target Retention}
+\label{sec:analysis-host-erase}
+
+The erase test targets controlled addresses on the mock matrix and
+checks clearing of a selected cell while another cell retains its
+programmed value (\Cref{sec:results-erase}).
+
+\paragraph{Implication.}
+The erase sub-FSM and pulse mapping do not indiscriminately clear
+unrelated decoded indices in the testbench's behavioral model --- a
+proxy, within the limits of that model, for spatial selectivity of the
+command as wired through \signame{ann\_core\_word}.
+
+\subsection{Parallel-Interface / Controller / Input-Buffer Integration}
+\label{sec:analysis-integration}
+
+\sv{parallel\_interface\_controller\_integration\_tb.sv} drives ten
+mixed \sv{CMD\_READ}, \sv{CMD\_PROG}, \sv{CMD\_ERASE}, and
+\sv{CMD\_INF} transactions in sequence. The summary is
+\sv{PASS=10 FAIL=0} (\Cref{sec:results-integration}).
+
+\paragraph{Implication.}
+The handshakes and command multiplexing at the PI boundary interoperate
+with the controller and the input buffer in a repeated pattern, without
+the dedicated per-feature benches' assumptions breaking. In particular,
+the one-beat host-cmd discipline in \sv{check\_cmd} and the nine-beat
+\sv{fork}-based drive in \sv{check\_inf\_row8} model realistic
+sequencer behavior at the interface.
+
+\subsection{Input Buffer and Parallel Interface}
+\label{sec:analysis-unit}
+
+Separate unit benches under \sv{verif/Input\_Buffer/} and
+\sv{verif/Parallel\_Interface/} produce pass-oriented summaries in the
+checked-in artifacts. They support the claim that peripheral concerns
+(buffer control, PI extraction) were simulated successfully in those
+runs, but they do not replace a full-chip analog or system-level
+sign-off.
+
+\subsection{INF Path and \texttt{op\_done}}
+\label{sec:analysis-inf-opdone}
+
+In the current \sv{controller.sv}, \signame{op\_done} is only
+referenced inside the program and erase sub-FSMs (\sv{PROG\_SELECT}
+and \sv{PROG\_WAIT\_ACK}, \sv{ERASE\_SELECT} and
+\sv{ERASE\_WAIT\_ACK}); the collect / compute / result path does not
+sample it. Consistent with that, the INF-focused bench
+\sv{controller\_inf\_buffer\_flow\_tb.sv} ties \signame{op\_done} low in
+a clocked block, with a comment that it is not used by the RTL path
+under test. INF behavior in simulation is therefore not exercising
+\signame{op\_done} timing. A change that added \signame{op\_done} to
+INF would not be automatically covered by the \signame{op\_done}
+generators used in the other benches, a point revisited in
+\Cref{ch:limitations}.
+
+\section{Verification Challenges: Recovery FSMs and Natural Convergence}
+\label{sec:analysis-challenges}
+
+The re-PROG and ERASE sub-FSMs exist precisely because a naive
+program-once flow would leave weights wrong under realistic device
+behavior~\cite{Sebastian2020IMC}. In simulation, however, a
+\emph{well-behaved} mock that updates the shadow matrix on PROG and
+returns accurate reads on verify will converge after a single verify,
+so the recovery branches are never visited.
+
+The project addresses this by \emph{overriding}
+\signame{weight\_read\_data} during a narrow verify window to simulate
+under- and over-read conditions relative to the buffer's expected
+nibble, forcing \sv{VERIFY\_CHECK} to take the re-PROG and ERASE paths
+(\Cref{sec:verif-injection}). Without that injection, the same RTL
+would pass a 640-weight run while almost never visiting those states.
+
+The engineering cost is that the testbench author must \emph{align}
+the phase detectors (\signame{pulses}, \signame{in\_verify\_phase},
+\signame{verify\_cycle\_cnt}) with the sample point in
+\sv{VERIFY\_CHECK} so injections are not mis-timed. The long report
+exists because observability of multi-hop state across the main FSM
+and its sub-FSMs is hard to see without waveforms --- hence the
+separate wave testbench wrappers and the \sv{.do} files under
+\sv{verif/Controller/do/waves/}.
+
+A related issue is controllability of \signame{op\_done}: because many
+benches model the handshake as a function of the DUT's own state and of
+pulse counts, changing pulse trains (for example, by raising \sv{Rlut}
+for some weights) \emph{stretches} simulated time. The compact 10-weight
+bench is the documented mitigation for iteration speed, not a
+substitute for the full regression.
+
+\section{Scope of the Claims}
+\label{sec:analysis-scope}
+
+At the end of the interpretive chapter it is worth being explicit once
+more about what the evidence supports. The project establishes, under
+explicit modeling assumptions, a coherent digital control layer:
+command decoding, one-hot addressing, burst-shaped pulses, program /
+verify / erase recovery when readback is forced to misbehave, and
+interoperability with the parallel interface and the input buffer. The
+same evidence has clear limits: behavioral mocks stand in for the
+physical array, \signame{op\_done} and \signame{weight\_read\_data} are
+idealized, and several compatibility hooks in the RTL are not
+part of a minimal proven subset. The specific limitations are the
+subject of \Cref{ch:limitations}.

@@ -1,0 +1,107 @@
+% =============================================================================
+% Appendix C --- Addressing and Packing Conventions
+% Grounded in Context 1 §3.2-3.3, §4.2-4.3, §7.
+% =============================================================================
+
+\chapter{Addressing and Packing Conventions}
+\label{app:addressing}
+
+This appendix consolidates every bit-level convention used by the PI,
+the controller, and the input buffer so that integrators can cross-check
+any intermediate value in a waveform against its canonical position.
+
+\section{16-bit Parallel Address}
+\label{app:addr-16}
+
+The 16-bit \signame{address} produced by \modname{parallel\_interface}
+and consumed by \modname{ann\_controller} is
+
+\[
+    \signame{address} =
+    \{\,\underbrace{6'b000000}_{\text{reserved}},\,
+       \underbrace{\texttt{blk}[1{:}0]}_{\text{[9:8]}},\,
+       \underbrace{\texttt{sb}[1{:}0]}_{\text{[7:6]}},\,
+       \underbrace{\texttt{cid}[2{:}0]}_{\text{[5:3]}},\,
+       \underbrace{\texttt{rid}[2{:}0]}_{\text{[2:0]}}\,\}
+\]
+
+Bits \sv{[15:10]} are \emph{not consumed} by \sv{parse\_ann\_address}.
+The same layout is reproduced in pictorial form by
+\Cref{fig:parallel-addr-layout}.
+
+\section{32-bit \signame{ann\_core\_word}}
+\label{app:word-32}
+
+The \signame{ann\_core\_word} output of the controller is
+
+\[
+    \signame{ann\_core\_word} =
+    \{\,\underbrace{\texttt{data\_byte}[7{:}0]}_{\text{[31:24]}},\,
+       \underbrace{\texttt{PE}_{\text{onehot}}[3{:}0]}_{\text{[23:20]}},\,
+       \underbrace{\texttt{SA}_{\text{onehot}}[3{:}0]}_{\text{[19:16]}},\,
+       \underbrace{\texttt{col}_{\text{onehot}}[7{:}0]}_{\text{[15:8]}},\,
+       \underbrace{\texttt{row}_{\text{onehot}}[7{:}0]}_{\text{[7:0]}}\,\}
+\]
+
+In programming contexts, the quantized weight nibble occupies the
+upper half of the payload byte, i.e.\ bits \sv{[27:24]} of the word.
+
+\section{One-Hot Predicates}
+\label{app:addr-onehot}
+
+\sv{pi\_is\_onehot4(oh)} returns 1 only for the four patterns listed
+in the left half of \Cref{tab:onehot-predicates};
+\sv{pi\_is\_onehot8(oh)} returns 1 only for the eight patterns listed
+in the right half. Any other pattern (including all-zeros and
+multi-hot) returns 0. Since \signame{valid} at the PI boundary is the
+AND of all four per-field predicates, an invalid tail cannot produce
+\signame{valid}~=~1.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Accepted patterns for \sv{pi\_is\_onehot4} and
+        \sv{pi\_is\_onehot8}.}
+    \label{tab:onehot-predicates}
+    \begin{tabular}{l l @{\hspace{2em}} l l}
+        \toprule
+        \multicolumn{2}{c}{\sv{pi\_is\_onehot4} (4 patterns)} &
+        \multicolumn{2}{c}{\sv{pi\_is\_onehot8} (8 patterns)} \\
+        \cmidrule(r){1-2}\cmidrule(l){3-4}
+        Pattern & Index & Pattern & Index \\
+        \midrule
+        \sv{4'b0001} & 0 & \sv{8'b00000001} & 0 \\
+        \sv{4'b0010} & 1 & \sv{8'b00000010} & 1 \\
+        \sv{4'b0100} & 2 & \sv{8'b00000100} & 2 \\
+        \sv{4'b1000} & 3 & \sv{8'b00001000} & 3 \\
+                     &   & \sv{8'b00010000} & 4 \\
+                     &   & \sv{8'b00100000} & 5 \\
+                     &   & \sv{8'b01000000} & 6 \\
+                     &   & \sv{8'b10000000} & 7 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Address Round Trip}
+\label{app:addr-roundtrip}
+
+\Cref{fig:app-address-roundtrip} depicts the complete round trip that
+every host transaction goes through.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_address_roundtrip}
+    \caption[Address round trip]{Round trip of a cell address through
+        the controller stack. (1) Host provides a 32-bit
+        \signame{host\_data} whose low 24 bits are one-hot
+        \{PE, SA, col, row\}. (2) PI computes
+        \signame{address}~=~\sv{ann\_tail\_to\_parallel\_addr(host\_data[23:0])}
+        into the packed 16-bit form. (3) Controller captures
+        \signame{address\_reg} on idle exit. (4) \sv{parse\_ann\_address}
+        slices \signame{address\_reg} into per-field indices.
+        (5) \sv{pack\_ann\_core\_word} reconstructs the 24-bit one-hot
+        tail via left-shift (\sv{(1 << idx)}), concatenates the payload
+        byte, and drives \signame{ann\_core\_word}. The output tail is
+        bit-for-bit equal to the input tail whenever the PI accepted
+        it.}
+    \label{fig:app-address-roundtrip}
+\end{figure}

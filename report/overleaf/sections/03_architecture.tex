@@ -1,0 +1,222 @@
+% =============================================================================
+% Chapter 3 --- System Architecture
+% Grounded in Context 1 §2, §7, §8 and parallel_interface_pkg.sv /
+% controller_pkg.sv (for command tokens and field layout).
+% =============================================================================
+
+\chapter{System Architecture}
+\label{ch:architecture}
+
+This chapter introduces the three-module RTL stack that implements the
+controller, the host-to-core packet format that every module interprets
+consistently, and the repository layout in which the design and
+verification code is organized. Module-internal behavior is the subject of
+\Cref{ch:rtl}; this chapter deliberately stays at the system level.
+
+\section{Top-Level Block Diagram}
+\label{sec:arch-topology}
+
+The host presents a 32-bit \emph{payload} in the same layout as the
+controller's outgoing \signame{ann\_core\_word}, together with a separate
+3-bit command \signame{host\_cmd}. From the host, these two signals enter
+the \modname{parallel\_interface} module, which is purely combinational
+and which produces a decoded bus
+\{\signame{valid}, \signame{data}, \signame{address}, \signame{cmd}\}
+consumed by the \modname{ann\_controller}. The controller drives the
+packed output word and a 3-bit pulse-mode bus
+(\signame{pulses}[2:0]) toward the ANN core, together with control lines
+to the \modname{input\_buffer} that stores inference pixel data and holds
+the ``expected weight'' nibble used during verify. The buffer in turn
+presents one byte (\signame{buf\_data}[7:0]) for combinational reads and
+eight parallel bit-serial lanes (\signame{D0}\ldots\signame{D7}) used by
+the COMPUTE phase of the inference path.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_top_level_block_diagram}
+    \caption[Top-level block diagram]{Top-level block diagram of the
+        controller stack. The host drives \signame{host\_data} and
+        \signame{host\_cmd} into the combinational
+        \modname{parallel\_interface}, which produces the qualified bus
+        consumed by the \modname{ann\_controller}. The controller sequences
+        commands toward the ANN core over \signame{ann\_core\_word} and
+        \signame{pulses}, and it also drives the \modname{input\_buffer}
+        that stores expected weights and inference pixels. The
+        \signame{op\_done} line is a core-side handshake sampled in the
+        PROG and ERASE sub-FSMs.}
+    \label{fig:top-level-block-diagram}
+\end{figure}
+
+\section{Module Roles and Responsibilities}
+\label{sec:arch-modules}
+
+\paragraph{\modname{parallel\_interface}.}
+A fully combinational block. Its body contains only continuous assignments;
+the clock and reset ports exist but are not referenced inside the module.
+The role of the interface is two-fold. First, it slices the incoming
+\signame{host\_data} into a payload byte (bits \sv{[31:24]}) and a 24-bit
+one-hot \emph{tail} (bits \sv{[23:0]}) and converts the tail into a packed
+16-bit \signame{address}. Second, it computes a \signame{valid} qualifier
+that is asserted only when (i)~the host command is not the idle token
+\sv{CMD\_HIZ} and (ii)~each of the four tail fields is strictly one-hot.
+Invalid host packets therefore do not propagate past the interface, and
+the downstream controller may assume that \signame{address} is legal
+whenever \signame{valid} is high.
+
+\paragraph{\modname{ann\_controller}.}
+The only module in the stack that contains sequential logic. It
+implements a hierarchical finite-state machine with a main FSM of nine
+states (\stateval{S\_IDLE}, \stateval{S\_RESET}, \stateval{S\_PROGRAM},
+\stateval{S\_VERIFY}, \stateval{S\_ERASE}, \stateval{S\_READ},
+\stateval{S\_COLLECT\_DATA}, \stateval{S\_COMPUTE}, \stateval{S\_RESULT})
+and three sub-FSMs for programming, verification, and erase. A shared
+combinational block drives all outputs and produces next-state values;
+two \sv{always\_ff} blocks register main-FSM and sub-FSM state together
+with counters and captured address/data.
+
+\paragraph{\modname{input\_buffer}.}
+A synchronous 64-byte register array (\sv{BUFFER\_SIZE = 64},
+\sv{BUFFER\_DATA\_WIDTH = 8}). A single mode-qualified write port loads
+data from the controller during \sv{CTRL\_DATA\_LOAD} phases. Two read
+paths are provided: a combinational byte-read (\signame{buf\_data}) used
+by verify and read flows, and eight per-bit lanes driven from an
+eight-pixel window addressed by \signame{buf\_reg\_add} and selected by
+\signame{bit\_sel}[2:0], used by the INF COMPUTE phase.
+
+\section{The 32-bit ANN Core Word}
+\label{sec:arch-word}
+
+All three modules agree on a single packet layout: the 32-bit
+\signame{ann\_core\_word} carries an 8-bit payload in its high byte and a
+24-bit one-hot tail in the remaining bits, where the tail encodes the
+target cell as four concatenated one-hot masks
+(\signame{PE}, \signame{SA}, column, row). The layout is summarized in
+\Cref{tab:ann-core-word-fields} and depicted pictorially in
+\Cref{fig:ann-core-word-layout}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Fields of the 32-bit \signame{ann\_core\_word}.}
+    \label{tab:ann-core-word-fields}
+    \begin{tabularx}{\linewidth}{l l l X}
+        \toprule
+        \textbf{Bits} & \textbf{Width} & \textbf{Field} & \textbf{Meaning} \\
+        \midrule
+        \sv{[31:24]} & 8 & \signame{data\_byte} &
+            Payload; for programming commands, the quantized weight nibble
+            sits in bits \sv{[27:24]}. \\
+        \sv{[23:20]} & 4 & \signame{PE} (one-hot) &
+            Processing-element / block select. Exactly one of four bits. \\
+        \sv{[19:16]} & 4 & \signame{SA} (one-hot) &
+            Sub-array / sub-block select. Exactly one of four bits. \\
+        \sv{[15:8]}  & 8 & Column (one-hot) &
+            Column select within the sub-block. Exactly one of eight bits. \\
+        \sv{[7:0]}   & 8 & Row (one-hot) &
+            Row select within the sub-block. Exactly one of eight bits. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_ann_core_word_layout}
+    \caption[ANN core word field layout]{Pictorial layout of the 32-bit
+        \signame{ann\_core\_word}: an 8-bit payload byte followed by four
+        one-hot fields of widths 4, 4, 8, 8. The address round-trip
+        (host tail \(\rightarrow\) PI-decoded \signame{address}
+        \(\rightarrow\) controller-captured \signame{address\_reg}
+        \(\rightarrow\) outbound one-hot tail) is detailed in
+        \Cref{ch:rtl}.}
+    \label{fig:ann-core-word-layout}
+\end{figure}
+
+The 16-bit \signame{address} produced by the parallel interface is a
+compact index form of the same cell identifier: it carries the packed
+fields \sv{\{6'b0, blk[1:0], sb[1:0], col\_id[2:0], row\_id[2:0]\}}
+(\Cref{fig:parallel-addr-layout}). The controller, when it drives the
+outbound core word, reconstructs the one-hot tail by left-shifting 1 by
+each index.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\linewidth]{fig_parallel_addr_layout}
+    \caption[Parallel-interface 16-bit address layout]{Layout of the 16-bit
+        \signame{address} produced by \modname{parallel\_interface} and
+        consumed by \modname{ann\_controller}. Bits \sv{[15:10]} are
+        reserved and are not used by \sv{parse\_ann\_address}.}
+    \label{fig:parallel-addr-layout}
+\end{figure}
+
+\section{Command Set}
+\label{sec:arch-commands}
+
+The controllable command tokens are defined in
+\sv{parallel\_interface\_pkg} as an enumerated type. The five values used
+in the system are listed in \Cref{tab:cmd-set}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Host command set as defined in \sv{parallel\_interface\_pkg}.}
+    \label{tab:cmd-set}
+    \begin{tabularx}{\linewidth}{l l X}
+        \toprule
+        \textbf{Token} & \textbf{Encoding} & \textbf{Meaning} \\
+        \midrule
+        \sv{CMD\_HIZ}   & \sv{3'b000} &
+            Idle; \signame{valid} is forced low at the PI regardless of
+            \signame{host\_data}. \\
+        \sv{CMD\_READ}  & \sv{3'b001} &
+            Read the addressed cell; the controller issues a READ
+            pulse train. \\
+        \sv{CMD\_PROG}  & \sv{3'b010} &
+            Program the addressed cell with the value in
+            \signame{data\_byte}[3:0]; subject to a closed-loop
+            program--verify--erase recovery policy. \\
+        \sv{CMD\_ERASE} & \sv{3'b011} &
+            Erase the addressed cell (host-initiated; distinct from the
+            verify-initiated erase path). \\
+        \sv{CMD\_INF}   & \sv{3'b100} &
+            Inference; host drives nine consecutive beats of
+            \signame{CMD\_INF} to collect eight pixels into the input
+            buffer and trigger a COMPUTE phase. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The interpretation and sequencing of these tokens inside the main FSM are
+described in \Cref{sec:rtl-controller-mainfsm}.
+
+\section{Repository Organization}
+\label{sec:arch-repo}
+
+The project source, verification, and output files are organized as
+follows:
+
+\begin{itemize}
+    \item \sv{source/} --- synthesizable RTL and packages, split by module:
+          \sv{source/Controller/}, \sv{source/Parallel\_Interface/},
+          \sv{source/Input\_Buffer/}, and a shared \sv{source/common/}
+          that hosts the \sv{macros.svh} header.
+    \item \sv{source/*/*\_pkg.sv} --- per-module SystemVerilog packages
+          that carry functions, enumerated types, and parameter
+          constants (e.g.\ \sv{controller\_pkg}).
+    \item \sv{source/*/*\_rtl\_list.f} --- file lists consumed by
+          \sv{vlog~-f} during RTL compilation.
+    \item \sv{verif/*/tb/} and \sv{verif/*/file\_list/} --- per-module
+          testbench sources and compile file lists, including both
+          \emph{regular} batch benches and \emph{waves} wrappers for GUI
+          debugging.
+    \item \sv{verif/*/do/waves/} --- ModelSim \sv{.do} scripts that
+          preload waveform groups for the wave wrappers.
+    \item \sv{scripts/run\_sim.py} --- a Python driver that compiles
+          modules, runs individual or bulk simulations, and performs
+          housekeeping (\sv{clean}) on the \sv{work/} library.
+    \item \sv{target/} --- durable simulation artifacts: pass/fail
+          reports, transcripts, programming LUT images, and per-module
+          log files. These are the inputs to \Cref{ch:results}.
+\end{itemize}
+
+This organization is followed strictly throughout the report: when an
+RTL claim is made, a corresponding file under \sv{source/} is cited; when
+a verification claim is made, a file under \sv{verif/} or \sv{target/}
+is cited.

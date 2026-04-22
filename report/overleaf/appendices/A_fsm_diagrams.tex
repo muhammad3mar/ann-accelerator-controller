@@ -1,0 +1,158 @@
+% =============================================================================
+% Appendix A --- Full FSM State Diagrams
+% Derived from Context 2 §6 Mermaid diagrams. Figure placeholders with
+% explicit transition-condition captions so the diagrams can be drawn
+% without ambiguity.
+% =============================================================================
+
+\chapter{Full FSM State Diagrams}
+\label{app:fsm-diagrams}
+
+This appendix collects full-page, fully-labeled renderings of the four
+state machines described in \Cref{ch:rtl}. Each figure is a placeholder:
+when the corresponding diagram file is dropped into \sv{figures/}, the
+chapter will compile unchanged. The transition conditions listed in each
+caption are the authoritative conditions taken from \sv{controller.sv}
+and should be reproduced verbatim on the diagrams.
+
+\section{Main FSM}
+\label{app:fsm-main}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_main_fsm_full}
+    \caption[Main FSM of the ANN controller (fully labeled)]
+        {Full main FSM of \modname{ann\_controller}. Transition
+         conditions (verbatim from \sv{controller.sv}):
+         \stateval{S\_IDLE}\,\(\rightarrow\)\,\stateval{S\_PROGRAM} on
+         \signame{valid}~\sv{\&\&}~(\signame{cmd}~=~\sv{CMD\_PROG});
+         \stateval{S\_IDLE}\,\(\rightarrow\)\,\stateval{S\_ERASE} on
+         \signame{valid}~\sv{\&\&}~(\signame{cmd}~=~\sv{CMD\_ERASE});
+         \stateval{S\_IDLE}\,\(\rightarrow\)\,\stateval{S\_READ} on
+         \signame{valid}~\sv{\&\&}~(\signame{cmd}~=~\sv{CMD\_READ});
+         \stateval{S\_IDLE}\,\(\rightarrow\)\,\stateval{S\_COLLECT\_DATA}
+         on \signame{valid}~\sv{\&\&}~(\signame{cmd}~=~\sv{CMD\_INF});
+         self-loop otherwise (\(!\)\signame{valid} or default
+         command path);
+         \stateval{S\_RESET}\,\(\rightarrow\)\,\stateval{S\_PROGRAM}
+         unconditionally (note: no edge leads into
+         \stateval{S\_RESET} in the current RTL);
+         \stateval{S\_PROGRAM}\,\(\rightarrow\)\,\stateval{S\_VERIFY}
+         when \signame{prog\_state}~=~\sv{PROG\_COMPLETE};
+         \stateval{S\_VERIFY}\,\(\rightarrow\)\,\stateval{S\_IDLE}
+         when \signame{verify\_state}~=~\sv{VERIFY\_DONE};
+         \stateval{S\_VERIFY}\,\(\rightarrow\)\,\stateval{S\_PROGRAM}
+         on under-programmed readback with
+         \signame{prog\_retry\_cnt}~\(<\)~\sv{MAX\_PROG\_RETRIES};
+         \stateval{S\_VERIFY}\,\(\rightarrow\)\,\stateval{S\_ERASE}
+         on over-programmed readback or exhausted retries;
+         \stateval{S\_ERASE}\,\(\rightarrow\)\,\stateval{S\_IDLE}
+         on \sv{ERASE\_COMPLETE} with
+         (\signame{erase\_from\_host}~\(||\)~\(!\)(\signame{retry\_cnt}~\(<\)~3));
+         \stateval{S\_ERASE}\,\(\rightarrow\)\,\stateval{S\_PROGRAM}
+         on \sv{ERASE\_COMPLETE} with
+         \(!\)\signame{erase\_from\_host}~\sv{\&\&}~(\signame{retry\_cnt}~\(<\)~3);
+         \stateval{S\_READ}\,\(\rightarrow\)\,\stateval{S\_IDLE} on
+         \signame{pulse\_done}, else self-loop;
+         \stateval{S\_COLLECT\_DATA}\,\(\rightarrow\)\,\stateval{S\_COLLECT\_DATA}
+         on \signame{valid}~\sv{\&\&}~(\signame{data\_count}~\(<\)~7) or
+         when \signame{valid} is low;
+         \stateval{S\_COLLECT\_DATA}\,\(\rightarrow\)\,\stateval{S\_COMPUTE}
+         on \signame{valid}~\sv{\&\&}~\(!\)(\signame{data\_count}~\(<\)~7);
+         \stateval{S\_COMPUTE}\,\(\rightarrow\)\,\stateval{S\_RESULT}
+         on \signame{pulse\_done}, else self-loop;
+         \stateval{S\_RESULT}\,\(\rightarrow\)\,\stateval{S\_IDLE}
+         unconditionally.}
+    \label{fig:app-main-fsm-full}
+\end{figure}
+
+\clearpage
+
+\section{Program Sub-FSM}
+\label{app:fsm-prog}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_prog_subfsm_full}
+    \caption[Program sub-FSM (fully labeled)]{Full Program sub-FSM
+        inside \stateval{S\_PROGRAM}. Reset: \sv{PROG\_HIZ} on
+        \signame{!rst\_n}. Transitions:
+        \sv{PROG\_HIZ}\,\(\rightarrow\)\,\sv{PROG\_SELECT} unconditionally;
+        \sv{PROG\_SELECT}\,\(\rightarrow\)\,\sv{PROG\_WRITE} on
+        \signame{op\_done}, else self-loop;
+        \sv{PROG\_WRITE}\,\(\rightarrow\)\,\sv{PROG\_WAIT\_ACK} on
+        \signame{pulse\_done}, else self-loop;
+        \sv{PROG\_WAIT\_ACK}\,\(\rightarrow\)\,\sv{PROG\_COMPLETE} on
+        \signame{op\_done}, else self-loop;
+        \sv{PROG\_COMPLETE} issues \signame{next\_state}~=~\stateval{S\_VERIFY}
+        and \signame{next\_prog\_state}~=~\sv{PROG\_HIZ} simultaneously,
+        returning to the main FSM which enters \stateval{S\_VERIFY} on
+        the next clock edge.}
+    \label{fig:app-prog-subfsm-full}
+\end{figure}
+
+\clearpage
+
+\section{Verify Sub-FSM}
+\label{app:fsm-verify}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_verify_subfsm_full}
+    \caption[Verify sub-FSM (fully labeled)]{Full Verify sub-FSM inside
+        \stateval{S\_VERIFY}. Reset: \sv{VERIFY\_IDLE}. Transitions
+        (\signame{verify\_next} is the combinational output that the
+        sequential block samples each cycle):
+        \sv{VERIFY\_IDLE}\,\(\rightarrow\)\,\sv{VERIFY\_CHECK} when
+        \sv{PULSE\_TOTAL\_READ}~\(\le\)~\sv{8'd1};
+        \sv{VERIFY\_IDLE}\,\(\rightarrow\)\,\sv{VERIFY\_WAIT} otherwise;
+        \sv{VERIFY\_WAIT}\,\(\rightarrow\)\,\sv{VERIFY\_CHECK} when
+        \signame{verify\_pulse\_idx}~=~(\sv{PULSE\_TOTAL\_READ[7:0]~-~8'd1}),
+        else self-loop;
+        \sv{VERIFY\_CHECK}\,\(\rightarrow\)\,\sv{VERIFY\_DONE} when
+        \signame{weight\_read\_data}~=~\signame{expected\_weight};
+        \sv{VERIFY\_CHECK}\,\(\rightarrow\)\,\sv{VERIFY\_IDLE} with
+        \signame{next\_state}~=~\stateval{S\_PROGRAM},
+        \signame{next\_prog\_state}~=~\sv{PROG\_HIZ} when
+        \signame{weight\_read\_data}~\(<\)~\signame{expected\_weight}
+        and \signame{prog\_retry\_cnt}~\(<\)~\sv{MAX\_PROG\_RETRIES};
+        \sv{VERIFY\_CHECK}\,\(\rightarrow\)\,\sv{VERIFY\_IDLE} with
+        \signame{next\_state}~=~\stateval{S\_ERASE} when
+        \signame{weight\_read\_data}~\(<\)~\signame{expected\_weight}
+        and \signame{prog\_retry\_cnt}~\(\ge\)~\sv{MAX\_PROG\_RETRIES};
+        \sv{VERIFY\_CHECK}\,\(\rightarrow\)\,\sv{VERIFY\_IDLE} with
+        \signame{next\_state}~=~\stateval{S\_ERASE} when
+        \signame{weight\_read\_data}~\(>\)~\signame{expected\_weight};
+        \sv{VERIFY\_DONE}\,\(\rightarrow\)\,\sv{VERIFY\_IDLE} with
+        \signame{next\_state}~=~\stateval{S\_IDLE}.}
+    \label{fig:app-verify-subfsm-full}
+\end{figure}
+
+\clearpage
+
+\section{Erase Sub-FSM}
+\label{app:fsm-erase}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_erase_subfsm_full}
+    \caption[Erase sub-FSM (fully labeled)]{Full Erase sub-FSM inside
+        \stateval{S\_ERASE}. Transitions:
+        \sv{ERASE\_HIZ}\,\(\rightarrow\)\,\sv{ERASE\_SELECT}
+        unconditionally;
+        \sv{ERASE\_SELECT}\,\(\rightarrow\)\,\sv{ERASE\_PULSE} on
+        \signame{op\_done}, else self-loop;
+        \sv{ERASE\_PULSE}\,\(\rightarrow\)\,\sv{ERASE\_WAIT\_ACK} on
+        \signame{pulse\_done}, else self-loop;
+        \sv{ERASE\_WAIT\_ACK}\,\(\rightarrow\)\,\sv{ERASE\_COMPLETE} on
+        \signame{op\_done}, else self-loop;
+        \sv{ERASE\_COMPLETE} exits with
+        \signame{erase\_next}~=~\sv{ERASE\_HIZ} and selects
+        \signame{next\_state} according to
+        \Cref{tab:erase-complete}: \stateval{S\_IDLE} if
+        \signame{erase\_from\_host}; \stateval{S\_PROGRAM} if
+        \(!\)\signame{erase\_from\_host}~\sv{\&\&}~(\signame{retry\_cnt}~\(<\)~3);
+        \stateval{S\_IDLE} with
+        \signame{erase\_max\_retries\_exhausted}~=~1 otherwise.}
+    \label{fig:app-erase-subfsm-full}
+\end{figure}

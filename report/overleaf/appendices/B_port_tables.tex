@@ -1,0 +1,145 @@
+% =============================================================================
+% Appendix B --- Full Module Port Tables
+% Derived verbatim from the port lists of parallel_interface.sv,
+% controller.sv, and input_buffer.sv, and annotated with the
+% "Implementing logic" column from Context 1 §6.
+% =============================================================================
+
+\chapter{Full Module Port Tables}
+\label{app:port-tables}
+
+This appendix tabulates every port of the three RTL modules with its
+direction, width, and implementing logic (continuous assignment,
+registered, or combinational with specific driver). Widths marked with
+package constants are those the actual port declarations use.
+
+\section{\modname{parallel\_interface}}
+\label{app:ports-pi}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Full port list of \modname{parallel\_interface} (from
+        \sv{source/Parallel\_Interface/parallel\_interface.sv}).}
+    \label{tab:ports-pi}
+    \begin{tabularx}{\linewidth}{l l c X}
+        \toprule
+        \textbf{Port} & \textbf{Dir} & \textbf{Width} & \textbf{Description / implementing logic} \\
+        \midrule
+        \signame{clk}       & in  & 1  & Clock; declared but \emph{not referenced} in the module body. \\
+        \signame{reset}     & in  & 1  & Active-high reset; declared but \emph{not referenced} in the module body. \\
+        \signame{host\_data} & in  & 32 & Host 32-bit packet: \sv{[31:24]} payload byte; \sv{[23:0]} one-hot
+                                          tail \{PE, SA, col, row\}. \\
+        \signame{host\_cmd}  & in  & 3  & Host command (\sv{cmd\_t} in \sv{parallel\_interface\_pkg}). \\
+        \signame{valid}     & out & 1  & Legal-transaction qualifier; continuous assign
+                                          \sv{(host\_cmd != CMD\_HIZ) \&\& ann\_tail\_is\_valid\_onehot(host\_data[23:0])}. \\
+        \signame{data}      & out & 8  & Continuous assign \sv{host\_data[31:24]}. \\
+        \signame{address}   & out & 16 & Continuous assign \sv{ann\_tail\_to\_parallel\_addr(host\_data[23:0])}. \\
+        \signame{cmd}       & out & 3  & Continuous assign \sv{host\_cmd}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{Summary.}
+All outputs are continuous assignments. \signame{valid} uses four
+one-hot predicates ANDed together together with \signame{host\_cmd}
+\(\neq\) \sv{CMD\_HIZ}.
+
+\section{\modname{ann\_controller}}
+\label{app:ports-controller}
+
+The controller is parameterized by \sv{ADDR\_WIDTH} (default
+\sv{controller\_pkg::DEFAULT\_ADDR\_WIDTH}~=~8), \sv{WEIGHT\_WIDTH}
+(default \sv{DEFAULT\_WEIGHT\_WIDTH}~=~16), \sv{USE\_WEIGHT\_PULSE\_LUT}
+(default \sv{1'b1}), and \sv{WEIGHT\_PULSE\_LUT\_FILE} (default
+\sv{"target/Controller/programming\_inputs/weight\_pulse\_lut.mem"}).
+Only the last two influence the generated logic.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Full port list of \modname{ann\_controller} (from
+        \sv{source/Controller/controller.sv}).}
+    \label{tab:ports-controller}
+    \small
+    \begin{tabularx}{\linewidth}{l l c X}
+        \toprule
+        \textbf{Port} & \textbf{Dir} & \textbf{Width} & \textbf{Description / implementing logic} \\
+        \midrule
+        \signame{clk}    & in  & 1 & Clock. \\
+        \signame{rst\_n} & in  & 1 & Asynchronous active-low reset. \\
+        \midrule
+        \signame{valid}   & in & 1  & Accepted host-transaction qualifier from PI. \\
+        \signame{data}    & in & 8  & Host payload byte from PI. \\
+        \signame{address} & in & 16 & PI-decoded address \sv{\{6'b0, blk, sb, cid, rid\}}. \\
+        \signame{cmd}     & in & \sv{CMD\_WIDTH} & Host command from PI (3 bits). \\
+        \midrule
+        \signame{ann\_reset}     & out & 1  & Asserted in \stateval{S\_RESET} combinational default. \\
+        \signame{op\_done}       & in  & 1  & Core handshake, read in PROG and ERASE sub-FSMs as a
+                                              level-sensitive combinational condition. \\
+        \signame{ann\_core\_word} & out & 32 & Packed output; \sv{pack\_ann\_core\_word(...)} when
+                                              \signame{state}\(\neq\)\stateval{S\_IDLE}, else all zeros. \\
+        \signame{pulses}         & out & 3  & Pulse mode output: \sv{PULSE\_MODE\_*} or
+                                              \sv{PULSE\_MODE\_HIZ} per combinational block. \\
+        \signame{weight\_read\_data} & in & 4 & ADC/quantizer readback during verify. \\
+        \midrule
+        \signame{buf\_reg\_add}   & out & 6 & Buffer address (context-dependent). \\
+        \signame{buf\_reg\_ctrl}  & out & 3 & Buffer control mode (\sv{CTRL\_IDLE},
+                                              \sv{CTRL\_DATA\_LOAD}, \sv{CTRL\_WEIGHT\_READ},
+                                              \sv{CTRL\_COMPUTE}, \sv{CTRL\_RESULT\_OUT}). \\
+        \signame{buf\_read\_write} & out & 1 & 1\,=\,write, 0\,=\,read. \\
+        \signame{buf\_bit\_sel}    & out & 3 & Bit index used by \signame{D0}--\signame{D7} during compute. \\
+        \signame{buf\_data\_out}   & out & 8 & Captured byte for buffer writes. \\
+        \signame{buf\_ready}       & in  & 1 & Buffer-side ready flag. \\
+        \signame{buf\_data}        & in  & \sv{BUFFER\_DATA\_WIDTH} & Buffer byte-read port (8 bits). \\
+        \midrule
+        \signame{busy} & out & 1 & Status to higher-level; high in any non-idle state. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{Implementing logic summary.}
+Registered in \sv{always\_ff}: \signame{state}, \signame{prog\_state},
+\signame{address\_reg}, \signame{data\_reg}, and counters
+(\signame{pulse\_cnt}, \signame{data\_count}, \signame{row\_count},
+\signame{bit\_count}, \signame{verify\_pulse\_idx}, \signame{retry\_cnt},
+\signame{prog\_retry\_cnt}, \ldots). The combinational FSM block drives
+\signame{next\_state}, buffer control, \signame{pulses}, and the
+\signame{ann\_core\_word} packing path. \signame{weight\_read\_data} is
+compared in \sv{VERIFY\_CHECK} and updates the retry registers on the
+clock edge.
+
+\section{\modname{input\_buffer}}
+\label{app:ports-buffer}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Full port list of \modname{input\_buffer} (from
+        \sv{source/Input\_Buffer/input\_buffer.sv}).}
+    \label{tab:ports-buffer}
+    \begin{tabularx}{\linewidth}{l l c X}
+        \toprule
+        \textbf{Port} & \textbf{Dir} & \textbf{Width} & \textbf{Description / implementing logic} \\
+        \midrule
+        \signame{clk}    & in  & 1 & Clock. \\
+        \signame{rst\_n} & in  & 1 & Asynchronous active-low reset. \\
+        \signame{data\_in} & in  & 8 & Write data from the parallel interface. \\
+        \signame{ready}    & out & 1 & Mode/address-qualified ready; combinational. \\
+        \signame{reg\_ctrl}    & in  & 3 & Buffer mode selector. \\
+        \signame{buf\_read\_write} & in  & 1 & 1 = write, 0 = read. \\
+        \signame{buf\_reg\_add}    & in  & 6 & Buffer address (base row for bit-serial lanes). \\
+        \signame{bit\_sel}         & in  & 3 & Bit index (0..7) for lanes \signame{D0}--\signame{D7}. \\
+        \signame{buf\_data}        & out & 8 & Byte-read; combinational mux over
+                                               \sv{buffer\_reg[addr]}. \\
+        \signame{D0} \ldots \signame{D7} & out & 1 & Bit-serial lanes;
+                                               \signame{D}\(_k\)~=~\sv{buffer\_reg[addr+k][bit\_sel]} when
+                                               \signame{read\_en} and \(\text{addr}{+}k\) is in range. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{Implementing logic summary.}
+\signame{write\_en} and \signame{read\_en} are continuous assigns;
+\sv{buffer\_reg} updates in \sv{always\_ff} on
+\signame{write\_en}~\sv{\&\&}~\sv{is\_valid\_addr(addr)}, and is cleared
+to zero by the asynchronous reset loop. \signame{buf\_data},
+\signame{D0}--\signame{D7}, and \signame{ready} are driven by
+combinational \sv{\textasciigrave comb} blocks.

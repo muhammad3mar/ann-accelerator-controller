@@ -1,0 +1,780 @@
+% =============================================================================
+% Chapter 4 --- RTL Module Design
+% Grounded in Context 1 §3-5 (modules deep dive) and Context 2 entirely
+% (FSM details). All signal names and transition conditions come from the
+% SystemVerilog source files listed in those Context documents.
+% =============================================================================
+
+\chapter{RTL Module Design}
+\label{ch:rtl}
+
+This chapter is the technical heart of the report. It describes, at the
+register-transfer level, the three synthesizable modules of the controller
+stack. For each module the discussion follows the actual signal flow in
+the source file: continuous assignments, registered captures,
+combinational next-state logic, and output multiplexing. FSM state
+diagrams in this chapter are deliberately simplified for readability;
+fully-labeled versions are collected in \Cref{app:fsm-diagrams}.
+
+\section{Parallel Interface}
+\label{sec:rtl-pi}
+
+\subsection{Module Structure}
+\label{sec:rtl-pi-structure}
+
+The \modname{parallel\_interface} module is described in
+\sv{source/Parallel\_Interface/parallel\_interface.sv}. Its body contains
+only continuous assignments: the clock and reset ports are declared but
+are never referenced inside the module, so no sequential logic is
+inferred. The four output assignments are:
+\begin{align*}
+    \signame{data}    &\leftarrow \signame{host\_data}[31:24] \\
+    \signame{address} &\leftarrow \texttt{ann\_tail\_to\_parallel\_addr}(\signame{host\_data}[23:0]) \\
+    \signame{cmd}     &\leftarrow \signame{host\_cmd} \\
+    \signame{valid}   &\leftarrow (\signame{host\_cmd} \neq \sv{CMD\_HIZ})
+                                   \land \texttt{ann\_tail\_is\_valid\_onehot}(\signame{host\_data}[23:0])
+\end{align*}
+Any synchronization of host-side signals must therefore be performed
+outside this module; the RTL in scope is purely combinational.
+
+\subsection{One-Hot Tail Validation}
+\label{sec:rtl-pi-onehot}
+
+The \signame{valid} qualifier is the logical AND of (i)~a non-idle command
+and (ii)~a strictly one-hot tail. Tail legality is the AND of four
+independent structural predicates, as summarized in
+\Cref{tab:pi-onehot-predicates}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{One-hot predicates used to form \signame{valid} in
+        \modname{parallel\_interface}.}
+    \label{tab:pi-onehot-predicates}
+    \begin{tabularx}{\linewidth}{l c l X}
+        \toprule
+        \textbf{Tail slice} & \textbf{Width} & \textbf{Predicate} & \textbf{Meaning} \\
+        \midrule
+        \sv{tail[23:20]} & 4 & \sv{pi\_is\_onehot4} & Exactly one PE-select bit \\
+        \sv{tail[19:16]} & 4 & \sv{pi\_is\_onehot4} & Exactly one SA-select bit \\
+        \sv{tail[15:8]}  & 8 & \sv{pi\_is\_onehot8} & Exactly one column bit \\
+        \sv{tail[7:0]}   & 8 & \sv{pi\_is\_onehot8} & Exactly one row bit \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\sv{pi\_is\_onehot4} returns 1 only for the four patterns
+\sv{4'b0001}, \sv{4'b0010}, \sv{4'b0100}, \sv{4'b1000}; any other value
+(including all-zeros or multi-hot) returns 0. \sv{pi\_is\_onehot8}
+similarly returns 1 only for the eight single-bit patterns and 0
+otherwise. Consequently, a host packet with a non-\sv{HIZ} command but
+any non-one-hot tail holds \signame{valid} low even though \signame{data}
+and \signame{address} are still driven combinationally from
+\signame{host\_data}. The downstream controller gates acceptance of new
+transactions on \signame{valid}, so invalid packets are silently
+rejected at the interface.
+
+\subsection{Tail-to-Address Mapping}
+\label{sec:rtl-pi-addr}
+
+The function \sv{ann\_tail\_to\_parallel\_addr} performs a
+\emph{decode-then-concatenate} path entirely inside the package. First,
+four case-style decoders produce packed indices:
+
+\begin{align*}
+    \texttt{blk} &= \texttt{pi\_onehot4\_to\_idx}(\sv{tail[23:20]}) \in [0,3] \\
+    \texttt{sb}  &= \texttt{pi\_onehot4\_to\_idx}(\sv{tail[19:16]}) \in [0,3] \\
+    \texttt{cid} &= \texttt{pi\_onehot8\_to\_idx}(\sv{tail[15:8]})  \in [0,7] \\
+    \texttt{rid} &= \texttt{pi\_onehot8\_to\_idx}(\sv{tail[7:0]})   \in [0,7]
+\end{align*}
+
+\noindent Then these indices are concatenated into a 16-bit address:
+\[
+    \signame{address} = \{\sv{6'b0},~\texttt{blk},~\texttt{sb},~\texttt{cid},~\texttt{rid}\}
+\]
+
+The returned 16-bit value therefore carries \sv{[9:8]}~=~\texttt{blk},
+\sv{[7:6]}~=~\texttt{sb}, \sv{[5:3]}~=~\texttt{cid},
+\sv{[2:0]}~=~\texttt{rid}, with the upper six bits always zero. This is
+the exact field layout that \sv{parse\_ann\_address} later expects inside
+the controller (\Cref{sec:rtl-controller-addr}). The inverse operation,
+indices to one-hot tail, is implemented in \sv{build\_host\_ann\_word}
+via \sv{4'(1 << blk)}, \sv{8'(1 << cid)}, and so on, giving a structural
+dual of the decode path.
+
+\subsection{Relation to the Controller}
+\label{sec:rtl-pi-controller}
+
+The controller does not re-validate one-hot: it consumes \signame{address}
+as a plain bit-field slice. Semantic consistency between the host's
+one-hot tail and the resulting \signame{address} is enforced at the PI
+boundary when \signame{valid} is high, not inside the FSM. Invalid tails
+never cause the controller to enter a new state.
+
+\section{ANN Controller}
+\label{sec:rtl-controller}
+
+The controller is declared as \modname{ann\_controller} in
+\sv{source/Controller/controller.sv}. It is parameterized by
+\sv{ADDR\_WIDTH}, \sv{WEIGHT\_WIDTH}, \sv{USE\_WEIGHT\_PULSE\_LUT}, and
+\sv{WEIGHT\_PULSE\_LUT\_FILE}. The module contains one large combinational
+block (wrapped by the \sv{\textasciigrave comb} macro from
+\sv{source/common/macros.svh}) that assigns all outputs and all
+\signame{next\_*} values, together with two \sv{always\_ff} blocks that
+register the main FSM state, the sub-FSM states, counters, and captured
+address/data.
+
+\subsection{Registered Capture of Host Data}
+\label{sec:rtl-controller-capture}
+
+The controller latches the host bus only at the transition out of
+\stateval{S\_IDLE}. In its sequential block, on the positive edge of
+\signame{clk} with asynchronous active-low reset:
+
+\begin{itemize}
+    \item if \signame{valid} is high and the main state is
+          \stateval{S\_IDLE}, the RTL performs
+          \signame{address\_reg} \(\leftarrow\) \signame{address} and
+          \signame{data\_reg} \(\leftarrow\) \signame{data};
+    \item otherwise the registers retain their values.
+\end{itemize}
+
+Once captured, all subsequent sub-FSM states (program, verify, read,
+erase) use the \emph{registered} \signame{address\_reg} and
+\signame{data\_reg} rather than the live PI outputs. The only exception
+is the inference path, where the combinational FSM explicitly uses the
+live \signame{data} byte for pixel streaming during
+\stateval{S\_COLLECT\_DATA} (see \Cref{sec:rtl-controller-mainfsm}).
+
+\subsection{Address Parsing and Word Packing}
+\label{sec:rtl-controller-addr}
+
+A combinational region calls the package function
+\sv{parse\_ann\_address} on \signame{address\_reg} and deposits the
+resulting indices into a 10-bit local \signame{weight\_addr\_reg}:
+
+\begin{align*}
+    \texttt{block\_id}     &= \signame{address\_reg}[9:8] \\
+    \texttt{sub\_block\_id} &= \signame{address\_reg}[7:6] \\
+    \texttt{col\_id}       &= \signame{address\_reg}[5:3] \\
+    \texttt{row\_id}       &= \signame{address\_reg}[2:0]
+\end{align*}
+
+Bits \sv{[15:10]} of the address are not consumed. When the state is
+not \stateval{S\_IDLE}, the outbound \signame{ann\_core\_word} is produced
+combinationally by
+\sv{pack\_ann\_core\_word(data\_byte\_for\_ann, block\_id, sub\_block\_id,
+row\_id, col\_id)}, which internally calls
+\sv{host\_addr\_to\_ann\_addr\_out} to build each one-hot field by a
+left-shift:
+
+\begin{align*}
+    \texttt{pe\_onehot}  &= 1 \ll \texttt{block\_id} \\
+    \texttt{sa\_onehot}  &= 1 \ll \texttt{sub\_block\_id} \\
+    \texttt{col\_onehot} &= 1 \ll \texttt{col\_id} \\
+    \texttt{row\_onehot} &= 1 \ll \texttt{row\_id}
+\end{align*}
+
+The final 32-bit word is
+\sv{\{data\_byte, pe\_onehot, sa\_onehot, col\_onehot, row\_onehot\}}.
+No ``ANN tail register'' is stored; the outbound word is recomputed every
+cycle from the current \signame{address\_reg} parse and the selected
+payload byte. When the state is \stateval{S\_IDLE}, the RTL forces
+\signame{ann\_core\_word} to all zeros.
+
+\subsection{Payload Byte Multiplexing}
+\label{sec:rtl-controller-data}
+
+The byte inserted into the outbound word,
+\signame{data\_byte\_for\_ann}, is selected in an \sv{always\_comb} with
+\sv{unique case (state)}:
+
+\begin{itemize}
+    \item \stateval{S\_PROGRAM}, \stateval{S\_VERIFY}, \stateval{S\_READ},
+          \stateval{S\_ERASE}: use the captured \signame{data\_reg}.
+    \item \stateval{S\_COLLECT\_DATA}: use the live \signame{data}
+          coming from the parallel interface, so that streamed
+          inference pixels are forwarded to the core.
+    \item Default: \sv{8'b0}.
+\end{itemize}
+
+\subsection{Main FSM}
+\label{sec:rtl-controller-mainfsm}
+
+The main state machine has nine states. The combinational block sets the
+following defaults before the \sv{unique case (state)}: \signame{ann\_reset}
+and \signame{busy} default to 0; \signame{buf\_reg\_add} defaults to the
+(zero-extended) \signame{buf\_addr\_reg}; \signame{buf\_reg\_ctrl} defaults
+to \sv{CTRL\_IDLE}; \signame{buf\_read\_write} defaults to read;
+\signame{buf\_bit\_sel} is \signame{bit\_count} when the state is
+\stateval{S\_COMPUTE} and \sv{3'd0} otherwise; \signame{next\_state} is
+\signame{state}; and \signame{next\_prog\_state} is \signame{prog\_state}.
+Per-state arms override these defaults where needed.
+
+\Cref{fig:main-fsm-body} summarizes the allowed transitions; a fully
+labeled version appears in \Cref{fig:app-main-fsm-full}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_main_fsm_body}
+    \caption[Main FSM of the ANN controller (simplified)]{Simplified main
+        FSM of \modname{ann\_controller}. Arrows show the condition under
+        which \signame{next\_state} is set. The labels on transitions out
+        of \stateval{S\_VERIFY} and \stateval{S\_ERASE} summarize the
+        compound conditions from the respective sub-FSMs.}
+    \label{fig:main-fsm-body}
+\end{figure}
+
+\paragraph{\stateval{S\_IDLE}.}
+\signame{busy} is low; the buffer interface is set to
+\sv{CTRL\_IDLE} with \signame{buf\_reg\_add} forced to zero. If
+\signame{valid} is low, \signame{next\_state} stays \stateval{S\_IDLE}.
+If \signame{valid} is high, \sv{unique case (cmd)} decodes the host
+command: \sv{CMD\_PROG} sets \signame{next\_state} to \stateval{S\_PROGRAM}
+and \signame{next\_prog\_state} to \sv{PROG\_HIZ}; \sv{CMD\_ERASE} goes
+to \stateval{S\_ERASE}; \sv{CMD\_READ} goes to \stateval{S\_READ};
+\sv{CMD\_INF} goes to \stateval{S\_COLLECT\_DATA}; the default keeps
+\stateval{S\_IDLE}. Only the PROG arm explicitly updates
+\signame{next\_prog\_state} within the idle branch; the other arms leave
+it at its default.
+
+\paragraph{\stateval{S\_RESET}.}
+\signame{busy} and \signame{ann\_reset} are asserted; the buffer is
+held in \sv{CTRL\_IDLE}. The transition out is unconditional:
+\signame{next\_state} becomes \stateval{S\_PROGRAM} with
+\signame{next\_prog\_state}~=~\sv{PROG\_HIZ}. No branch of the
+main FSM currently drives \signame{next\_state} into \stateval{S\_RESET};
+the state is present in the RTL and drives \signame{ann\_reset} for one
+cycle if entered, but in the published FSM graph it is not reachable from
+\stateval{S\_IDLE}. Legacy initialization code in the sequential block
+remains guarded by
+\signame{state}~=~\stateval{S\_IDLE}~\sv{\&\&}~\signame{next\_state}~=~\stateval{S\_RESET},
+and is therefore dead in the current graph; this is discussed further in
+\Cref{ch:limitations}.
+
+\paragraph{\stateval{S\_PROGRAM}.}
+\signame{busy} is high. Buffer control is multiplexed by
+\signame{prog\_state}: during \sv{PROG\_HIZ} and \sv{PROG\_SELECT} the
+controller writes the data byte into the buffer at
+\signame{address\_reg}[5:0] under \sv{CTRL\_DATA\_LOAD}; in all other
+sub-states (\sv{PROG\_WRITE}, \sv{PROG\_WAIT\_ACK}, \sv{PROG\_COMPLETE},
+and the default) the buffer is configured for \sv{CTRL\_WEIGHT\_READ} at
+the same address. The main-state transition is driven by the PROG
+sub-FSM: when \signame{prog\_state}~=~\sv{PROG\_COMPLETE}, the shared
+combinational block sets \signame{next\_state}~=~\stateval{S\_VERIFY} and
+\signame{next\_prog\_state}~=~\sv{PROG\_HIZ}.
+
+\paragraph{\stateval{S\_VERIFY}.}
+\signame{busy} is high; the buffer is read under \sv{CTRL\_WEIGHT\_READ}
+at \signame{address\_reg}[5:0]. Transition rules are implemented in the
+VERIFY sub-FSM (\Cref{sec:rtl-controller-verify}): on
+\sv{VERIFY\_DONE}, \signame{next\_state} becomes \stateval{S\_IDLE}; on
+\sv{VERIFY\_CHECK} with a readback that is less than expected and
+\signame{prog\_retry\_cnt}~\(<\)~\sv{MAX\_PROG\_RETRIES}, the main state
+goes back to \stateval{S\_PROGRAM}; on the over-programmed branch or
+when retries are exhausted, it goes to \stateval{S\_ERASE}.
+
+\paragraph{\stateval{S\_ERASE}.}
+\signame{busy} is high; the buffer is held in \sv{CTRL\_IDLE}. The ERASE
+sub-FSM (\Cref{sec:rtl-controller-erase}) drives exit either to
+\stateval{S\_IDLE} or back to \stateval{S\_PROGRAM}, depending on the
+\signame{erase\_from\_host} flag and the \signame{retry\_cnt} value.
+
+\paragraph{\stateval{S\_READ}.}
+\signame{busy} is high; the buffer is held in \sv{CTRL\_IDLE}. The
+state self-loops while \signame{pulse\_done} is low, and returns to
+\stateval{S\_IDLE} when \signame{pulse\_done} asserts. The
+\signame{pulses} bus carries \sv{PULSE\_MODE\_READ} while
+\sv{pulse\_train\_active} is true for \stateval{S\_READ}.
+
+\paragraph{\stateval{S\_COLLECT\_DATA}.}
+\signame{busy} is high. Buffer control is
+\sv{CTRL\_DATA\_LOAD} with \signame{buf\_read\_write}~=~1 and
+\signame{buf\_reg\_add}~=~\signame{row\_count}\(\times\)8\(+\)\signame{data\_count}.
+Transitions depend on \signame{valid}:
+if \signame{valid} is high and \signame{data\_count}~\(<\)~7, the state
+self-loops; if \signame{valid} is high and \signame{data\_count}~=~7, the
+next state is \stateval{S\_COMPUTE}; if \signame{valid} is low, the state
+self-loops. In the sequential block, the relevant counters
+(\signame{data\_count}, \signame{row\_count}, \signame{buf\_write\_addr})
+are updated only on cycles with \signame{valid} asserted.
+
+\paragraph{\stateval{S\_COMPUTE}.}
+\signame{busy} is high; the buffer is in \sv{CTRL\_COMPUTE} with
+\signame{buf\_reg\_add}~=~0 and \signame{buf\_bit\_sel}~=~\signame{bit\_count}.
+The state self-loops while \signame{pulse\_done} is low and advances to
+\stateval{S\_RESULT} when \signame{pulse\_done} is high. \signame{bit\_count}
+is incremented each cycle in \stateval{S\_COMPUTE} and cleared on exit.
+
+\paragraph{\stateval{S\_RESULT}.}
+\signame{busy} is high; the buffer is in \sv{CTRL\_RESULT\_OUT}. The
+transition is unconditional: \signame{next\_state} becomes
+\stateval{S\_IDLE}.
+
+\paragraph{Default arm.}
+On an illegal or unknown \signame{state} value, the RTL drives
+\signame{next\_state}~=~\stateval{S\_IDLE} and
+\signame{next\_prog\_state}~=~\sv{PROG\_HIZ}.
+
+\subsection{Program Sub-FSM}
+\label{sec:rtl-controller-prog}
+
+The PROG sub-FSM has five states --- \sv{PROG\_HIZ}, \sv{PROG\_SELECT},
+\sv{PROG\_WRITE}, \sv{PROG\_WAIT\_ACK}, \sv{PROG\_COMPLETE} --- and is
+reset to \sv{PROG\_HIZ} on \signame{!rst\_n}.
+
+The forward flow is summarized in \Cref{fig:prog-subfsm-body} and in
+\Cref{tab:prog-subfsm-table}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\linewidth]{fig_prog_subfsm_body}
+    \caption[Program sub-FSM]{Program sub-FSM inside \stateval{S\_PROGRAM}.
+        Entry is from \stateval{S\_IDLE} via \sv{CMD\_PROG}; exit on
+        \sv{PROG\_COMPLETE} sets \signame{next\_state}~=~\stateval{S\_VERIFY}.}
+    \label{fig:prog-subfsm-body}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Next-state table of the PROG sub-FSM.}
+    \label{tab:prog-subfsm-table}
+    \begin{tabularx}{\linewidth}{l X}
+        \toprule
+        \textbf{\signame{prog\_state}} & \textbf{Rule for \signame{next\_prog\_state}} \\
+        \midrule
+        \sv{PROG\_HIZ} & Unconditional: \sv{PROG\_SELECT}. \\
+        \sv{PROG\_SELECT} & \sv{op\_done ? PROG\_WRITE : PROG\_SELECT}. \\
+        \sv{PROG\_WRITE} & \sv{pulse\_done ? PROG\_WAIT\_ACK : PROG\_WRITE}. \\
+        \sv{PROG\_WAIT\_ACK} & \sv{op\_done ? PROG\_COMPLETE : PROG\_WAIT\_ACK}. \\
+        \sv{PROG\_COMPLETE} & Sets \signame{next\_state}~=~\stateval{S\_VERIFY}; sets \signame{next\_prog\_state}~=~\sv{PROG\_HIZ}. \\
+        \sv{default} & \sv{PROG\_HIZ}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\signame{op\_done} is a level-sensitive combinational condition: the RTL
+contains no \sv{always\_ff} that samples \signame{op\_done} inside
+\modname{ann\_controller}. The registered \signame{prog\_state} updates
+on the next clock edge to whatever \signame{next\_prog\_state} resolves
+to, which in turn depends on the current \signame{op\_done} value in the
+same evaluation.
+
+The \signame{pulses} bus is set to \sv{PULSE\_MODE\_PROG} only when
+(\signame{state}~=~\stateval{S\_PROGRAM})~\sv{\&\&}~(\signame{prog\_state}~=~\sv{PROG\_WRITE})
+and the corresponding train-active Boolean is true;
+\signame{pulse\_cnt} increments only while the FSM stays in
+\sv{PROG\_WRITE} and \signame{pulse\_done} is still low.
+
+\subsection{Verify Sub-FSM}
+\label{sec:rtl-controller-verify}
+
+The VERIFY sub-FSM has four states: \sv{VERIFY\_IDLE}, \sv{VERIFY\_WAIT},
+\sv{VERIFY\_CHECK}, \sv{VERIFY\_DONE}. The registered
+\signame{verify\_state} is assigned each cycle from the combinational
+\signame{verify\_next}. Outside of \stateval{S\_VERIFY}, the combinational
+case does not assign \signame{verify\_next}; the shared \sv{always\_ff}
+nevertheless samples it every cycle, which (in a fully-elaborated
+\sv{always\_comb}) typically infers transparent latching of the previous
+value when the main state is not \stateval{S\_VERIFY}.
+
+The \sv{VERIFY\_IDLE} branch tests
+\sv{PULSE\_TOTAL\_READ}~\(\le\)~\sv{8'd1}: if true, it short-circuits
+directly to \sv{VERIFY\_CHECK}; otherwise, it enters \sv{VERIFY\_WAIT}.
+With default constants in \sv{controller\_pkg}, \sv{PULSE\_TOTAL\_READ}
+is 2, so the RTL takes the \sv{VERIFY\_WAIT} branch. The
+\sv{VERIFY\_WAIT} branch compares the registered
+\signame{verify\_pulse\_idx} against \sv{PULSE\_TOTAL\_READ[7:0]~-~8'd1}
+and transitions to \sv{VERIFY\_CHECK} when they match; otherwise it
+self-loops. The index \signame{verify\_pulse\_idx} is cleared to
+\sv{8'd0} when the main state is not \stateval{S\_VERIFY}, loaded to
+\sv{8'd1} in \sv{VERIFY\_IDLE}, and incremented by 1 in
+\sv{VERIFY\_WAIT} when the next sub-state is also \sv{VERIFY\_WAIT}.
+
+The \sv{VERIFY\_CHECK} arm is the comparator body and is described
+separately in \Cref{sec:rtl-controller-verify-check}. On \sv{VERIFY\_DONE}
+the combinational logic sets \signame{next\_state}~=~\stateval{S\_IDLE}
+and \signame{verify\_next}~=~\sv{VERIFY\_IDLE}.
+
+The simplified verify sub-FSM is shown in \Cref{fig:verify-subfsm-body}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_verify_subfsm_body}
+    \caption[Verify sub-FSM]{Verify sub-FSM inside \stateval{S\_VERIFY}.
+        \sv{VERIFY\_CHECK} has three outcomes; see
+        \Cref{sec:rtl-controller-verify-check}.}
+    \label{fig:verify-subfsm-body}
+\end{figure}
+
+\subsubsection{\texttt{VERIFY\_CHECK}: Compare, Retry, and Erase Branch}
+\label{sec:rtl-controller-verify-check}
+
+In \sv{VERIFY\_CHECK}, the RTL compares the 4-bit
+\signame{weight\_read\_data} input with \signame{expected\_weight}. The
+package definition is \sv{assign expected\_weight = weight\_from\_buffer},
+and within the combinational region \signame{weight\_from\_buffer} is
+\signame{buf\_data}[3:0] when the state is \stateval{S\_PROGRAM} or
+\stateval{S\_VERIFY}. Since \signame{buf\_addr\_reg} for those states is
+\signame{address\_reg}[5:0], the expected nibble is the buffer contents
+at the programmed cell address.
+
+The three outcomes are:
+
+\begin{enumerate}
+    \item \textbf{Match:}
+          \signame{weight\_read\_data}~=~\signame{expected\_weight} sets
+          \signame{verify\_next}~=~\sv{VERIFY\_DONE}.
+    \item \textbf{Under-programmed}
+          (\signame{weight\_read\_data}~\(<\)~\signame{expected\_weight}):
+          \begin{itemize}
+              \item If \signame{prog\_retry\_cnt}~\(<\)~\sv{MAX\_PROG\_RETRIES}
+                    (the package sets \sv{MAX\_PROG\_RETRIES}~=~3):
+                    \signame{next\_state}~=~\stateval{S\_PROGRAM},
+                    \signame{next\_prog\_state}~=~\sv{PROG\_HIZ}.
+              \item Else:
+                    \signame{verify\_failure\_starts\_erase}~=~1 and
+                    \signame{next\_state}~=~\stateval{S\_ERASE}.
+          \end{itemize}
+          In both under-programmed sub-cases, \signame{verify\_next}
+          becomes \sv{VERIFY\_IDLE}.
+    \item \textbf{Over-programmed}
+          (\signame{weight\_read\_data}~\(>\)~\signame{expected\_weight}):
+          \signame{verify\_failure\_starts\_erase}~=~1,
+          \signame{next\_state}~=~\stateval{S\_ERASE},
+          \signame{verify\_next}~=~\sv{VERIFY\_IDLE}.
+\end{enumerate}
+
+The registered \signame{prog\_retry\_cnt} is updated in a priority
+if/else-if chain inside the sequential block. When the main state is
+\stateval{S\_VERIFY} and the sub-state is \sv{VERIFY\_DONE},
+\signame{retry\_cnt}, \signame{prog\_retry\_cnt}, and
+\signame{program\_stronger} are all cleared to 0. When the main state is
+\stateval{S\_VERIFY}, the sub-state is \sv{VERIFY\_CHECK}, the readback
+is less than expected, and \signame{prog\_retry\_cnt} is still below
+\sv{MAX\_PROG\_RETRIES}, \signame{prog\_retry\_cnt} is incremented. When
+the readback is above expected, or the retry budget is exhausted,
+\signame{prog\_retry\_cnt} is cleared to 0. When the main state is
+\stateval{S\_ERASE} and the erase sub-state is \sv{ERASE\_COMPLETE},
+\signame{retry\_cnt} is incremented and \signame{prog\_retry\_cnt} is
+cleared. A separate condition in the same \sv{always\_ff} asserts
+\signame{program\_stronger} when \sv{VERIFY\_CHECK} shows
+\signame{weight\_read\_data}~\(\ne\)~\signame{expected\_weight} and
+\signame{expected\_weight}~\(>\)~\signame{weight\_read\_data}.
+
+\signame{weight\_read\_en} is driven to 1 in \sv{VERIFY\_IDLE} and 0
+elsewhere, but no other statement inside the module reads it; it is a
+dead internal flag in the current RTL.
+
+\subsection{Erase Sub-FSM}
+\label{sec:rtl-controller-erase}
+
+The ERASE sub-FSM has five states: \sv{ERASE\_HIZ}, \sv{ERASE\_SELECT},
+\sv{ERASE\_PULSE}, \sv{ERASE\_WAIT\_ACK}, \sv{ERASE\_COMPLETE}. Its
+forward flow is \sv{ERASE\_HIZ}\(\rightarrow\)\sv{ERASE\_SELECT}
+(unconditional) \(\rightarrow\)\sv{ERASE\_PULSE} (requires
+\signame{op\_done}) \(\rightarrow\)\sv{ERASE\_WAIT\_ACK} (requires
+\signame{pulse\_done}) \(\rightarrow\)\sv{ERASE\_COMPLETE} (requires
+\signame{op\_done}).
+
+The exit branch from \sv{ERASE\_COMPLETE} is decided combinationally
+from \signame{erase\_from\_host} and \signame{retry\_cnt}, as shown in
+\Cref{tab:erase-complete}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{\texttt{ERASE\_COMPLETE} exit branches.}
+    \label{tab:erase-complete}
+    \begin{tabularx}{\linewidth}{l l l X}
+        \toprule
+        \textbf{Condition} & \textbf{\signame{next\_state}} & \textbf{\signame{next\_prog\_state}} & \textbf{Side effect} \\
+        \midrule
+        \signame{erase\_from\_host} & \stateval{S\_IDLE} & \sv{PROG\_HIZ} & --- \\
+        \(!\)\signame{erase\_from\_host}, \signame{retry\_cnt}\,\(<\)\,3 &
+            \stateval{S\_PROGRAM} & \sv{PROG\_HIZ} & --- \\
+        Otherwise & \stateval{S\_IDLE} & \sv{PROG\_HIZ} &
+            \signame{erase\_max\_retries\_exhausted}~=~1 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The \signame{erase\_from\_host} register distinguishes a host-issued
+\sv{CMD\_ERASE} from a verify-initiated erase. Its update is a priority
+if/else-if chain:
+\begin{itemize}
+    \item Cleared to 0 when
+          (\signame{state}~=~\stateval{S\_VERIFY})~\sv{\&\&}~(\signame{next\_state}~=~\stateval{S\_ERASE})
+          --- the verify-driven erase path.
+    \item Set to 1 when
+          (\signame{state}~=~\stateval{S\_IDLE})~\sv{\&\&}~\signame{valid}~\sv{\&\&}~(\signame{cmd}~=~\sv{CMD\_ERASE})
+          --- a host erase command.
+    \item Cleared to 0 when
+          (\signame{state}~=~\stateval{S\_ERASE})~\sv{\&\&}~(\signame{next\_state}~=~\stateval{S\_IDLE})
+          --- completion of the erase sequence.
+\end{itemize}
+
+The simplified erase sub-FSM is shown in \Cref{fig:erase-subfsm-body}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_erase_subfsm_body}
+    \caption[Erase sub-FSM]{Erase sub-FSM inside \stateval{S\_ERASE}.
+        Exit from \sv{ERASE\_COMPLETE} branches according to
+        \Cref{tab:erase-complete}.}
+    \label{fig:erase-subfsm-body}
+\end{figure}
+
+\subsection{Pulse Generation and LUT-Based Programming}
+\label{sec:rtl-controller-pulses}
+
+The controller drives three distinct artefacts that together implement
+pulse timing: a combinational per-state \signame{pulse\_total}, a
+combinational \signame{pulse\_done}, and a registered
+\signame{pulse\_cnt}.
+
+\paragraph{Combinational \signame{pulse\_total}.}
+The package helper \sv{pulse\_train\_total(T, N, G)} returns the total
+cycle count for \(N\) bursts of \(T\) active cycles interleaved with
+\((N-1)\) gaps of \(G\) \signame{HIZ} cycles. The controller assigns
+\signame{pulse\_total} as an 8-bit unsigned clip of per-state values:
+
+\begin{itemize}
+    \item \stateval{S\_READ}: \sv{PULSE\_TOTAL\_READ} =
+          \sv{pulse\_train\_total(TREAD, PULSE\_NUM\_READ, PULSE\_GAP)}.
+    \item \stateval{S\_PROGRAM} with \signame{prog\_state}~=~\sv{PROG\_WRITE}:
+          three branches, as summarized in \Cref{tab:prog-pulse-branches}.
+    \item \stateval{S\_ERASE} with \signame{erase\_state}~=~\sv{ERASE\_PULSE}:
+          \sv{PULSE\_TOTAL\_ERASE}.
+    \item \stateval{S\_COMPUTE}: \sv{PULSE\_TOTAL\_INF}, which the package
+          defines as \(\max(8, \mathrm{TINF} \cdot N + \text{gaps})\).
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \caption{\signame{pulse\_total} branches in \stateval{S\_PROGRAM}
+        \(+\) \sv{PROG\_WRITE}.}
+    \label{tab:prog-pulse-branches}
+    \begin{tabularx}{\linewidth}{l X}
+        \toprule
+        \textbf{Condition} & \textbf{Value} \\
+        \midrule
+        \sv{USE\_WEIGHT\_PULSE\_LUT}~=~0 &
+            \sv{pulse\_train\_total(TPROG, PULSE\_NUM\_PROG, PULSE\_GAP)}. \\
+        LUT enabled,
+            \signame{prog\_retry\_cnt}~\(>\)~0 &
+            Short retry train with \sv{Tp}~=~1, \sv{Np}~=~1. \\
+        LUT enabled, first attempt &
+            \sv{Mmacro}~=~\sv{pulse\_train\_total(TPROG, PULSE\_NUM\_PROG, PULSE\_GAP)};
+            \sv{Rlut}~=~\sv{weight\_pulse\_cycles\_lut[expected\_weight]}
+            (minimum 1); total
+            \sv{pulse\_lut\_macro\_repeat\_total(Rlut, Mmacro, PULSE\_GAP)}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{Combinational \signame{pulse\_done}.}
+The condition is
+\sv{(pulse\_total~>~0) \&\& (pulse\_cnt~>=~pulse\_total~-~1)}. When
+\signame{pulse\_total} is 0 (outside of the active states above),
+\signame{pulse\_done} is always 0.
+
+\paragraph{Registered \signame{pulse\_cnt}.}
+The 8-bit counter is cleared to 0 on transitions into \stateval{S\_READ},
+into \sv{PROG\_WRITE}, into \sv{ERASE\_PULSE}, or into
+\stateval{S\_COMPUTE}, and it is incremented on cycles where the FSM
+stays in the same pulse-active phase with \signame{pulse\_done} still
+low. The pulse duration is therefore implemented as a load-and-count
+counter compared against \signame{pulse\_total}.
+
+\paragraph{Pulse-mode output \signame{pulses}[2:0].}
+A separate combinational block drives \signame{pulses}. The default is
+\sv{PULSE\_MODE\_HIZ} (\sv{3'b000}). For each active mode a Boolean
+\emph{\_on} is formed from \sv{pulse\_train\_active} (for simple
+burst/gap patterns) or \sv{pulse\_lut\_macro\_repeat\_active} (for
+first-attempt LUT PROG). When the corresponding Boolean is true,
+\signame{pulses} takes \sv{PULSE\_MODE\_READ}, \sv{PULSE\_MODE\_PROG},
+\sv{PULSE\_MODE\_ERASE}, or \sv{PULSE\_MODE\_INF} as appropriate;
+otherwise it is \sv{PULSE\_MODE\_HIZ}. The physical waveform on
+\signame{pulses} is thus a time-multiplexed burst train with
+\sv{PULSE\_GAP}-length \signame{HIZ} windows between bursts, and
+\Cref{fig:pulse-train-model} depicts one such train for the standard
+\sv{pulse\_train\_total}\,/\,\sv{pulse\_train\_active} pair.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_pulse_train_model}
+    \caption[Standard pulse train model]{Pulse train parameterized by
+        $T$, $N$, $G$. Active phases are wide; \sv{PULSE\_GAP} (\(G\))
+        cycles separate adjacent bursts. The total length
+        \sv{pulse\_train\_total}$(T,N,G)$ is matched against
+        \signame{pulse\_cnt} to produce \signame{pulse\_done}.}
+    \label{fig:pulse-train-model}
+\end{figure}
+
+\paragraph{LUT path (first PROG attempt).}
+When \sv{USE\_WEIGHT\_PULSE\_LUT} is set and
+\signame{prog\_retry\_cnt} is zero, the package function
+\sv{pulse\_lut\_macro\_repeat\_total(Rlut, Mmacro, G)} returns the total
+number of cycles occupied by \sv{Rlut} copies of a macro of length
+\sv{Mmacro}, separated by \sv{G}-cycle gaps. The repeat count \sv{Rlut}
+is the entry of \sv{weight\_pulse\_cycles\_lut[]} indexed by the
+\emph{expected} weight nibble (with a minimum of 1 enforced), and the
+array itself is loaded from \sv{WEIGHT\_PULSE\_LUT\_FILE} (the
+\sv{target/Controller/programming\_inputs/weight\_pulse\_lut.mem} image
+in this repository) via \sv{\$readmemh}. \Cref{fig:lut-macro-repeat}
+illustrates this structure.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_lut_macro_repeat}
+    \caption[LUT-based macro-repeat pulse structure]{LUT-based
+        first-attempt PROG: the inner macro
+        \sv{pulse\_train\_total(TPROG, PULSE\_NUM\_PROG, PULSE\_GAP)}
+        is concatenated \sv{Rlut} times with \sv{PULSE\_GAP} cycles
+        between copies, where \sv{Rlut} is
+        \sv{weight\_pulse\_cycles\_lut[expected\_weight]} (minimum 1).}
+    \label{fig:lut-macro-repeat}
+\end{figure}
+
+For \signame{prog\_retry\_cnt}~\(>\)~0, the RTL falls back to a short
+\sv{Tp}~=~1, \sv{Np}~=~1 train, so subsequent programming attempts apply
+single-cycle nudges rather than repeating the full first-attempt train.
+
+\subsection{Inference Path}
+\label{sec:rtl-controller-inf}
+
+The inference path follows
+\stateval{S\_COLLECT\_DATA}\(\rightarrow\)\stateval{S\_COMPUTE}\(\rightarrow\)\stateval{S\_RESULT}\(\rightarrow\)\stateval{S\_IDLE},
+as shown in \Cref{fig:inference-dataflow}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_inference_dataflow}
+    \caption[Inference dataflow]{Inference dataflow. In
+        \stateval{S\_COLLECT\_DATA}, eight pixel bytes are written into
+        the input buffer in row-major order at
+        \signame{row\_count}\(\cdot\)8\(+\)\signame{data\_count}. In
+        \stateval{S\_COMPUTE}, the buffer exposes bit lanes
+        \signame{D0}\ldots\signame{D7} using \signame{bit\_sel} stepped
+        by the controller's \signame{bit\_count} from 0 to 7. Finally,
+        \stateval{S\_RESULT} drives the buffer into \sv{CTRL\_RESULT\_OUT}
+        for one cycle before returning to \stateval{S\_IDLE}.}
+    \label{fig:inference-dataflow}
+\end{figure}
+
+\signame{op\_done} is not referenced anywhere on the inference path in
+the current RTL: the handshake exists only in the PROG and ERASE
+sub-FSMs. The duration of \stateval{S\_COMPUTE} is determined solely by
+\signame{pulse\_done} relative to \sv{PULSE\_TOTAL\_INF}.
+
+\subsection{Recovery Loop Summary}
+\label{sec:rtl-controller-recovery}
+
+\Cref{fig:recovery-loop-conceptual} collects the main-FSM transitions
+that together form the closed-loop recovery policy required by the
+write--verify problem. PROG enters VERIFY; VERIFY either succeeds and
+returns to IDLE, re-enters PROG on an under-programmed readback within
+the retry budget, or enters ERASE on an over-programmed readback or on a
+retry-budget overflow. ERASE either returns to IDLE (host erase or
+retry-count overflow) or re-enters PROG to retry.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_recovery_loop_conceptual}
+    \caption[Program--Verify--Erase recovery loop]{Conceptual view of
+        the closed-loop recovery policy implemented by the main FSM and
+        its three sub-FSMs. The labels on the edges summarize the
+        compound conditions described in
+        \Cref{sec:rtl-controller-mainfsm,sec:rtl-controller-verify-check,sec:rtl-controller-erase}.}
+    \label{fig:recovery-loop-conceptual}
+\end{figure}
+
+\subsection{Signals Assigned but Not Consumed}
+\label{sec:rtl-controller-dead}
+
+Three internal signals are assigned by the combinational block but are
+not read anywhere else in \sv{controller.sv}:
+\signame{verify\_failure\_starts\_erase} (set in \sv{VERIFY\_CHECK}
+erase branches), \signame{erase\_max\_retries\_exhausted} (set on the
+\sv{ERASE\_COMPLETE} give-up branch), and the already-noted
+\signame{weight\_read\_en}. They may exist to support hierarchical
+testbench access or future integration; in the shipped RTL they are
+inert. The implications of these dead drivers are revisited in
+\Cref{ch:limitations}.
+
+\section{Input Buffer}
+\label{sec:rtl-buffer}
+
+The input buffer is described in
+\sv{source/Input\_Buffer/input\_buffer.sv} and its package. It uses the
+package constants \sv{BUFFER\_SIZE}~=~64 and \sv{BUFFER\_DATA\_WIDTH}~=~8,
+giving a 64-entry byte store.
+
+\subsection{Storage Array and Write Path}
+\label{sec:rtl-buffer-write}
+
+The storage is declared as
+\sv{logic [BUFFER\_DATA\_WIDTH-1:0] buffer\_reg[0:BUFFER\_SIZE-1]}, a
+vector of registers indexed by the 6-bit \signame{buf\_reg\_add} port.
+The write-enable qualifier is
+\signame{write\_en}~=~\signame{buf\_read\_write}~\sv{\&\&}~(\signame{reg\_ctrl}~=~\sv{CTRL\_DATA\_LOAD}).
+On the positive edge of the clock, if \signame{write\_en} is asserted
+and the address passes \sv{is\_valid\_addr}, then
+\sv{buffer\_reg[addr]}~\(\leftarrow\)~\signame{data\_in}. An asynchronous
+active-low reset initializes every entry to zero in a dedicated reset
+loop.
+
+\subsection{Byte Read Path (\signame{buf\_data})}
+\label{sec:rtl-buffer-read-byte}
+
+The read-enable qualifier is asserted when \signame{buf\_read\_write} is
+low and \signame{reg\_ctrl} is one of \sv{CTRL\_COMPUTE},
+\sv{CTRL\_RESULT\_OUT}, or \sv{CTRL\_WEIGHT\_READ}. A combinational
+block drives \signame{buf\_data} to zero by default; if the read enable
+is high and \sv{is\_valid\_addr(addr)} is true, the output becomes
+\sv{buffer\_reg[addr]}. The byte-read path is therefore purely
+combinational: a mux over the 64 storage entries selected by
+\signame{buf\_reg\_add}.
+
+\subsection{Bit-Serial Output Lanes \signame{D0}--\signame{D7}}
+\label{sec:rtl-buffer-bitserial}
+
+For each lane \(k \in \{0,\ldots,7\}\), the combinational block assigns
+
+\[
+    \signame{D}_k =
+    \begin{cases}
+        \sv{buffer\_reg[addr + k][bit\_sel]} &
+        \text{if \signame{read\_en} and \(\text{addr}+k < \sv{BUFFER\_SIZE}\)} \\
+        0 & \text{otherwise}
+    \end{cases}
+\]
+
+Physically, \signame{buf\_reg\_add} is the \emph{base row} of an 8-pixel
+group in the 1D array; the eight lanes present byte
+\(\text{addr}{+}k\) to lane \(k\). The bit position inside each byte is
+chosen by \signame{bit\_sel}[2:0], which the controller advances from 0
+to 7 during \stateval{S\_COMPUTE} to implement LSB-first bit-serial
+readout across the eight lanes.
+
+\subsection{\signame{ready} Output}
+\label{sec:rtl-buffer-ready}
+
+\signame{ready} defaults to 0 and is asserted as \sv{is\_valid\_addr(addr)}
+in exactly two mutually exclusive situations: (i)~when
+\signame{reg\_ctrl}~=~\sv{CTRL\_DATA\_LOAD} and \signame{buf\_read\_write}
+is 1 (write-load), and (ii)~when \signame{reg\_ctrl} is one of
+\sv{CTRL\_COMPUTE}, \sv{CTRL\_RESULT\_OUT}, or \sv{CTRL\_WEIGHT\_READ}
+and \signame{buf\_read\_write} is 0 (explicit reads). In every other
+mode --- including \sv{CTRL\_IDLE} and any reads during
+\sv{CTRL\_DATA\_LOAD} --- \signame{ready} is 0.
+
+\subsection{Port Summary}
+\label{sec:rtl-buffer-ports}
+
+The complete port list of the input buffer is
+\{\signame{clk}, \signame{rst\_n}, \signame{data\_in}, \signame{ready},
+\signame{reg\_ctrl}, \signame{buf\_read\_write}, \signame{buf\_reg\_add},
+\signame{bit\_sel}, \signame{buf\_data},
+\signame{D0},\ldots,\signame{D7}\}.
+Full port tables for all three modules, including directions and widths,
+are collected in \Cref{app:port-tables}.

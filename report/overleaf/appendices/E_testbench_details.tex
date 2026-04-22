@@ -1,0 +1,199 @@
+% =============================================================================
+% Appendix E --- Testbench Technical Details
+% Grounded in Context 3 §2-5 and the testbench sources under verif/.
+% =============================================================================
+
+\chapter{Testbench Technical Details}
+\label{app:tb}
+
+This appendix expands the tasks and data structures of the controller
+testbenches. The material complements \Cref{ch:verification}.
+
+\section{Fault-Injection Index Sets}
+\label{app:tb-inject}
+
+The two injection functions in
+\sv{controller\_prog\_verify\_lut\_tb.sv} --- \sv{is\_inject\_read\_lt(idx)}
+and \sv{is\_inject\_read\_gt(idx)} --- take the current weight index and
+return 1 if the corresponding fault should be applied. The 14 + 14
+indices they cover are reproduced in \Cref{tab:inject-indices}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Fault-injection index sets in the 640-weight program--verify
+        bench.}
+    \label{tab:inject-indices}
+    \begin{tabularx}{\linewidth}{l X}
+        \toprule
+        \textbf{Scenario} & \textbf{Indices (14 per scenario)} \\
+        \midrule
+        \sv{read < expected} (under-programmed \(\rightarrow\) re-PROG)
+            & 5, 15, 25, 50, 100, 200, 385, 420, 455, 490, 535, 580,
+              605, 625 \\
+        \sv{read > expected} (over-programmed \(\rightarrow\) ERASE)
+            & 10, 30, 70, 150, 250, 350, 395, 440, 475, 510, 555, 600,
+              615, 635 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+For indices in the under-programmed set, the bench drives
+\sv{weight\_read\_data\_mock = weight\_matrix[current\_weight\_idx] - 1};
+for the over-programmed set, it drives
+\sv{weight\_read\_data\_mock = weight\_matrix[current\_weight\_idx] + 1}.
+Both overrides are gated by the combined condition
+\sv{current\_weight\_idx~>=~0 \&\& in\_verify\_phase \&\& (verify\_cycle\_cnt~<=~1)}
+so that a single transaction can only be perturbed during the early
+cycles of its verify window.
+
+\section{\texttt{op\_done} Mock}
+\label{app:tb-opdone}
+
+The \signame{op\_done} generator in the program--verify benches is an
+\sv{always\_ff} that fires on \sv{posedge clk} and implements,
+equivalently:
+
+\begin{lstlisting}[style=svstyle]
+always_ff @(posedge clk or negedge rst_n)
+  if (!rst_n) begin
+    op_done_cnt <= 0;
+    op_done     <= 1'b0;
+  end else begin
+    op_done <= 1'b0;
+    // advance PROG/ERASE sub-FSMs immediately when they need op_done
+    if ( (dut.state == S_PROGRAM) &&
+         ( (dut.prog_state  == PROG_SELECT)    ||
+           (dut.prog_state  == PROG_WAIT_ACK)  ) )
+      op_done <= 1'b1;
+    if ( (dut.state == S_ERASE) &&
+         ( (dut.erase_state == ERASE_SELECT)   ||
+           (dut.erase_state == ERASE_WAIT_ACK) ) )
+      op_done <= 1'b1;
+    // timed one-shot after a short delay during pulse-driven phases
+    if (pulses == PULSE_MODE_READ  ||
+        pulses == PULSE_MODE_ERASE ||
+        pulses == PULSE_MODE_INF ) begin
+      op_done_cnt <= op_done_cnt + 1;
+      if (op_done_cnt == OP_DONE_DELAY) op_done <= 1'b1;
+    end else begin
+      op_done_cnt <= 0;
+    end
+  end
+\end{lstlisting}
+
+The exact names of \signame{op\_done\_cnt} and \sv{OP\_DONE\_DELAY}
+vary between benches, but the structural pattern is the same in every
+bench that exercises the PROG/ERASE handshake: level-assert while the
+DUT is in a sub-state that \emph{needs} \signame{op\_done}, and
+optionally add a delayed one-shot during pulse-active phases so that
+the DUT does not hang waiting for a handshake that is not required by
+its state.
+
+\section{Task Flows}
+\label{app:tb-tasks}
+
+\subsection{\texttt{send\_prog\_and\_wait}}
+\label{app:tb-sendprog}
+
+The programming task is used by multiple benches. Its structure is:
+
+\begin{enumerate}
+    \item Wait for \signame{busy} to drop (previous transaction complete).
+    \item Set \signame{current\_weight\_idx} so the injection gating
+          (\Cref{app:tb-inject}) knows which index is active.
+    \item Drive \signame{host\_data}~=~\sv{build\_host\_ann\_word(d, a)}
+          and \signame{host\_cmd}~=~\sv{CMD\_PROG} for one clock edge.
+    \item Deassert: \signame{host\_cmd}~=~\sv{CMD\_HIZ},
+          \signame{host\_data}~=~0 on the next clock edge.
+    \item Wait (with a cycle-based timeout) for \signame{busy} to rise
+          and then fall.
+\end{enumerate}
+
+Because the host command is held for exactly one cycle, the controller
+observes a single \signame{valid} beat at the PI boundary, enters
+\stateval{S\_PROGRAM} on the registered idle exit, and runs through the
+full program--verify (and any retry / erase) cycle unobserved by the
+task until \signame{busy} returns low.
+
+\subsection{\texttt{check\_cmd} (Integration TB)}
+\label{app:tb-checkcmd}
+
+\sv{check\_cmd} drives one beat of a non-INF command and monitors the
+DUT while it is busy:
+
+\begin{enumerate}
+    \item \sv{wait\_until\_idle(maxcyc)} --- guard cycle budget.
+    \item Quiet the host bus: \signame{host\_cmd}~=~\sv{CMD\_HIZ},
+          \signame{host\_data}~=~0 for several clock edges.
+    \item Apply one cycle of \signame{host\_data}~=~\sv{build\_host\_ann\_word(d, a)}
+          and \signame{host\_cmd}~=~c, then deassert.
+    \item \sv{wait(busy)}; start monitoring.
+    \item On each \sv{posedge clk} while \signame{busy}:
+          increment \signame{busy\_cycles}; set \signame{pulse\_ok} once
+          \signame{pulses}~=~\signame{exp\_pulse}; set \signame{word\_ok}
+          once \signame{ann\_core\_word}~=~\sv{exp\_word(a, d)};
+          record \signame{saw\_pulse} and \signame{saw\_word}.
+    \item Pass = (\signame{pulse\_ok}~\sv{\&\&}~\signame{word\_ok}); else log
+          \sv{FAIL} with observed values. Still-busy after the budget is
+          a separate failure.
+    \item \sv{dump\_buffer\_snapshot} reads
+          \sv{u\_input\_buffer.buffer\_reg[0:63]} and prints an 8-by-8
+          hex snapshot for post-transaction visibility.
+\end{enumerate}
+
+\subsection{\texttt{check\_inf\_row8} (Integration TB)}
+\label{app:tb-checkinf}
+
+For \sv{CMD\_INF}, the bench must not miss COLLECT activity. The task
+launches a \sv{fork}:
+
+\begin{itemize}
+    \item Driver branch: drives nine consecutive clock edges of
+          \signame{host\_cmd}~=~\sv{CMD\_INF} with the same
+          \signame{host\_data}, then deasserts to \sv{CMD\_HIZ}.
+    \item Monitor branch: \sv{wait(busy)} and then the same
+          \sv{check\_cmd}-style loop, but expecting
+          \signame{pulses}~=~\sv{PULSE\_MODE\_INF} at least once and
+          tolerating that \signame{ann\_core\_word} may toggle between
+          COLLECT and COMPUTE phases.
+\end{itemize}
+
+A \sv{join} waits for both branches before the buffer dump and the
+pass/fail accounting.
+
+\section{Phase String Mapping}
+\label{app:tb-phases}
+
+The logger in \sv{controller\_prog\_verify\_lut\_tb} writes human-
+readable phase names into the report file. The mapping is:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Phase strings used by the 640-weight program--verify
+        report.}
+    \label{tab:phase-strings}
+    \begin{tabularx}{\linewidth}{l X}
+        \toprule
+        \textbf{Phase} & \textbf{Meaning} \\
+        \midrule
+        \sv{PROG}       & First PROG pulse train for a given weight
+                          index (before any verify cycle completes). \\
+        \sv{REPROG}     & Subsequent PROG pulse train after a failed
+                          verify, using the short retry train
+                          (\(T_p = N_p = 1\)). \\
+        \sv{VERIFY}     & Verify read window (\signame{pulses} is
+                          \sv{PULSE\_MODE\_READ}) immediately preceding
+                          a \sv{VERIFY\_CHECK}. \\
+        \sv{ERASE}      & Erase pulse train in \stateval{S\_ERASE}
+                          (\signame{pulses}~=~\sv{PULSE\_MODE\_ERASE}). \\
+        \sv{PROG\_PREP} & Internal RTL preparation state visible between
+                          \sv{PROG\_HIZ} / \sv{PROG\_SELECT} and the
+                          main PROG pulses; updates
+                          \signame{last\_phase} but may not print every
+                          cycle. \\
+        \sv{COMPUTE}    & Inference compute phase. \\
+        \sv{CHECK\_DONE}& End of a verify-check boundary, used to mark
+                          the start/end of a re-PROG sequence. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}

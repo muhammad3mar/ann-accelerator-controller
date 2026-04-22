@@ -1,0 +1,56 @@
+% =============================================================================
+% RTL Design and Functional Verification of a Memristor Weight-Programming
+% Controller for an ANN In-Memory Computing Accelerator
+%
+% Overleaf-ready master file. Compile with: pdflatex -> biber -> pdflatex x2
+% =============================================================================
+
+\documentclass[11pt,a4paper,oneside]{report}
+
+\input{preamble}
+
+\begin{document}
+
+% --- Front matter ---------------------------------------------------------
+\pagenumbering{roman}
+\input{titlepage}
+
+\include{sections/00_abstract}
+
+\tableofcontents
+\clearpage
+
+\listoffigures
+\clearpage
+
+\listoftables
+\clearpage
+
+% --- Main matter ----------------------------------------------------------
+\pagenumbering{arabic}
+
+\include{sections/01_introduction}
+\include{sections/02_background}
+\include{sections/03_architecture}
+\include{sections/04_rtl_design}
+\include{sections/05_verification}
+\include{sections/06_simulation_results}
+\include{sections/07_analysis}
+\include{sections/08_limitations_future}
+\include{sections/09_conclusion}
+
+% --- Bibliography ---------------------------------------------------------
+\printbibliography[heading=bibintoc,title={References}]
+
+% --- Appendices -----------------------------------------------------------
+\appendix
+
+\include{appendices/A_fsm_diagrams}
+\include{appendices/B_port_tables}
+\include{appendices/C_addressing_packing}
+\include{appendices/D_pulse_timing}
+\include{appendices/E_testbench_details}
+\include{appendices/F_waveforms}
+\include{appendices/G_rtl_listings}
+
+\end{document}

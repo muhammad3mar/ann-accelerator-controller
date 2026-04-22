@@ -1,0 +1,52 @@
+% =============================================================================
+% Chapter 9 --- Conclusion
+% Adapted from Context 5 §7 closing statement.
+% =============================================================================
+
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+This report has presented the RTL design and functional verification of
+a controller for an ANN accelerator with in-memory computing
+peripherals, as implemented in the repository under the Technion VLSI
+Laboratory course framework. The design comprises three synthesizable
+SystemVerilog modules --- \modname{parallel\_interface},
+\modname{ann\_controller}, and \modname{input\_buffer} --- together
+with a shared package layer that centralizes the address-packing,
+one-hot predicate, and pulse-train arithmetic conventions. The
+controller is built around a hierarchical finite-state machine with
+three cooperating sub-FSMs for programming, verification, and erase,
+and around a data-driven LUT-based pulse shaper that tunes the first
+programming attempt per expected weight.
+
+The controller and its verification together establish, under explicit
+modeling assumptions, a coherent digital control layer: command
+decoding, one-hot addressing, burst-shaped pulses, program /
+verify / erase recovery when the readback is \emph{forced} to misbehave,
+and interoperability with the parallel interface and the input
+buffer. The directed regression under \sv{target/} records 30 PASS
+cases for the static address/pulse contract, 10 PASS of 10 for
+\sv{PI}\,\(+\)\,controller\,\(+\)\,buffer integration, 8 PASS of 8 for
+reorder-under-reads, successful host-erase selectivity against the
+behavioral mock, and zero end-of-run mismatches across 640 programmed
+weights, the last of which also exercises both the re-PROG and ERASE
+recovery branches explicitly (14 ERASE triggers and 3017 re-PROG
+events under the fault-injection strategy described in
+\Cref{ch:verification}).
+
+The same evidence makes the limits of the work explicit: behavioral
+mocks stand in for the physical memristor array; \signame{op\_done} and
+\signame{weight\_read\_data} are idealized; several compatibility hooks
+in the RTL (\stateval{S\_RESET}, unused module parameters, the internal
+\signame{weight\_read\_en}) are not part of the minimal proven subset;
+and no netlist, timing closure, or power/area analysis is in scope. A
+rigorous next phase is therefore not merely ``more tests'', but
+assertions on the real protocols, randomized legal stimuli with
+coverage of FSM and recovery branches, and --- where the program
+requires it --- models that lift the abstraction from 4-bit tables to
+the actual device non-idealities that the silicon team must sign off
+on~\cite{Ielmini2018RRAM, Sebastian2020IMC, Wang2022YFlash}.
+
+That progression stays faithful to the boundary of what the repository
+can claim today while giving a VLSI follow-on team a defensible map
+from the present RTL to a production-grade sign-off process.

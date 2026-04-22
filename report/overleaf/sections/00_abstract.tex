@@ -1,0 +1,46 @@
+% =============================================================================
+% Abstract
+% Grounded in README.md, Context 1 §1, Context 3 §10, and target/ reports.
+% =============================================================================
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This report presents the register-transfer level (RTL) design and functional
+verification of a controller for an Artificial Neural Network (ANN)
+accelerator with in-memory computing (IMC) peripherals, carried out as a
+course project in the Technion VLSI Laboratory. The design implements a
+\emph{controller-centric} digital control layer that decodes host traffic,
+sequences program, read, erase, and inference operations, and drives an ANN
+core through a packed 32-bit word together with a 3-bit pulse mode bus.
+
+The implementation comprises three synthesizable SystemVerilog modules:
+\modname{parallel\_interface}, a purely combinational host decoder that
+validates one-hot address tails; \modname{ann\_controller}, a hierarchical
+finite-state machine with three cooperating sub-FSMs for programming,
+verification, and erase; and \modname{input\_buffer}, a 64-byte pixel store
+with bit-serial output lanes used by the inference path. The controller
+supports a data-driven Look-Up-Table (LUT) pulse shaper that selects the
+first programming-attempt pulse count per expected weight value, and a
+closed-loop program--verify--erase recovery policy that retries programming
+on under-programmed cells and falls back to erase on over-programmed cells or
+after exhausting the retry budget.
+
+Functional verification uses directed SystemVerilog testbenches driven by
+ModelSim and orchestrated through a Python helper script. Memristor-side
+behavior is modeled by a testbench-local shadow weight matrix and a
+behavioral \signame{op\_done} generator, with deliberate fault injection
+during the verify read window to force the recovery branches. The regression
+set includes a 30-case address/pulse packing test, a 10-case
+parallel-interface/controller/buffer integration test, an 8-case host-read
+reorder test, a host-erase selectivity test, an inference bit-serial flow
+test, a compact 10-weight program--verify test, and a full 640-weight
+program--verify regression. The results recorded under
+\sv{target/} show zero mismatches in the 640-weight regression, PASS on all
+integration and address/pulse cases, and concrete exercise of both the
+re-programming and erase recovery paths.
+
+The work is explicitly scoped to RTL design and functional simulation: no
+netlist, timing closure, power, or area artifacts are produced. Limitations,
+known RTL debt, and concrete proposals for SystemVerilog Assertions and
+coverage-driven random stimulus are documented as future work.

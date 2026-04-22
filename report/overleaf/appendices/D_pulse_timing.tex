@@ -1,0 +1,137 @@
+% =============================================================================
+% Appendix D --- Pulse Timing Details
+% Grounded in Context 1 §4.6-4.7, Context 2 §5, Context 5 §1.2, and
+% the actual weight_pulse_lut_table.txt in target/.
+% =============================================================================
+
+\chapter{Pulse Timing Details}
+\label{app:pulse-timing}
+
+This appendix collects the cycle-accurate specification of the pulse
+machinery referenced throughout \Cref{ch:rtl}.
+
+\section{Pulse Train Arithmetic}
+\label{app:pulse-math}
+
+The controller's pulse helpers parameterize every pulse phase by three
+integers:
+
+\begin{itemize}
+    \item \(T\) --- active cycles per burst (package constants
+          \sv{TREAD}, \sv{TPROG}, \sv{TERASE}, \sv{TINF}).
+    \item \(N\) --- number of bursts per phase
+          (\sv{PULSE\_NUM\_READ}, \sv{PULSE\_NUM\_PROG},
+          \sv{PULSE\_NUM\_ERASE}, \sv{PULSE\_NUM\_INF}).
+    \item \(G\) --- \signame{HIZ} gap cycles between adjacent bursts
+          (\sv{PULSE\_GAP}).
+\end{itemize}
+
+\paragraph{Total length.} The package function
+\sv{pulse\_train\_total(T, N, G)} returns the total cycle count
+\(N \cdot T + (N-1) \cdot G\) (clipped to 8-bit unsigned).
+
+\paragraph{Per-cycle activity.} \sv{pulse\_train\_active(cycle\_idx, T, N, G)}
+returns 1 when \signame{cycle\_idx} falls inside an active burst and 0
+when it falls inside a gap. The controller uses it to decide whether
+\signame{pulses} takes the corresponding \sv{PULSE\_MODE\_*} or
+\sv{PULSE\_MODE\_HIZ} on any given cycle.
+
+\section{Per-State \signame{pulse\_total}}
+\label{app:pulse-pertstate}
+
+\Cref{tab:pulse-total-per-state} summarizes the value the combinational
+block assigns to \signame{pulse\_total} depending on the main and
+sub-state.
+
+\begin{table}[htbp]
+    \centering
+    \caption{\signame{pulse\_total} per state.}
+    \label{tab:pulse-total-per-state}
+    \begin{tabularx}{\linewidth}{l l X}
+        \toprule
+        \textbf{Main state} & \textbf{Condition} & \textbf{\signame{pulse\_total}} \\
+        \midrule
+        \stateval{S\_READ} & --- &
+            \sv{PULSE\_TOTAL\_READ} =
+            \sv{pulse\_train\_total(TREAD, PULSE\_NUM\_READ, PULSE\_GAP)}. \\
+        \stateval{S\_PROGRAM} & \sv{PROG\_WRITE}, \sv{USE\_WEIGHT\_PULSE\_LUT}=0 &
+            \sv{pulse\_train\_total(TPROG, PULSE\_NUM\_PROG, PULSE\_GAP)}. \\
+        \stateval{S\_PROGRAM} & \sv{PROG\_WRITE}, LUT on,
+            \signame{prog\_retry\_cnt}~\(>\)~0 &
+            Short retry train: \sv{Tp}~=~1, \sv{Np}~=~1 (one active cycle). \\
+        \stateval{S\_PROGRAM} & \sv{PROG\_WRITE}, LUT on, first attempt &
+            \sv{pulse\_lut\_macro\_repeat\_total(Rlut, Mmacro, PULSE\_GAP)},
+            where \sv{Mmacro} is the non-LUT PROG total and
+            \sv{Rlut}~=~\sv{weight\_pulse\_cycles\_lut[expected\_weight]}
+            (minimum 1). \\
+        \stateval{S\_ERASE} & \sv{ERASE\_PULSE} &
+            \sv{PULSE\_TOTAL\_ERASE}. \\
+        \stateval{S\_COMPUTE} & --- &
+            \sv{PULSE\_TOTAL\_INF}, defined in the package as
+            \(\max(8, \mathrm{TINF}\cdot N + \text{gaps})\). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\signame{pulse\_done} is
+\sv{(pulse\_total > 0) \&\& (pulse\_cnt >= pulse\_total - 1)};
+outside the active states above, \signame{pulse\_total}~=~0 and
+\signame{pulse\_done}~=~0 always.
+
+\section{LUT-Based Macro Repeat}
+\label{app:pulse-lut-macro}
+
+The function \sv{pulse\_lut\_macro\_repeat\_total(R, M, G)} concatenates
+\(R\) copies of an inner macro of length \(M\) separated by
+\(G\)-cycle gaps, giving a total of \(R\cdot M + (R-1)\cdot G\) cycles.
+The companion \sv{pulse\_lut\_macro\_repeat\_active(cycle\_idx, R, M, G)}
+returns 1 inside the macros and 0 inside the inter-macro gaps, so the
+outgoing \signame{pulses} bus alternates between \sv{PULSE\_MODE\_PROG}
+and \sv{PULSE\_MODE\_HIZ} \(R\) times.
+
+\section{Weight Pulse LUT}
+\label{app:pulse-lut-table}
+
+\Cref{tab:weight-lut} lists the LUT contents shipped in
+\sv{target/Controller/programming\_inputs/weight\_pulse\_lut.mem} (as
+documented in \sv{weight\_pulse\_lut\_table.txt}). The row indexed by
+the expected weight nibble gives the repeat count \sv{Rlut} used as the
+first PROG shot for that cell.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Weight-indexed macro-repeat count \sv{Rlut} shipped in the
+        project repository.}
+    \label{tab:weight-lut}
+    \begin{tabular}{c c c c c c c c c c c c c c c c c}
+        \toprule
+        Weight & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+        \sv{Rlut} & 2 & 5 & 3 & 6 & 7 & 4 & 8 & 5 & 9 & 6 & 10 & 8 & 4 & 11 & 6 & 12 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Only the first PROG attempt reads this table; for every subsequent
+retry, \signame{prog\_retry\_cnt}~\(>\)~0 forces the short single-cycle
+train described above.
+
+\section{Conceptual Pulse-Cycle Waveform}
+\label{app:pulse-waveform}
+
+\Cref{fig:app-pulse-cycle-waveform} shows a conceptual timing diagram
+of one LUT-based PROG cycle, illustrating the relationship between
+\signame{pulses}, \signame{pulse\_cnt}, \signame{pulse\_done}, and
+\signame{prog\_state} during the \sv{PROG\_WRITE} phase.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{fig_app_pulse_cycle_waveform}
+    \caption[Conceptual PROG cycle waveform]{Conceptual LUT-based
+        \sv{PROG\_WRITE} waveform. \signame{pulses} alternates between
+        \sv{PULSE\_MODE\_PROG} and \sv{PULSE\_MODE\_HIZ} for \sv{Rlut}
+        macro repetitions. \signame{pulse\_cnt} starts at 0 on entry
+        to \sv{PROG\_WRITE} and increments every cycle;
+        \signame{pulse\_done} rises on the last cycle of the last
+        repetition, triggering the transition to \sv{PROG\_WAIT\_ACK}.}
+    \label{fig:app-pulse-cycle-waveform}
+\end{figure}

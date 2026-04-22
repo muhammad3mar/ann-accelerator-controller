@@ -1,0 +1,107 @@
+% =============================================================================
+% Chapter 1 --- Introduction
+% Grounded in README.md, Context 1 §1, and the 4 Background_Papers abstracts.
+% =============================================================================
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Motivation: The Memory Wall and In-Memory Computing}
+\label{sec:intro-motivation}
+
+Modern computing is increasingly dominated by data-centric workloads, most
+prominently artificial neural network (ANN) inference and training, in which
+the energy and latency costs of moving data between memory and arithmetic
+units dwarf the costs of the arithmetic itself. This imbalance is commonly
+described as the \emph{memory wall}, and it arises in any architecture that
+keeps storage and computation physically separate~\cite{Ielmini2018RRAM,
+Verma2019IMC, Sebastian2020IMC}. For ANN workloads, whose core operation is
+matrix--vector multiplication (MVM) over large weight matrices, the data
+movement penalty becomes the dominant factor in achievable energy efficiency
+and throughput.
+
+\emph{In-memory computing} (IMC) is a family of architectural techniques
+that addresses this bottleneck by performing certain computational tasks
+directly inside a memory array, exploiting the physical attributes of the
+memory devices together with their array-level
+organization~\cite{Sebastian2020IMC}. For ANN acceleration, a 2D bit-cell
+array is structurally aligned with the dataflow of MVM: weights are stored
+in the array, inputs are applied on the rows (or columns), and the summed
+analog current on the complementary lines constitutes the MVM
+output~\cite{Verma2019IMC}. Non-volatile resistive switching devices such as
+RRAM, PCM, and floating-gate memristors are natural candidates for the
+storage elements of such arrays because their programmable conductance can
+directly represent synaptic weights~\cite{Ielmini2018RRAM, Wang2022YFlash}.
+
+\section{Project Context and Scope}
+\label{sec:intro-context}
+
+This report documents a course project in the Technion VLSI Laboratory
+whose purpose is the design and functional verification of a
+\emph{controller} for an ANN accelerator with in-memory computing
+peripherals. The repository implements a controller-centric RTL stack in
+which host traffic is decoded, sequenced into program, read, erase, and
+inference operations, and driven to an ANN core via a packed 32-bit word
+and a 3-bit pulse-mode bus. The controllable command tokens defined in the
+parallel-interface package are \sv{CMD\_READ}, \sv{CMD\_PROG},
+\sv{CMD\_ERASE}, \sv{CMD\_INF}, and \sv{CMD\_HIZ} (idle). The project scope
+is explicitly confined to RTL implementation and functional simulation;
+no netlist, timing closure, or power/area analysis artifacts are produced.
+
+The design is motivated by a practical engineering observation that follows
+directly from the physics of resistive-switching weight storage: a single
+\emph{write once} operation is unreliable because of device-to-device and
+cycle-to-cycle variability, so a closed-loop
+\emph{program--verify--(re-program or erase)} control policy is needed to
+drive stored weights toward their intended values~\cite{Ielmini2018RRAM,
+Sebastian2020IMC, Wang2022YFlash}. The central piece of digital control in
+such an accelerator is therefore a hierarchical finite-state machine that
+mediates between the host and the analog core and that implements the
+recovery logic.
+
+\section{Contributions}
+\label{sec:intro-contributions}
+
+The concrete contributions recorded in this repository are:
+
+\begin{itemize}
+    \item Three synthesizable SystemVerilog modules: \modname{parallel\_interface}
+          (combinational host decoder with one-hot tail validation),
+          \modname{ann\_controller} (hierarchical FSM with PROG, VERIFY, and
+          ERASE sub-FSMs and data-driven pulse shaping), and
+          \modname{input\_buffer} (a 64-byte register-based store with
+          byte-read and eight-lane bit-serial read paths).
+    \item A shared package layer (\sv{controller\_pkg},
+          \sv{parallel\_interface\_pkg}, \sv{input\_buffer\_pkg}) that
+          centralizes address packing, one-hot predicates, pulse-train
+          arithmetic, and LUT-based pulse shaping.
+    \item A directed SystemVerilog verification environment with eleven
+          testbenches, a Python-driven compile/simulate flow, wave wrappers
+          and \sv{.do} scripts for GUI debugging, and human-readable report
+          files written to a dedicated \sv{target/} directory.
+    \item A behavioral memristor mock (shadow weight matrix + handshake
+          generator) together with a fault-injection strategy that forces
+          under- and over-read conditions during verify so that the
+          recovery branches of the FSM are exercised in simulation.
+\end{itemize}
+
+\section{Report Organization}
+\label{sec:intro-organization}
+
+\Cref{ch:background} reviews the background of in-memory computing,
+resistive-switching weight storage, and the write--verify problem that
+motivates the controller's recovery FSM. \Cref{ch:architecture} gives a
+system-level view of the three-module stack, the host-to-core word format,
+and the command set. \Cref{ch:rtl} is the technical heart of the report:
+each of the three modules is described in detail, including all main-FSM
+states, the three sub-FSMs, the pulse-train arithmetic, and the LUT-based
+programming path. \Cref{ch:verification} documents the verification
+methodology: the testbench architecture, the shadow-matrix mock, the
+fault-injection gating, and the per-testbench scoreboard structure.
+\Cref{ch:results} reports the measured outcomes from the checked-in
+simulation artifacts. \Cref{ch:analysis} interprets what the results prove
+and \Cref{ch:limitations} catalogs the limitations of the present work
+together with a concrete roadmap for follow-on verification work.
+\Cref{ch:conclusion} closes the report. Seven appendices collect
+diagrammatic, tabular, and source-level technical material that supports
+the main chapters.

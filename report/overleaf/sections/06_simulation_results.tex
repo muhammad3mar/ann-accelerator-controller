@@ -1,0 +1,320 @@
+% =============================================================================
+% Chapter 6 --- Simulation Results
+% Every number in this chapter is a direct quote from a file under target/.
+% =============================================================================
+
+\chapter{Simulation Results}
+\label{ch:results}
+
+This chapter consolidates the simulation evidence. Every number quoted in
+the text or in a table is a direct read of a report file under
+\sv{target/}. \Cref{tab:results-summary} gives the one-line verdict for
+each testbench; subsequent sections walk through the evidence in more
+detail.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Summary of checked-in simulation outcomes. Counts and
+        summary strings are read verbatim from the corresponding report
+        files.}
+    \label{tab:results-summary}
+    \begin{tabularx}{\linewidth}{l l X}
+        \toprule
+        \textbf{Testbench} & \textbf{Outcome} & \textbf{Evidence} \\
+        \midrule
+        \sv{controller\_addr\_pulse\_tb} & 30 tests, all PASS &
+            30 ``\sv{PASS:}'' lines in
+            \sv{target/Controller/controller\_addr\_pulse\_verify.txt}. \\
+        \sv{parallel\_interface\_controller\_integration\_tb} &
+            \sv{PASS=10 FAIL=0} &
+            Summary in
+            \sv{target/Controller/tb\_pi\_controller\_integration.txt}. \\
+        \sv{controller\_prog\_verify\_lut\_tb} &
+            0 errors in 640 weights &
+            Summary in
+            \sv{target/Controller/prog/prog\_verify\_report.txt};
+            additional asymmetric-flow coverage line. \\
+        \sv{controller\_prog\_verify\_lut\_10w\_tb} &
+            10 PASS, 0 errors &
+            Summary in
+            \sv{target/Controller/prog/prog\_verify\_10w\_report.txt}. \\
+        \sv{controller\_host\_erase\_tb} &
+            PASS, cell A cleared, cell B preserved &
+            \sv{target/Controller/erase/controller\_host\_erase\_report.txt}. \\
+        \sv{controller\_host\_read\_reorder\_tb} &
+            \sv{PASS=8 FAIL=0} &
+            \sv{target/Controller/read/controller\_host\_read\_reorder\_report.txt}. \\
+        \sv{controller\_inf\_buffer\_flow\_tb} & PASS &
+            \sv{target/Controller/inf/controller\_inf\_buffer\_flow\_tb\_log.txt}. \\
+        Input-buffer unit benches &
+            Pass-oriented summaries &
+            Logs in \sv{target/Input\_Buffer/}. \\
+        Parallel-interface unit bench & 6 checks pass &
+            \sv{target/Parallel\_Interface/parallel\_interface\_extract\_tb\_log.txt}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Address and Pulse-Mode Packing (30 Directed Cases)}
+\label{sec:results-addrpulse}
+
+\sv{controller\_addr\_pulse\_tb.sv} runs 30 directed tests covering
+\sv{CMD\_PROG}, \sv{CMD\_READ}, and \sv{CMD\_ERASE} across the address
+space, with randomized PE, SA, column, and row indices and randomized
+data bytes. For each test, the bench computes the expected outgoing
+\signame{ann\_core\_word} and the expected \signame{pulses} encoding
+from \sv{controller\_pkg} helpers, and compares them to the live RTL
+outputs. The report header (\sv{controller\_addr\_pulse\_verify.txt})
+documents the parameters in force:
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// Controller Address and Pulse Verification
+// Parameters: TREAD=2, PULSE_NUM_READ=1, TPROG=2, PULSE_NUM_PROG=1
+//            TERASE=2, PULSE_NUM_ERASE=1, TINF=2, PULSE_NUM_INF=1
+// Expected: READ->pulses=001, PROG->pulses=010,
+//           ERASE->pulses=011, INF->pulses=100
+\end{lstlisting}
+
+All 30 tests print a \sv{PASS:} line with the expected word and its
+binary field decomposition, for example
+
+\begin{lstlisting}[style=plainstyle,language={}]
+=== Test 2: READ   (PE=1,SA=3,col=6,row=7) at addr 0x01e7 ===
+  PASS: ann_core_word 0x00281080
+         (0b00000000-0010-1000-00010000-10000000)
+\end{lstlisting}
+
+\noindent The test confirms that the left-shift one-hot reconstruction
+inside \sv{pack\_ann\_core\_word} agrees with the package helpers that
+generate the stimulus, and that \signame{pulses} takes the expected
+\sv{PULSE\_MODE\_*} value for each command class. This is the static
+packing contract of the controller.
+
+\section{Parallel-Interface / Controller / Input-Buffer Integration (10 Cases)}
+\label{sec:results-integration}
+
+\sv{parallel\_interface\_controller\_integration\_tb.sv} drives ten
+labelled scenarios (\sv{01\_READ} through \sv{10\_ERASE}), mixing
+\sv{CMD\_READ}, \sv{CMD\_PROG}, \sv{CMD\_ERASE}, and \sv{CMD\_INF}. For
+each case it records, in the corresponding block of
+\sv{tb\_pi\_controller\_integration.txt}, the host packet, the
+PI-decoded bus, the DUT busy duration, the expected and observed pulse
+mode, the expected and observed \signame{ann\_core\_word}, and an 8-by-8
+snapshot of the input buffer. The file ends with
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// Summary: PASS=10 FAIL=0
+\end{lstlisting}
+
+A representative case (case \sv{02\_PROG}) shows a host packet with
+\signame{host\_data}~=~\sv{0x0c110101} and \signame{host\_cmd}~=~\sv{CMD\_PROG}
+being accepted at the interface (decoded to
+\signame{valid}~=~1, \signame{data}~=~\sv{0x0c},
+\signame{address}~=~\sv{0x0000}), the DUT staying busy for 22 posedge
+cycles while exercising PROG and VERIFY, and the input-buffer snapshot
+showing \sv{0c} deposited at the zero address ---
+reflecting the \sv{CTRL\_DATA\_LOAD} write during \sv{PROG\_HIZ}/\sv{PROG\_SELECT}
+described in \Cref{sec:rtl-controller-mainfsm}. Case \sv{04\_INF} shows
+the inference burst: the row~0 of the buffer ends up filled with eight
+copies of the payload byte \sv{0xaa}, because the nine-beat
+\sv{CMD\_INF} sequence writes eight consecutive pixels and then
+transitions to \stateval{S\_COMPUTE}.
+
+\section{640-Weight Program--Verify Regression}
+\label{sec:results-640}
+
+\sv{controller\_prog\_verify\_lut\_tb.sv} is the primary regression for
+the recovery policy described in \Cref{sec:rtl-controller-verify-check}.
+It loads 640 expected weights from
+\sv{target/Controller/programming\_inputs/weight\_matrix.txt}, programs
+every cell under the LUT-based first-attempt schedule, and applies the
+fault-injection gating described in \Cref{sec:verif-injection}. The
+report \sv{prog\_verify\_report.txt} ends with
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// Total weights programmed: 640
+
+// Asymmetric flow coverage:
+//   ERASE path (read>expected): 14
+//   re-PROG path (read<expected): 3017 (PROG after VERIFY)
+// Summary: 0 errors in 640 weights
+\end{lstlisting}
+
+The two coverage numbers quantify what the fault-injection machinery
+achieved: 14 transitions into \stateval{S\_ERASE} via the verify-failure
+branch (over-programmed readbacks) and 3017 re-programming events after
+verify (under-programmed readbacks, each resolved within the retry
+budget or leading to erase-and-retry per the FSM). The
+\sv{0 errors in 640 weights} statement is the end-of-run scoreboard
+comparison between the shadow matrix and the expected nibbles loaded
+from \sv{weight\_matrix.txt}.
+
+The phase log also contains readable segments such as the following
+(clipped from the report):
+
+\begin{lstlisting}[style=plainstyle,language={}]
+[314000] Phase: PROG  ann_core_word=0x0a110801 programmed_weight=10
+// re-PROG sequence START [326000]  (after phase: CHECK_DONE)
+[326000] Phase: REPROG ann_core_word=0x0a110801 programmed_weight=10
+[338000] Phase: REPROG ann_core_word=0x0a110801 programmed_weight=10
+[350000] Phase: REPROG ann_core_word=0x0a110801 programmed_weight=10
+...
+[450000] Phase: VERIFY ann_core_word=0x0a110801
+         expected_weight=10  read_weight=10
+// re-PROG sequence END [458000]  (DUT idle)
+\end{lstlisting}
+
+This trace shows an under-programmed injection at weight index 4 (value
+10): an initial \sv{PROG} phase is followed by a sequence of \sv{REPROG}
+phases under the short retry train described in
+\Cref{sec:rtl-controller-pulses}, culminating in a \sv{VERIFY} that
+matches the expected value and returns the DUT to idle.
+
+\section{Compact 10-Weight Program--Verify}
+\label{sec:results-10w}
+
+\sv{controller\_prog\_verify\_lut\_10w\_tb.sv} is a compact variant used
+for waveform-driven debugging. Its header enumerates the scenarios per
+index:
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// idx0 equal | idx1 read< | idx2 read> |
+// idx3-4,6-9 happy | idx5 max re-PROG (prog_retry_cnt) -> ERASE
+\end{lstlisting}
+
+and the report ends with
+
+\begin{lstlisting}[style=plainstyle,language={}]
+  PASS idx=0 addr=0x0000 weight=2
+  PASS idx=1 addr=0x0008 weight=2
+  PASS idx=2 addr=0x0010 weight=5
+  PASS idx=3 addr=0x0018 weight=10
+  PASS idx=4 addr=0x0020 weight=12
+  PASS idx=5 addr=0x0028 weight=10
+  PASS idx=6 addr=0x0030 weight=5
+  PASS idx=7 addr=0x0038 weight=2
+  PASS idx=8 addr=0x0040 weight=2
+  PASS idx=9 addr=0x0048 weight=2
+// Summary: 0 errors
+\end{lstlisting}
+
+so all four per-index scenarios (match, under, over, max-retry-to-erase)
+land on the expected value. This bench is the one the user guide
+recommends for fast iteration on FSM or pulse-shaping changes; its
+short runtime makes it practical to open in the ModelSim GUI with the
+companion wave \sv{.do} scripts.
+
+\section{Host Erase and Non-Target Retention}
+\label{sec:results-erase}
+
+\sv{controller\_host\_erase\_tb.sv} programs two cells at distinct
+addresses, then issues a single host \sv{CMD\_ERASE} on one of them.
+The bench's pulse trace records the DUT's state transitions; the
+\sv{state} column shows \sv{2} (\stateval{S\_PROGRAM}) and \sv{3}
+(\stateval{S\_VERIFY}) during the PROG phases, then \sv{4}
+(\stateval{S\_ERASE}) during the host-erase phase. The erase phase
+advances through its sub-states (\sv{erase\_state} values
+\sv{0}\,\(\rightarrow\)\,\sv{1}\,\(\rightarrow\)\,\sv{2}\,\(\rightarrow\)\,\sv{3}\,\(\rightarrow\)\,\sv{4}
+in the log), with \signame{pulses}~=~\sv{3'b011} (\sv{PULSE\_MODE\_ERASE})
+asserted during \sv{ERASE\_PULSE}, and returns to idle without entering
+\stateval{S\_PROGRAM} --- consistent with the \signame{erase\_from\_host}
+branch of \Cref{tab:erase-complete}. The report concludes with:
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// AFTER ERASE (expect A=0, B unchanged)
+// Cell A: addr=0x01e7  indices [1][3][7][4]  weight=0
+// Cell B: addr=0x0100  indices [1][0][0][0]  weight=4
+
+PASS: cell A cleared, cell B still 4
+\end{lstlisting}
+
+demonstrating, within the limits of the behavioral mock, that a host
+erase affects only the addressed cell.
+
+\section{Host Read Reorder (8 Permuted Reads)}
+\label{sec:results-readreorder}
+
+\sv{controller\_host\_read\_reorder\_tb.sv} programs eight distinct
+cells with distinct weights, then issues \sv{CMD\_READ} in the
+permuted program-index order \sv{4 0 7 2 1 6 3 5}. For each read the
+bench samples \signame{ann\_core\_word} while the DUT is in
+\stateval{S\_READ}, reads back the mocked \signame{weight\_read\_data},
+and emits a PASS/FAIL line. Every one of the eight reads passes, and the
+report ends with
+
+\begin{lstlisting}[style=plainstyle,language={}]
+// Summary: PASS=8 FAIL=0
+\end{lstlisting}
+
+The out-of-order scenario is relevant because it exercises
+\signame{address\_reg} capture on every new transaction: stale
+registered address fields from the previous program cycle would produce
+the wrong one-hot tail on \signame{ann\_core\_word} and would be caught
+by the comparison.
+
+\section{Inference Flow}
+\label{sec:results-inf}
+
+\sv{controller\_inf\_buffer\_flow\_tb.sv} drives the INF path through
+\stateval{S\_COLLECT\_DATA}\,\(\rightarrow\)\,\stateval{S\_COMPUTE}.
+Across the collect phase, the bench increments \signame{writes\_seen}
+whenever \signame{buf\_reg\_ctrl}~=~\sv{CTRL\_DATA\_LOAD} and
+\signame{buf\_read\_write}~=~1; it explicitly fails if a compute
+indicator (\sv{CTRL\_COMPUTE} or \signame{pulses}~=~\sv{PULSE\_MODE\_INF})
+fires before eight writes have been seen. Once eight pixels are in the
+buffer, an optional extra INF beat drives the FSM into
+\stateval{S\_COMPUTE}, where the bench samples the bit-serial outputs
+\signame{D0}\ldots\signame{D7} against expected column bits derived
+from a row snapshot; each matching lane is counted as a pass and each
+mismatch as a fail in the per-lane checker. The log in
+\sv{target/Controller/inf/controller\_inf\_buffer\_flow\_tb\_log.txt}
+shows a pass-oriented summary.
+
+\section{Unit Benches}
+\label{sec:results-unit}
+
+The three input-buffer benches exercise bit-serial output correctness,
+reset-to-zero behavior, and full-capacity overwrite behavior. Each
+writes a \sv{SUMMARY: N passed, M failed} line into its log under
+\sv{target/Input\_Buffer/}, reflecting the directed check counts
+in the bench body. The parallel-interface bench
+\sv{parallel\_interface\_extract\_tb.sv} executes six directed checks
+of valid/invalid tail decode and address extraction; its log under
+\sv{target/Parallel\_Interface/} carries a similar summary line.
+
+\section{Scope of the Reported Evidence}
+\label{sec:results-scope}
+
+Before moving on to the interpretive chapter, it is useful to be
+explicit about what \Cref{tab:results-summary} and the numbers quoted
+in this chapter actually prove:
+
+\begin{itemize}
+    \item Under the behavioral memristor model and the
+          \signame{op\_done} generator described in \Cref{ch:verification},
+          the controller \emph{does} program 640 cells with zero
+          end-of-run mismatches against the expected weight matrix,
+          while exercising the recovery branches of the FSM in both
+          directions.
+    \item The host-to-core static contract (address packing, pulse-mode
+          decoding) is verified by directed unit- and integration-level
+          checks.
+    \item The inference path correctly stages pixel writes before
+          triggering compute, and the bit-serial output lanes match the
+          expected per-bit values drawn from the buffer snapshot.
+\end{itemize}
+
+\noindent And, equally important, what they do not prove:
+
+\begin{itemize}
+    \item Timing closure or physical feasibility --- no synthesis or
+          place-and-route is in scope.
+    \item End-to-end numerical correctness of an MVM against an
+          analytical reference --- no golden MAC is in the environment.
+    \item Behavior under analog non-idealities not captured by a 4-bit
+          integer shadow matrix.
+\end{itemize}
+
+These scope limits feed directly into \Cref{ch:analysis} (what the
+results prove, interpreted), and \Cref{ch:limitations} (what remains
+to be done).

@@ -1,0 +1,165 @@
+% =============================================================================
+% Chapter 2 --- Background
+% Draws strictly from the four PDFs in report/Background_Papers/:
+%   - Verma et al. 2019 (IEEE SSC Magazine)
+%   - Sebastian et al. 2020 (Nature Nanotechnology)
+%   - Ielmini & Wong 2018 (Nature Electronics)
+%   - Wang et al. 2022 (arXiv:2202.10228, Y-Flash memristor, Technion)
+% =============================================================================
+
+\chapter{Background}
+\label{ch:background}
+
+This chapter provides the technical context needed to appreciate the role
+of the controller designed in this project. It is organized around four
+themes drawn directly from the cited literature: the energetic argument
+for in-memory computing, the role of resistive switching devices as
+programmable synaptic elements, the write--verify problem that such devices
+impose on their host digital control, and the Y-Flash floating-gate
+memristor that is relevant to the Technion device and circuit ecosystem
+in which this project is set.
+
+\section{In-Memory Computing and the Memory Wall}
+\label{sec:bg-imc}
+
+Contemporary computing platforms, including those specialized for machine
+learning, are limited by the cost of moving data between memory and
+processing units rather than by the cost of arithmetic itself. As Sebastian
+et~al.~\cite{Sebastian2020IMC} observe, even at relatively mature technology
+nodes the energy cost of multiplying two numbers is orders of magnitude
+smaller than the energy cost of fetching those numbers from memory.
+Conventional mitigations, including parallel architectures such as GPUs and
+application-specific digital
+accelerators~\cite{Ielmini2018RRAM, Sebastian2020IMC}, reduce the cost of
+computation but leave the fundamental data-movement penalty largely intact.
+
+The in-memory computing paradigm takes a different route: instead of moving
+data to the processor, it embeds the computation inside a memory array and
+reads out a result that aggregates many per-device contributions in
+parallel~\cite{Sebastian2020IMC, Verma2019IMC}. For the dominant kernel of
+ANN inference --- high-dimensional matrix--vector multiplication --- there
+is a natural structural alignment between a 2D array of bit cells and the
+dataflow of the kernel: weights are stored in the cells, inputs are applied
+on one dimension of the array, and per-cell contributions combine physically
+along the orthogonal dimension. Recent prototype silicon demonstrates that
+this approach can yield order-of-magnitude improvements in both energy
+efficiency and throughput for matrix-vector multiplication relative to
+conventional digital accelerators~\cite{Verma2019IMC}.
+
+However, fitting computation inside a constrained bit-cell array imposes
+tangible system-level constraints. Analog computation in the array must be
+bridged to conventional digital accelerators for programmability and
+integration; the array must be virtualizable so that software can be mapped
+onto it~\cite{Verma2019IMC}; and the peripheral circuitry, control logic,
+and interconnect must be co-designed with the array so that the benefits
+of in-memory computation are not consumed by inefficiencies at the
+periphery~\cite{Sebastian2020IMC}. The controller designed in this report
+is precisely the digital component that lives at this interface.
+
+\section{Resistive Switching Devices as Synaptic Elements}
+\label{sec:bg-rram}
+
+At the device level, a wide family of emerging non-volatile memories has
+been proposed as candidates for IMC storage elements: resistive switching
+RAM (RRAM), phase-change memory (PCM), magnetoresistive RAM (MRAM), and
+ferroelectric RAM (FeRAM), among others~\cite{Ielmini2018RRAM}. These
+devices share a common property that is important for ANN acceleration:
+their conductance can be programmed to a continuum of intermediate
+values, not merely a binary state, and it persists without power. A
+programmable conductance can therefore directly represent a synaptic
+weight in an analog fashion, and a crossbar array of such devices
+implements MVM in one read cycle by summing per-column currents induced by
+per-row input voltages~\cite{Ielmini2018RRAM, Sebastian2020IMC}.
+
+As Ielmini and Wong~\cite{Ielmini2018RRAM} discuss in their review of
+in-memory computing with resistive switching devices, this arrangement
+blurs the boundary between memory and computation, and it is supported by
+a growing corpus of prototype chips and system demonstrations. The same
+authors, however, also emphasize that resistive switching devices exhibit
+non-idealities --- including device-to-device variability, cycle-to-cycle
+variability, retention drift, and finite endurance --- that distinguish
+them from conventional digital memory and that have direct implications
+for how a host controller must interact with the array.
+
+\section{The Write--Verify Problem}
+\label{sec:bg-writeverify}
+
+A fundamental consequence of the device non-idealities summarized above is
+that a single unconditional \emph{write} operation cannot be relied upon
+to place a cell at its intended conductance level. Sebastian
+et~al.~\cite{Sebastian2020IMC} describe how programming resistive devices
+typically requires an iterative strategy in which programming pulses are
+interleaved with read operations that check the cell's state against the
+target value. Pulse amplitude, duration, and polarity may be adapted
+between iterations to move the cell toward the intended level, and the
+sequence is terminated either when the readback matches the target or when
+a retry budget is exhausted.
+
+This \emph{program--verify--(re-program or erase)} loop is the primary
+reason that a controller for an IMC-based ANN accelerator is substantially
+more complex than a conventional write-path controller. It must manage
+the pulse train for each programming attempt, schedule a read-back phase,
+compare the observed weight against an expected value, and branch into
+either a retry on the same cell, an erase followed by reprogramming, or
+a declaration that the cell cannot be brought to the target in the
+current configuration. In the present project, exactly this control
+structure is implemented as a hierarchical finite-state machine with
+explicit PROG, VERIFY, and ERASE sub-FSMs, and it is the central object
+of \Cref{ch:rtl}.
+
+\section{Y-Flash Floating-Gate Memristors}
+\label{sec:bg-yflash}
+
+Among emerging non-volatile technologies, the Y-Flash floating-gate
+memristor~\cite{Wang2022YFlash} is of particular interest in the
+Technion device and circuit ecosystem in which this project is situated.
+Y-Flash devices are fabricated in a standard CMOS process with a
+single-polysilicon floating gate, and they operate in a two-terminal
+configuration that is analogous to other emerging memristive
+technologies~\cite{Wang2022YFlash}. Compared with filamentary RRAM or
+phase-change devices, Y-Flash cells can achieve a large number of
+fine-tuned intermediate conductance states in the subthreshold region
+with low readout currents (on the order of 1\,nA to 5\,\si{\micro\ampere}),
+high retention, low cycle-to-cycle variability, and high
+yield~\cite{Wang2022YFlash}, all of which are desirable properties for a
+large-scale synaptic array.
+
+Arranged in a crossbar, Y-Flash devices can accelerate the frequent and
+expensive vector--matrix multiplications that dominate neuromorphic
+inference~\cite{Wang2022YFlash}. The device supports explicit
+\emph{program}, \emph{erase}, and \emph{readout} operations, each of which
+must be issued by the host under an appropriate pulse shape. Wang
+et~al.~\cite{Wang2022YFlash} provide a physical-based compact model that
+describes program, erase, and readout dynamics and that is intended to be
+co-designed with the peripheral CMOS control circuitry --- reinforcing
+the more general point made by Sebastian et~al.~\cite{Sebastian2020IMC}
+that the value delivered by an IMC array is determined jointly by the
+device, the array, and the control logic.
+
+\section{Implications for the Present Project}
+\label{sec:bg-implications}
+
+The background reviewed in this chapter motivates three architectural
+choices that are visible in the RTL described in the remainder of the
+report:
+
+\begin{itemize}
+    \item A \emph{packed, one-hot} address and data representation that
+          cleanly maps to a tiled crossbar-like core structure, so that
+          a programming or read command uniquely selects one cell per
+          block and sub-block.
+    \item A \emph{pulse-train} command interface on three bits
+          (\signame{pulses}[2:0]) that encodes read, program, erase, and
+          inference modes as distinct time-multiplexed bursts, rather
+          than as arbitrary bit patterns; this corresponds to the
+          device-level distinction between the different operations
+          discussed in~\cite{Wang2022YFlash, Sebastian2020IMC}.
+    \item A \emph{closed-loop} control policy with explicit PROG, VERIFY,
+          and ERASE sub-FSMs and a bounded retry budget, reflecting the
+          write--verify requirement imposed by non-ideal resistive
+          devices~\cite{Ielmini2018RRAM, Sebastian2020IMC}.
+\end{itemize}
+
+With this background in place, \Cref{ch:architecture} begins the
+description of the actual RTL by presenting the three-module stack and
+the host-to-core word format that binds them together.

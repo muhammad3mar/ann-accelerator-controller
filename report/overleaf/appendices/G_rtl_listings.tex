@@ -1,0 +1,268 @@
+% =============================================================================
+% Appendix G --- Selected RTL Source Listings
+% Every listing is a verbatim quote of the corresponding source file.
+% Line numbers match the lines in the repository at the time this report
+% was written.
+% =============================================================================
+
+\chapter{Selected RTL Source Listings}
+\label{app:listings}
+
+This appendix provides verbatim source extracts for the parts of the
+RTL that are discussed most frequently in the main chapters. Each
+listing is quoted from the exact file path shown in its caption so
+that the reader can cross-check any detail.
+
+\section{One-Hot Predicates (\sv{parallel\_interface\_pkg.sv})}
+\label{app:listing-onehot}
+
+\begin{lstlisting}[style=svstyle,
+    caption={One-hot structural predicates and tail validity, from
+             \sv{source/Parallel\_Interface/parallel\_interface\_pkg.sv}.},
+    label={lst:onehot}]
+function automatic logic pi_is_onehot4(input logic [3:0] oh);
+    unique case (oh)
+        4'b0001, 4'b0010, 4'b0100, 4'b1000: return 1'b1;
+        default: return 1'b0;
+    endcase
+endfunction
+
+function automatic logic pi_is_onehot8(input logic [7:0] oh);
+    unique case (oh)
+        8'b00000001, 8'b00000010, 8'b00000100, 8'b00001000,
+        8'b00010000, 8'b00100000, 8'b01000000, 8'b10000000: return 1'b1;
+        default: return 1'b0;
+    endcase
+endfunction
+
+// Host ann-tail validity: each field must be strictly one-hot.
+function automatic logic ann_tail_is_valid_onehot(input logic [23:0] tail);
+    return pi_is_onehot4(tail[23:20]) &&
+           pi_is_onehot4(tail[19:16]) &&
+           pi_is_onehot8(tail[15:8])  &&
+           pi_is_onehot8(tail[7:0]);
+endfunction
+\end{lstlisting}
+
+\section{Tail-to-Address Decode (\sv{parallel\_interface\_pkg.sv})}
+\label{app:listing-addr-decode}
+
+\begin{lstlisting}[style=svstyle,
+    caption={Packed-address decode from the 24-bit one-hot tail.},
+    label={lst:addr-decode}]
+// Decode ann_core_word-style tail -> 16-bit address field
+// (parse_ann_address layout)
+function automatic logic [15:0] ann_tail_to_parallel_addr(logic [23:0] tail);
+    logic [1:0] blk, sb;
+    logic [2:0] rid, cid;
+    blk = pi_onehot4_to_idx(tail[23:20]);
+    sb  = pi_onehot4_to_idx(tail[19:16]);
+    cid = pi_onehot8_to_idx(tail[15:8]);
+    rid = pi_onehot8_to_idx(tail[7:0]);
+    return {6'b0, blk, sb, cid, rid};
+endfunction
+\end{lstlisting}
+
+\section{Address Pack (Indices \(\rightarrow\) 32-bit Host Word)}
+\label{app:listing-addr-pack}
+
+\begin{lstlisting}[style=svstyle,
+    caption={Inverse: build a 32-bit host word from a payload byte and
+             packed 16-bit parallel address (used by both RTL paths and
+             the testbenches).},
+    label={lst:addr-pack}]
+function automatic logic [31:0] build_host_ann_word(
+    input logic [7:0]  data_byte,
+    input logic [15:0] parallel_addr
+);
+    logic [1:0] blk, sb;
+    logic [2:0] rid, cid;
+    logic [3:0] pe_oh, sa_oh;
+    logic [7:0] col_oh, row_oh;
+    blk = parallel_addr[9:8];
+    sb  = parallel_addr[7:6];
+    cid = parallel_addr[5:3];
+    rid = parallel_addr[2:0];
+    pe_oh  = 4'(1 << blk);
+    sa_oh  = 4'(1 << sb);
+    col_oh = 8'(1 << cid);
+    row_oh = 8'(1 << rid);
+    return {data_byte, pe_oh, sa_oh, col_oh, row_oh};
+endfunction
+\end{lstlisting}
+
+\section{Pulse-Train Helpers (\sv{controller\_pkg.sv})}
+\label{app:listing-pulse-helpers}
+
+\begin{lstlisting}[style=svstyle,
+    caption={Pulse-train total/active helpers, from
+             \sv{source/Controller/controller\_pkg.sv}.},
+    label={lst:pulse-helpers}]
+// Burst-train helpers (cycle_idx is 0 .. pulse_train_total-1)
+function automatic int pulse_train_total(input int T, input int N, input int G);
+    int t_safe;
+    t_safe = (T < 1) ? 1 : T;
+    if (N < 1)
+        return 0;
+    return N * t_safe + (N - 1) * G;
+endfunction
+
+function automatic logic pulse_train_active(
+    input int cycle_idx,
+    input int T,
+    input int N,
+    input int G
+);
+    int t_safe, chunk, r, base;
+    t_safe = (T < 1) ? 1 : T;
+    if (N < 1 || cycle_idx < 0)
+        return 1'b0;
+    chunk = t_safe + G;
+    for (r = 0; r < N; r++) begin
+        base = r * chunk;
+        if (cycle_idx >= base && cycle_idx < base + t_safe)
+            return 1'b1;
+    end
+    return 1'b0;
+endfunction
+\end{lstlisting}
+
+\begin{lstlisting}[style=svstyle,
+    caption={LUT-based macro-repeat helpers.},
+    label={lst:pulse-lut}]
+// R back-to-back copies of one macro train (length Mmacro),
+// separated by G HIZ cycles (no gap after the last copy).
+// Used for LUT first PROG so repeats are visible when N=1.
+function automatic int pulse_lut_macro_repeat_total(
+    input int R, input int Mmacro, input int G
+);
+    int Rc;
+    Rc = (R < 1) ? 1 : R;
+    if (Mmacro < 1)
+        return 0;
+    return Rc * Mmacro + (Rc - 1) * G;
+endfunction
+
+function automatic logic pulse_lut_macro_repeat_active(
+    input int cyc,
+    input int R,
+    input int Mmacro,
+    input int T,
+    input int N,
+    input int G
+);
+    int Rc;
+    int cum;
+    int b;
+    Rc = (R < 1) ? 1 : R;
+    if (Mmacro < 1 || cyc < 0)
+        return 1'b0;
+    cum = 0;
+    for (b = 0; b < Rc; b++) begin
+        if (cyc >= cum && cyc < cum + Mmacro)
+            return pulse_train_active(cyc - cum, T, N, G);
+        cum = cum + Mmacro + G;
+    end
+    return 1'b0;
+endfunction
+\end{lstlisting}
+
+\section{\texttt{VERIFY\_CHECK} Case Body (\sv{controller.sv})}
+\label{app:listing-verify-check}
+
+\begin{lstlisting}[style=svstyle,
+    caption={\sv{VERIFY\_CHECK} branch of the combinational FSM block,
+             from \sv{source/Controller/controller.sv}.},
+    label={lst:verify-check}]
+VERIFY_CHECK: begin
+    // Compare read weight with expected weight
+    if (weight_read_data == expected_weight) begin
+        verify_next = VERIFY_DONE;   // Match: continue to next weight
+    end else if (weight_read_data < expected_weight) begin
+        // Under-programmed: re-apply PROG pulses (no ERASE)
+        if (prog_retry_cnt < controller_pkg::MAX_PROG_RETRIES) begin
+            next_state = S_PROGRAM;
+            next_prog_state = PROG_HIZ;
+        end else begin
+            // Max re-prog attempts exceeded, fall back to ERASE
+            verify_failure_starts_erase = 1'b1;
+            next_state = S_ERASE;
+        end
+        verify_next = VERIFY_IDLE;
+    end else begin
+        // Over-programmed: ERASE then retry
+        verify_failure_starts_erase = 1'b1;
+        next_state = S_ERASE;
+        verify_next = VERIFY_IDLE;
+    end
+end
+\end{lstlisting}
+
+\section{Bit-Serial Output Block (\sv{input\_buffer.sv})}
+\label{app:listing-bit-serial}
+
+\begin{lstlisting}[style=svstyle,
+    caption={Bit-serial lane generation in \modname{input\_buffer}.
+             From \sv{source/Input\_Buffer/input\_buffer.sv}.},
+    label={lst:bit-serial}]
+// Read Path: D0-D7 = 1 bit per channel per cycle (bit-serial, LSB-first)
+// For computation (CTRL_COMPUTE), controller drives bit_sel 0..7 each cycle.
+// D0 = buffer_reg[addr][bit_sel], D1 = buffer_reg[addr+1][bit_sel], ...
+`comb(
+    D0 = 1'b0;
+    D1 = 1'b0;
+    D2 = 1'b0;
+    D3 = 1'b0;
+    D4 = 1'b0;
+    D5 = 1'b0;
+    D6 = 1'b0;
+    D7 = 1'b0;
+
+    if (read_en) begin
+        if (is_valid_addr(addr))
+            D0 = buffer_reg[addr][bit_sel];
+        if ((addr + 1) < BUFFER_SIZE)
+            D1 = buffer_reg[addr + 1][bit_sel];
+        if ((addr + 2) < BUFFER_SIZE)
+            D2 = buffer_reg[addr + 2][bit_sel];
+        if ((addr + 3) < BUFFER_SIZE)
+            D3 = buffer_reg[addr + 3][bit_sel];
+        if ((addr + 4) < BUFFER_SIZE)
+            D4 = buffer_reg[addr + 4][bit_sel];
+        if ((addr + 5) < BUFFER_SIZE)
+            D5 = buffer_reg[addr + 5][bit_sel];
+        if ((addr + 6) < BUFFER_SIZE)
+            D6 = buffer_reg[addr + 6][bit_sel];
+        if ((addr + 7) < BUFFER_SIZE)
+            D7 = buffer_reg[addr + 7][bit_sel];
+    end
+)
+\end{lstlisting}
+
+\section{Simulation Flow Script Snippet (\sv{run\_sim.py})}
+\label{app:listing-runsim}
+
+\begin{lstlisting}[style=plainstyle,language={},
+    caption={Representative commands from
+             \sv{scripts/run\_sim.py}. The script wraps \sv{vlog}
+             (compilation) and \sv{vsim} (simulation), and supports
+             \sv{list}, \sv{compile}, \sv{sim}, \sv{run\_all}, and
+             \sv{clean} subcommands.},
+    label={lst:runsim}]
+# compile verification bundle
+python scripts/run_sim.py compile -m Controller -t verif
+python scripts/run_sim.py compile -m Input_Buffer -t verif
+python scripts/run_sim.py compile -m Parallel_Interface -t verif
+
+# run a single testbench
+python scripts/run_sim.py sim -m Controller \
+    -tb controller_prog_verify_lut_tb
+
+# run every testbench for a module
+python scripts/run_sim.py run_all -m Controller
+
+# open a wave wrapper in the GUI
+python scripts/run_sim.py sim -m Controller \
+    -tb controller_prog_verify_lut_tb_waves_tb \
+    --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
+\end{lstlisting}
