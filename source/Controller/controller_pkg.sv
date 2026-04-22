@@ -18,7 +18,7 @@ package controller_pkg;
         S_RESET         = 4'd1,  // Reset ANN core and buffer
         S_PROGRAM       = 4'd2,  // Program weights into ANN
         S_VERIFY        = 4'd3,  // Verify programmed weights
-        S_ERASE         = 4'd4,  // Erase weights if needed
+        S_ERASE         = 4'd4,  // Erase weights 
         S_READ          = 4'd5,  // Read weight from memristor
         S_COLLECT_DATA  = 4'd6,  // Collect data for inference (INF command)
         S_COMPUTE       = 4'd7,  // Inference computation phase
@@ -97,9 +97,6 @@ package controller_pkg;
     localparam int DEFAULT_ADDR_WIDTH   = 8;   
     localparam int DEFAULT_WEIGHT_WIDTH = 16;
 
-    localparam int ROW_MUXES_PER_MATRIX = 8;
-    localparam int COL_MUXES_PER_MATRIX = 8;
-
     //--------------------------------------------------------------------------
     // Pulse Mode Encoding (5 modes, 3 bits) - matches host cmd_t
     //--------------------------------------------------------------------------
@@ -115,6 +112,10 @@ package controller_pkg;
     //--------------------------------------------------------------------------
     // Pulse Generator Parameters
     //--------------------------------------------------------------------------
+    // T*: cycles each burst holds the active pulse mode (READ=001, PROG=010, etc.)
+    // PULSE_NUM_*: number of bursts (repeats)
+    // PULSE_GAP: HIZ (000) cycles between bursts (none after the last burst)
+    // Total train length = N*T + max(0,N-1)*PULSE_GAP
     localparam int TREAD         = 2;    // Read pulse width (clock cycles)
     localparam int PULSE_NUM_READ  = 1;  // Number of read pulses
     localparam int TPROG         = 2;    // Program pulse width
@@ -123,12 +124,79 @@ package controller_pkg;
     localparam int PULSE_NUM_ERASE = 1;  // Number of erase pulses
     localparam int TINF          = 2;    // Inference pulse width
     localparam int PULSE_NUM_INF   = 1;  // Number of inference pulses
+    localparam int PULSE_GAP     = 1;    // Idle cycles between bursts
 
-    // Total pulse cycles per mode (T * N); controller generates pulses for this duration
-    localparam int PULSE_TOTAL_READ  = TREAD  * PULSE_NUM_READ;
-    localparam int PULSE_TOTAL_PROG  = TPROG  * PULSE_NUM_PROG;
-    localparam int PULSE_TOTAL_ERASE = TERASE * PULSE_NUM_ERASE;
-    localparam int PULSE_TOTAL_INF   = (TINF * PULSE_NUM_INF >= 8) ? (TINF * PULSE_NUM_INF) : 8;  // min 8 for bit-serial
+    // Burst-train helpers (cycle_idx is 0 .. pulse_train_total-1)
+    function automatic int pulse_train_total(input int T, input int N, input int G);
+        int t_safe;
+        t_safe = (T < 1) ? 1 : T;
+        if (N < 1)
+            return 0;
+        return N * t_safe + (N - 1) * G;
+    endfunction
+
+    function automatic logic pulse_train_active(
+        input int cycle_idx,
+        input int T,
+        input int N,
+        input int G
+    );
+        int t_safe, chunk, r, base;
+        t_safe = (T < 1) ? 1 : T;
+        if (N < 1 || cycle_idx < 0)
+            return 1'b0;
+        chunk = t_safe + G;
+        for (r = 0; r < N; r++) begin
+            base = r * chunk;
+            if (cycle_idx >= base && cycle_idx < base + t_safe)
+                return 1'b1;
+        end
+        return 1'b0;
+    endfunction
+
+    // R back-to-back copies of one macro train (length Mmacro), separated by G HIZ cycles
+    // (no gap after the last copy). Used for LUT first PROG so repeats are visible when N=1.
+    function automatic int pulse_lut_macro_repeat_total(input int R, input int Mmacro, input int G);
+        int Rc;
+        Rc = (R < 1) ? 1 : R;
+        if (Mmacro < 1)
+            return 0;
+        return Rc * Mmacro + (Rc - 1) * G;
+    endfunction
+
+    function automatic logic pulse_lut_macro_repeat_active(
+        input int cyc,
+        input int R,
+        input int Mmacro,
+        input int T,
+        input int N,
+        input int G
+    );
+        int Rc;
+        int cum;
+        int b;
+        Rc = (R < 1) ? 1 : R;
+        if (Mmacro < 1 || cyc < 0)
+            return 1'b0;
+        cum = 0;
+        for (b = 0; b < Rc; b++) begin
+            if (cyc >= cum && cyc < cum + Mmacro)
+                return pulse_train_active(cyc - cum, T, N, G);
+            cum += Mmacro;
+            if (b < Rc - 1) begin
+                if (cyc >= cum && cyc < cum + G)
+                    return 1'b0;
+                cum += G;
+            end
+        end
+        return 1'b0;
+    endfunction
+
+    localparam int PULSE_TOTAL_READ  = pulse_train_total(TREAD, PULSE_NUM_READ, PULSE_GAP);
+    localparam int PULSE_TOTAL_PROG  = pulse_train_total(TPROG, PULSE_NUM_PROG, PULSE_GAP);
+    localparam int PULSE_TOTAL_ERASE = pulse_train_total(TERASE, PULSE_NUM_ERASE, PULSE_GAP);
+    localparam int PULSE_TOTAL_INF_BASE = pulse_train_total(TINF, PULSE_NUM_INF, PULSE_GAP);
+    localparam int PULSE_TOTAL_INF   = (PULSE_TOTAL_INF_BASE >= 8) ? PULSE_TOTAL_INF_BASE : 8;  // min 8 for bit-serial
 
     // Output address widths for ANN core interface
     localparam int PE_WIDTH  = 4;   // One-hot PE select
@@ -214,12 +282,20 @@ package controller_pkg;
     //--------------------------------------------------------------------------
     typedef enum logic [2:0] {
         PROG_HIZ,
-        PROG_SELECT,
-        PROG_ENABLE,
+        PROG_SELECT,     // wait op_done (core/setup) before PROG_WRITE
         PROG_WRITE,
-        PROG_DISABLE,
+        PROG_WAIT_ACK,   // after pulse_done, wait op_done before PROG_COMPLETE
         PROG_COMPLETE
-    } prog_sequence_state_t;   
+    } prog_sequence_state_t;
+
+    // Erase sub-FSM (S_ERASE only)
+    typedef enum logic [2:0] {
+        ERASE_HIZ,
+        ERASE_SELECT,    // wait op_done before ERASE_PULSE
+        ERASE_PULSE,
+        ERASE_WAIT_ACK,  // after pulse_done, wait op_done before ERASE_COMPLETE
+        ERASE_COMPLETE
+    } erase_state_t;
 
     //--------------------------------------------------------------------------
     // Helper Functions

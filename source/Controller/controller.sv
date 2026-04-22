@@ -37,6 +37,8 @@ module ann_controller #(
     // pulses: operation / pulse mode toward core (READ/PROG/ERASE/INF)
     //======================================================================
     output logic                     ann_reset,
+    // Core handshake: asserted to advance PROG_SELECT->PROG_WRITE, PROG_WAIT_ACK->PROG_COMPLETE,
+    // ERASE_SELECT->ERASE_PULSE, ERASE_WAIT_ACK->ERASE_COMPLETE (see program/erase sub-FSMs).
     input  logic                     op_done,
     output logic [31:0]              ann_core_word,
     output logic [2:0]               pulses,
@@ -71,25 +73,13 @@ module ann_controller #(
     // VERIFY sub-FSM
     //--------------------------------------------------------------------------
     typedef enum logic [1:0] {
-        VERIFY_READ,
+        VERIFY_IDLE,
         VERIFY_WAIT,
         VERIFY_CHECK,
         VERIFY_DONE
     } verify_state_t;
 
     verify_state_t verify_state, verify_next;
-
-    //--------------------------------------------------------------------------
-    // ERASE sub-FSM
-    //--------------------------------------------------------------------------
-    typedef enum logic [2:0] {
-        ERASE_HIZ,
-        ERASE_SELECT,
-        ERASE_ENABLE,
-        ERASE_PULSE,
-        ERASE_DISABLE,
-        ERASE_COMPLETE
-    } erase_state_t;
 
     erase_state_t erase_state, erase_next;
 
@@ -102,15 +92,18 @@ module ann_controller #(
     // Re-program counter (counts PROG retries without ERASE when read < expected)
     logic [1:0] prog_retry_cnt;  // 0..MAX_PROG_RETRIES
 
-    // Timing for verification read (TREAD*PULSE_NUM_READ cycles)
-    logic [7:0] verify_wait_cnt;
+    // S_VERIFY read pulse train: VERIFY_IDLE is cycle 0; VERIFY_WAIT uses verify_pulse_idx 1..PULSE_TOTAL_READ-1
+    logic [7:0] verify_pulse_idx;
 
     // Outputs (or internal signals connected to outputs)
     logic        weight_read_en;      // enable read in VERIFY (internal; use weight_read_data input port)
     logic [3:0]  expected_weight;     // from buffer/host
-    logic        error_flag;
+    // VERIFY_CHECK: set when mismatch forces entry to S_ERASE (max reprog or over-programmed)
+    logic        verify_failure_starts_erase;
+    // ERASE_COMPLETE: set when erase retry_cnt reached limit and controller aborts to idle
+    logic        erase_max_retries_exhausted;
 
-    // Optional: flag to strengthen program when read > expected
+   
     logic        program_stronger;
 
     // Host CMD_ERASE from S_IDLE: after erase sub-FSM, return to idle (no PROG/VERIFY).
@@ -167,11 +160,15 @@ module ann_controller #(
     // Expected weight for verification (from buffer)
     assign expected_weight = weight_from_buffer;
 
-    // Optional: per-weight program pulse length (weights 0..15); reprogram uses 1 cycle (see PROG_WRITE mux)
+   
     logic [7:0] weight_pulse_cycles_lut [0:15];
 
     initial
         $readmemh(WEIGHT_PULSE_LUT_FILE, weight_pulse_cycles_lut);
+
+    // LUT row for expected_weight: repeat count for the (TPROG x PULSE_NUM_PROG) macro train
+    wire [7:0] lut_entry_expected_weight;
+    assign lut_entry_expected_weight = weight_pulse_cycles_lut[expected_weight];
 
     //--------------------------------------------------------------------------
     // Address Parsing: Direct address from parallel interface (all commands)
@@ -207,21 +204,32 @@ module ann_controller #(
 
     //--------------------------------------------------------------------------
     //--------------------------------------------------------------------------
-    // Pulse total and done (per spec: T*N cycles per mode)
+    // Pulse total and done (burst train: N bursts of T cycles, (N-1) gaps of PULSE_GAP)
     //--------------------------------------------------------------------------
     `comb(
+        automatic int Tp;
+        automatic int Np;
         pulse_total = 8'd0;
         if (state == S_READ)
             pulse_total = PULSE_TOTAL_READ[7:0];
         else if (state == S_PROGRAM && prog_state == PROG_WRITE) begin
-            if (!USE_WEIGHT_PULSE_LUT)
-                pulse_total = PULSE_TOTAL_PROG[7:0];
-            else if (prog_retry_cnt > 2'd0)
-                pulse_total = 8'd1;
-            else begin
-                pulse_total = weight_pulse_cycles_lut[expected_weight];
-                if (pulse_total == 8'd0)
-                    pulse_total = 8'd1;
+            if (!USE_WEIGHT_PULSE_LUT) begin
+                Tp = TPROG;
+                Np = PULSE_NUM_PROG;
+                pulse_total = pulse_train_total(Tp, Np, PULSE_GAP)[7:0];
+            end else if (prog_retry_cnt > 2'd0) begin
+                Tp = 1;
+                Np = 1;
+                pulse_total = pulse_train_total(Tp, Np, PULSE_GAP)[7:0];
+            end else begin
+                // First PROG: R copies of macro train, PULSE_GAP HIZ between copies (R from LUT)
+                automatic int Rlut;
+                automatic int Mmacro;
+                Mmacro = pulse_train_total(TPROG, PULSE_NUM_PROG, PULSE_GAP);
+                Rlut = int'(weight_pulse_cycles_lut[expected_weight]);
+                if (Rlut < 1)
+                    Rlut = 1;
+                pulse_total = 8'(pulse_lut_macro_repeat_total(Rlut, Mmacro, PULSE_GAP));
             end
         end
         else if (state == S_ERASE && erase_state == ERASE_PULSE)
@@ -233,24 +241,54 @@ module ann_controller #(
     )
 
     //--------------------------------------------------------------------------
-    // 3-bit Pulse Output to ANN Core
+    // 3-bit Pulse Output to ANN Core (pulsed: active mode only during burst high phases)
     //--------------------------------------------------------------------------
-    // Drive pulses based on current mode: bit i = 1 when mode[i]==1 and in active state
-    // HIZ(000): all 0 | READ(001): pulse[0] | PROG(010): pulse[1] | ERASE(011): pulse[0,1] | INF(100): pulse[2]
-    // PROG/ERASE stress only in timed substates (PROG_WRITE / ERASE_PULSE). ENABLE/DISABLE stay 000 so
-    // ann_core_word + pulse mode do not apply extra electrical stress outside PULSE_TOTAL_* / LUT.
     `comb(
+        automatic int Tv;
+        automatic int Tpp;
+        automatic int Npp;
+        automatic logic rd_on;
+        automatic logic pg_on;
+        automatic logic er_on;
+        automatic logic inf_on;
         pulses = 3'b000;
-        if (state == S_PROGRAM && prog_state == PROG_WRITE) begin
-            pulses = 3'b010;  // PROG mode (active pulse window only)
-        end else if (state == S_ERASE && erase_state == ERASE_PULSE) begin
-            pulses = 3'b011;  // ERASE mode (active pulse window only)
-        end else if (state == S_READ) begin
-            pulses = 3'b001;  // READ mode
-        end else if (state == S_VERIFY && (verify_state == VERIFY_READ || verify_state == VERIFY_WAIT)) begin
-            pulses = 3'b001;  // READ mode for verify
-        end else if (state == S_COMPUTE) begin
-            pulses = 3'b100;  // INF mode
+        // S_READ
+        if (state == S_READ) begin
+            rd_on = pulse_train_active(int'(pulse_cnt), TREAD, PULSE_NUM_READ, PULSE_GAP);
+            pulses = rd_on ? PULSE_MODE_READ : PULSE_MODE_HIZ;
+        end
+        else if (state == S_PROGRAM && prog_state == PROG_WRITE) begin
+            if (!USE_WEIGHT_PULSE_LUT) begin
+                Tpp = TPROG;
+                Npp = PULSE_NUM_PROG;
+                pg_on = pulse_train_active(int'(pulse_cnt), Tpp, Npp, PULSE_GAP);
+            end else if (prog_retry_cnt > 2'd0) begin
+                Tpp = 1;
+                Npp = 1;
+                pg_on = pulse_train_active(int'(pulse_cnt), Tpp, Npp, PULSE_GAP);
+            end else begin
+                automatic int Mmacro;
+                automatic int Rlut;
+                Mmacro = pulse_train_total(TPROG, PULSE_NUM_PROG, PULSE_GAP);
+                Rlut = int'(weight_pulse_cycles_lut[expected_weight]);
+                if (Rlut < 1)
+                    Rlut = 1;
+                pg_on = pulse_lut_macro_repeat_active(int'(pulse_cnt), Rlut, Mmacro, TPROG, PULSE_NUM_PROG, PULSE_GAP);
+            end
+            pulses = pg_on ? PULSE_MODE_PROG : PULSE_MODE_HIZ;
+        end
+        else if (state == S_ERASE && erase_state == ERASE_PULSE) begin
+            er_on = pulse_train_active(int'(pulse_cnt), TERASE, PULSE_NUM_ERASE, PULSE_GAP);
+            pulses = er_on ? PULSE_MODE_ERASE : PULSE_MODE_HIZ;
+        end
+        else if (state == S_VERIFY && (verify_state == VERIFY_IDLE || verify_state == VERIFY_WAIT)) begin
+            Tv = (verify_state == VERIFY_IDLE) ? 0 : int'(verify_pulse_idx);
+            rd_on = pulse_train_active(Tv, TREAD, PULSE_NUM_READ, PULSE_GAP);
+            pulses = rd_on ? PULSE_MODE_READ : PULSE_MODE_HIZ;
+        end
+        else if (state == S_COMPUTE) begin
+            inf_on = pulse_train_active(int'(pulse_cnt), TINF, PULSE_NUM_INF, PULSE_GAP);
+            pulses = inf_on ? PULSE_MODE_INF : PULSE_MODE_HIZ;
         end
     )
     
@@ -409,11 +447,11 @@ module ann_controller #(
     //--------------------------------------------------------------------------
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            verify_state     <= VERIFY_READ;
+            verify_state     <= VERIFY_IDLE;
             erase_state      <= ERASE_HIZ;
             retry_cnt        <= 2'd0;
             prog_retry_cnt   <= 2'd0;
-            verify_wait_cnt  <= 2'd0;
+            verify_pulse_idx <= 8'd0;
             program_stronger <= 1'b0;
         end else begin
             verify_state <= verify_next;
@@ -445,13 +483,13 @@ module ann_controller #(
                 program_stronger <= 1'b0;
             end
 
-            // -------- verify wait counter (TREAD*PULSE_NUM_READ per spec) --------
+            // -------- verify pulse index (aligned with PULSE_TOTAL_READ burst train) --------
             if (state != S_VERIFY) begin
-                verify_wait_cnt <= 8'd0;
-            end else if (verify_state == VERIFY_READ) begin
-                verify_wait_cnt <= PULSE_TOTAL_READ[7:0];
-            end else if (verify_state == VERIFY_WAIT && verify_wait_cnt != 0) begin
-                verify_wait_cnt <= verify_wait_cnt - 1'b1;
+                verify_pulse_idx <= 8'd0;
+            end else if (verify_state == VERIFY_IDLE) begin
+                verify_pulse_idx <= 8'd1;
+            end else if (verify_state == VERIFY_WAIT && verify_next == VERIFY_WAIT) begin
+                verify_pulse_idx <= verify_pulse_idx + 8'd1;
             end
 
             // -------- program_stronger flag: set in VERIFY_CHECK if needed --------
@@ -481,6 +519,9 @@ module ann_controller #(
 
         next_state       = state;
         next_prog_state  = prog_state;
+
+        verify_failure_starts_erase = 1'b0;
+        erase_max_retries_exhausted = 1'b0;
 
         unique case (state)
 
@@ -537,7 +578,7 @@ module ann_controller #(
             end
 
             //--------------------------------------------------------------
-            // PROGRAM: Program weights into ANN (with mux sequence sub-states)
+            // PROGRAM: program weights into ANN (buffer load + program sub-FSM)
             //--------------------------------------------------------------
             S_PROGRAM: begin
                 busy            = 1'b1;
@@ -566,24 +607,19 @@ module ann_controller #(
                     end
                     
                     PROG_SELECT: begin
-                        next_prog_state = PROG_ENABLE;
-                    end
-                    
-                    PROG_ENABLE: begin
-                        next_prog_state = PROG_WRITE;
+                        next_prog_state = op_done ? PROG_WRITE : PROG_SELECT;
                     end
                     
                     PROG_WRITE: begin
-                        // Hold PROG pulses for Tprog*Pulse_num_prog cycles (per spec)
-                        if (pulse_done) begin
-                            next_prog_state = PROG_DISABLE;
-                        end else begin
+                        // Hold PROG pulses until train done; then wait core op_done
+                        if (pulse_done)
+                            next_prog_state = PROG_WAIT_ACK;
+                        else
                             next_prog_state = PROG_WRITE;
-                        end
                     end
                     
-                    PROG_DISABLE: begin
-                        next_prog_state = PROG_COMPLETE;
+                    PROG_WAIT_ACK: begin
+                        next_prog_state = op_done ? PROG_COMPLETE : PROG_WAIT_ACK;
                     end
                     
                     PROG_COMPLETE: begin
@@ -606,18 +642,21 @@ module ann_controller #(
                 buf_reg_add     = address_reg[5:0];   // Read expected weight from buffer
                 buf_reg_ctrl    = CTRL_WEIGHT_READ;
                 buf_read_write  = 1'b0;               // Read from buffer
-                weight_read_en  = (verify_state == VERIFY_READ) ? 1'b1 : 1'b0;
+                weight_read_en  = (verify_state == VERIFY_IDLE) ? 1'b1 : 1'b0;
                 
                 // VERIFY sub-FSM logic
                 unique case (verify_state)
-                    VERIFY_READ: begin
-                        // Initiate read from current weight location
-                        verify_next = VERIFY_WAIT;
+                    VERIFY_IDLE: begin
+                        // Initiate read; single-cycle train skips WAIT
+                        if (PULSE_TOTAL_READ <= 8'd1)
+                            verify_next = VERIFY_CHECK;
+                        else
+                            verify_next = VERIFY_WAIT;
                     end
                     
                     VERIFY_WAIT: begin
-                        // Wait for read data to be valid (verify_wait_cnt counts down)
-                        if (verify_wait_cnt == 0)
+                        // One cycle per burst-train index (see verify_pulse_idx seq block)
+                        if (verify_pulse_idx == PULSE_TOTAL_READ[7:0] - 8'd1)
                             verify_next = VERIFY_CHECK;
                         else
                             verify_next = VERIFY_WAIT;
@@ -634,26 +673,26 @@ module ann_controller #(
                                 next_prog_state = PROG_HIZ;
                             end else begin
                                 // Max re-prog attempts exceeded, fall back to ERASE
-                                error_flag = 1'b1;
+                                verify_failure_starts_erase = 1'b1;
                                 next_state = S_ERASE;
                             end
-                            verify_next = VERIFY_READ;
+                            verify_next = VERIFY_IDLE;
                         end else begin
                             // Over-programmed: ERASE then retry
-                            error_flag = 1'b1;
+                            verify_failure_starts_erase = 1'b1;
                             next_state = S_ERASE;
-                            verify_next = VERIFY_READ;
+                            verify_next = VERIFY_IDLE;
                         end
                     end
                     
                     VERIFY_DONE: begin
                         // Direct address flow: one weight per PROG command, return to idle
                         next_state = S_IDLE;
-                        verify_next = VERIFY_READ;
+                        verify_next = VERIFY_IDLE;
                     end
                     
                     default: begin
-                        verify_next = VERIFY_READ;
+                        verify_next = VERIFY_IDLE;
                     end
                 endcase
             end
@@ -669,32 +708,26 @@ module ann_controller #(
                 // ERASE sub-FSM logic
                 unique case (erase_state)
                     ERASE_HIZ: begin
-                        // All muxes to High Z mode (disabled)
+                        // Erase sequence: outputs high-Z / idle phase
                         erase_next = ERASE_SELECT;
                     end
                     
                     ERASE_SELECT: begin
-                        // Set target row/column mux mode to erase (but not enabled yet)
-                        erase_next = ERASE_ENABLE;
-                    end
-                    
-                    ERASE_ENABLE: begin
-                        // Enable target row and column muxes in ERASE mode
-                        erase_next = ERASE_PULSE;
+                        // Address path setup; wait core op_done before pulse phase
+                        erase_next = op_done ? ERASE_PULSE : ERASE_SELECT;
                     end
                     
                     ERASE_PULSE: begin
                         // Hold erase pulse for Terase*Pulse_num_erase cycles (per spec)
-                        if (pulse_done) begin
-                            erase_next = ERASE_DISABLE;
-                        end else begin
+                        if (pulse_done)
+                            erase_next = ERASE_WAIT_ACK;
+                        else
                             erase_next = ERASE_PULSE;
-                        end
                     end
                     
-                    ERASE_DISABLE: begin
-                        // Disable all muxes
-                        erase_next = ERASE_COMPLETE;
+                    ERASE_WAIT_ACK: begin
+                        // Pulse train finished; wait op_done before completing erase
+                        erase_next = op_done ? ERASE_COMPLETE : ERASE_WAIT_ACK;
                     end
                     
                     ERASE_COMPLETE: begin
@@ -709,8 +742,8 @@ module ann_controller #(
                             next_prog_state = PROG_HIZ;
                             erase_next = ERASE_HIZ;
                         end else begin
-                            // Max retries exceeded, set error_flag and return to idle
-                            error_flag = 1'b1;
+                            // Erase retry budget exhausted; abort verify/recovery and return to idle
+                            erase_max_retries_exhausted = 1'b1;
                             next_state = S_IDLE;
                             next_prog_state = PROG_HIZ;
                             erase_next = ERASE_HIZ;

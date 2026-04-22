@@ -1,13 +1,10 @@
 onerror { resume }
 quietly WaveActivateNextPane {} 0
 
-# Instance below the waves wrapper (DUT is ann_controller inside the regular TB).
-set PKG /controller_prog_verify_lut_tb_waves_tb
+# Same signal set as controller_prog_verify_lut_tb_waves.do; TB is the 10-weight compact bench.
+set PKG /controller_prog_verify_lut_10w_tb_waves_tb
 set TB  $PKG/u_tb
 set DUT $TB/dut
-
-# Focus: (1) happy verify, (2) read < expected -> re-PROG, (3) read > expected -> ERASE->PROG.
-# LUT: lut_entry_expected_weight = weight_pulse_cycles_lut[expected_weight] (budget vs pulse_cnt/pulse_total).
 
 add wave -noupdate -divider {TB_clock_reset}
 add wave -noupdate $TB/clk

@@ -2,8 +2,8 @@
 
 import controller_pkg::*;
 
-module controller_host_erase_tb_waves_tb;
-    controller_host_erase_tb u_tb ();
+module controller_prog_verify_lut_10w_tb_waves_tb;
+    controller_prog_verify_lut_10w_tb u_tb();
 
     // Mirrors of controller_pkg pulse params (constants) for waveform viewer
     wire [31:0] pkg_TREAD            = 32'(TREAD);

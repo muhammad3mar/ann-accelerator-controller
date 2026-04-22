@@ -68,11 +68,6 @@ Example:
 )
 ```
 
-### Multiplexer Macros
-
-- **`mux2(sel, in0, in1, out)`** - 2-to-1 multiplexer
-- **`mux4(sel, in0, in1, in2, in3, out)`** - 4-to-1 multiplexer
-
 ### Register File Macros
 
 - **`init_regfile_zero(clk, rst_n, regfile, size)`** - Initialize register file to zero

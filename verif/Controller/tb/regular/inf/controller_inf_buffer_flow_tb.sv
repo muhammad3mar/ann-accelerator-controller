@@ -37,6 +37,7 @@ module controller_inf_buffer_flow_tb;
     logic [7:0]  buf_data_out, buf_data;
     logic        D0, D1, D2, D3, D4, D5, D6, D7;
     logic        buf_ready;
+    logic [3:0]  weight_read_data_mock;
 
     logic [7:0] px_stream [0:15];
     int fd;
@@ -52,7 +53,7 @@ module controller_inf_buffer_flow_tb;
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
         .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
-        .weight_read_data(buf_data[3:0]),
+        .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
         .buf_data_out(buf_data_out), .buf_ready(buf_ready), .buf_data(buf_data), .busy(busy)
@@ -64,6 +65,8 @@ module controller_inf_buffer_flow_tb;
         .buf_reg_add(buf_reg_add), .bit_sel(buf_bit_sel), .buf_data(buf_data),
         .D0(D0), .D1(D1), .D2(D2), .D3(D3), .D4(D4), .D5(D5), .D6(D6), .D7(D7)
     );
+
+    assign weight_read_data_mock = buf_data[3:0];
 
     initial clk = 0;
     always #(CLK_PERIOD/2) clk = ~clk;

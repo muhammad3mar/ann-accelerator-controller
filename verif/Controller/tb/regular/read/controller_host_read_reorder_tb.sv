@@ -86,14 +86,12 @@ module controller_host_read_reorder_tb;
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (in_prog_core_phase) begin
-                if (op_done_cnt >= controller_pkg::TPROG - 1) begin
-                    op_done <= 1;
-                    op_done_cnt <= 0;
-                end else begin
-                    op_done <= 0;
-                    op_done_cnt <= op_done_cnt + 1;
-                end
+            if (dut.state == S_PROGRAM && (dut.prog_state == PROG_SELECT || dut.prog_state == PROG_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
+            end else if (dut.state == S_ERASE && (dut.erase_state == ERASE_SELECT || dut.erase_state == ERASE_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
             end else if (busy && pulses == PULSE_MODE_READ) begin
                 if (op_done_cnt >= PULSE_TOTAL_READ - 1) begin
                     op_done <= 1;

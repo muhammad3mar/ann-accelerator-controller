@@ -13,6 +13,12 @@ add wave -noupdate -divider {DUT � clock / reset}
 add wave -noupdate ${dut}/clk
 add wave -noupdate ${dut}/rst_n
 
+add wave -noupdate -divider {TB_command_like_inputs}
+add wave -noupdate -radix hex ${tb}/data_in
+add wave -noupdate -radix unsigned ${tb}/reg_ctrl
+add wave -noupdate ${tb}/buf_read_write
+add wave -noupdate -radix unsigned ${tb}/buf_reg_add
+
 add wave -noupdate -divider {TB � load trigger + 8-pixel counter}
 add wave -noupdate ${tb}/tb_pi_load_trigger
 add wave -noupdate -radix unsigned ${tb}/tb_load_pixel_count
@@ -27,7 +33,7 @@ add wave -noupdate -radix hex ${tb}/tb_captured_din_5
 add wave -noupdate -radix hex ${tb}/tb_captured_din_6
 add wave -noupdate -radix hex ${tb}/tb_captured_din_7
 
-add wave -noupdate -divider {DUT � bit-serial (LSB-first)}
+add wave -noupdate -divider {DUT bit-serial activity (D0-D7, pulses-equivalent here)}
 add wave -noupdate -radix unsigned ${dut}/bit_sel
 add wave -noupdate ${dut}/D0
 add wave -noupdate ${dut}/D1

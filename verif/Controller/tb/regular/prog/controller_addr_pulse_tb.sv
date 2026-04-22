@@ -97,23 +97,19 @@ module controller_addr_pulse_tb;
     logic in_prog_core_phase;
     assign in_prog_core_phase = (pulses == PULSE_MODE_PROG) && (buf_reg_ctrl == CTRL_WEIGHT_READ);
 
-    //--------------------------------------------------------------------------
-    // op_done: assert after TPROG cycles in program pulse phase, else after 3 cycles when busy
-    //--------------------------------------------------------------------------
+    // op_done mock: PROG/ERASE handshake states (see ann_controller).
     int op_done_cnt;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (in_prog_core_phase) begin
-                if (op_done_cnt >= controller_pkg::TPROG - 1) begin
-                    op_done <= 1;
-                    op_done_cnt <= 0;
-                end else begin
-                    op_done <= 0;
-                    op_done_cnt <= op_done_cnt + 1;
-                end
+            if (dut.state == S_PROGRAM && (dut.prog_state == PROG_SELECT || dut.prog_state == PROG_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
+            end else if (dut.state == S_ERASE && (dut.erase_state == ERASE_SELECT || dut.erase_state == ERASE_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
             end else if (busy && (pulses == 3'b001 || pulses == 3'b011 || pulses == 3'b100)) begin
                 if (op_done_cnt >= 3) begin
                     op_done <= 1;

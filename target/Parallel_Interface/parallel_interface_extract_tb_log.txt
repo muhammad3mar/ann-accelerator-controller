@@ -3,7 +3,7 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # 10.5b
 
 # vsim -c -do "run -all; quit" work.parallel_interface_extract_tb 
-# Start time: 21:17:45 on Apr 19,2026
+# Start time: 12:52:48 on Apr 21,2026
 # Loading sv_std.std
 # Loading work.parallel_interface_pkg
 # Loading work.parallel_interface_extract_tb_sv_unit
@@ -62,5 +62,5 @@ Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
 # RESULT: PASS (all 6 checks passed)
 # ** Note: $finish    : verif/Parallel_Interface/tb/parallel_interface_extract_tb.sv(142)
 #    Time: 36 ns  Iteration: 0  Instance: /parallel_interface_extract_tb
-# End time: 21:17:46 on Apr 19,2026, Elapsed time: 0:00:01
+# End time: 12:52:49 on Apr 21,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0
