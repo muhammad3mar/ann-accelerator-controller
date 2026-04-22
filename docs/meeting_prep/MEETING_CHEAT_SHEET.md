@@ -8,7 +8,7 @@ One-page style reference for a walkthrough with your supervisor. Deep dives: [CO
 |-------|-------|------|
 | `S_IDLE` | 0 | Wait for `valid` + command |
 | `S_RESET` | 1 | Legacy reset (not dispatched from current idle decode) |
-| `S_PROGRAM` | 2 | Program + mux sub-FSM |
+| `S_PROGRAM` | 2 | Program + buffer/program sub-FSM |
 | `S_VERIFY` | 3 | Read-back vs buffer |
 | `S_ERASE` | 4 | Erase sub-FSM |
 | `S_READ` | 5 | Host read |

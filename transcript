@@ -1,23 +1,26 @@
-# vsim -c -do "run -all; quit" work.controller_prog_verify_lut_tb 
-# Start time: 22:56:54 on Apr 19,2026
+# vsim -do "C:/Users/Asus X415/Desktop/ann-accelerator-controller/verif/Controller/do/waves/controller_inf_buffer_flow_tb_waves.do" work.controller_inf_buffer_flow_tb_waves_tb 
+# Start time: 15:46:28 on Apr 21,2026
 # Loading sv_std.std
-# Loading work.input_buffer_pkg
 # Loading work.parallel_interface_pkg
 # Loading work.controller_pkg
-# Loading work.controller_prog_verify_lut_tb_sv_unit
-# Loading work.controller_prog_verify_lut_tb
+# Loading work.controller_inf_buffer_flow_tb_waves_tb_sv_unit
+# Loading work.controller_inf_buffer_flow_tb_waves_tb
+# Loading work.input_buffer_pkg
+# Loading work.controller_inf_buffer_flow_tb_sv_unit
+# Loading work.controller_inf_buffer_flow_tb
 # Loading work.parallel_interface_sv_unit
 # Loading work.parallel_interface
 # Loading work.controller_sv_unit
 # Loading work.ann_controller
 # Loading work.input_buffer_sv_unit
 # Loading work.input_buffer
-# run -all
-# [38000] Loaded 640 weights from target/Controller/programming_inputs/weight_matrix.txt
-# [38000] Programming 640 weights (PROG->VERIFY cycle)...
-# [62246000] Verification complete: 0 errors
-# [62246000] Report: target/Controller/prog/prog_verify_report.txt
-# ** Note: $finish    : verif/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv(414)
-#    Time: 62286 ns  Iteration: 1  Instance: /controller_prog_verify_lut_tb
-# End time: 22:56:55 on Apr 19,2026, Elapsed time: 0:00:01
+# do {C:/Users/Asus X415/Desktop/ann-accelerator-controller/verif/Controller/do/waves/controller_inf_buffer_flow_tb_waves.do}
+# /controller_inf_buffer_flow_tb_waves_tb
+# /controller_inf_buffer_flow_tb_waves_tb/u_tb
+# /controller_inf_buffer_flow_tb_waves_tb/u_tb/dut
+# ** Note: $finish    : verif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv(243)
+#    Time: 227 ns  Iteration: 0  Instance: /controller_inf_buffer_flow_tb_waves_tb/u_tb
+# 1
+# Break in Module controller_inf_buffer_flow_tb at verif/Controller/tb/regular/inf/controller_inf_buffer_flow_tb.sv line 243
+# End time: 16:14:12 on Apr 21,2026, Elapsed time: 0:27:44
 # Errors: 0, Warnings: 0

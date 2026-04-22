@@ -58,7 +58,7 @@ The 16-bit `address` field uses the lower bits as in [`parse_ann_address`](../..
 
 ## Timing and pulses
 
-Nominal cycle counts are parameters in `controller_pkg`: `TREAD`, `TPROG`, `TERASE`, `TINF` and `PULSE_NUM_*`, which define `PULSE_TOTAL_*`. Program pulse length can use an optional LUT (`USE_WEIGHT_PULSE_LUT`, `target/Controller/programming_inputs/weight_pulse_lut.mem`).
+Nominal timing is in `controller_pkg`: per-mode `T*` (high cycles per burst), `PULSE_NUM_*` (burst count), and `PULSE_GAP` (HIZ cycles between bursts). `PULSE_TOTAL_*` is the full train length `N*T + max(0,N-1)*PULSE_GAP` (INF total is at least 8). The `pulses` bus follows that train (active mode vs `000`). With `USE_WEIGHT_PULSE_LUT`, first PROG repeats that macro train `R` times per weight (`R` from `weight_pulse_lut.mem`), inserting `PULSE_GAP` idle cycles between copies so each repeat is visible on `pulses` (re-PROG uses a minimal 1-cycle train).
 
 ## Regenerating verification outputs
 

@@ -22,15 +22,15 @@ Host-side packing is documented in [`source/Parallel_Interface/parallel_interfac
 
 **Stimulus:** Assert `valid` with `cmd = CMD_PROG`, `data[7:0]` carrying the quantized weight (nibble used from buffer path), and `address[15:0]` encoding the memristor location per [`controller_pkg::parse_ann_address`](../../source/Controller/controller_pkg.sv): bits `[9:8]` block, `[7:6]` sub-block, `[5:3]` column id, `[2:0]` row id (upper bits reserved).
 
-**Controller path:** `S_IDLE` → `S_PROGRAM` (program sub-FSM: `PROG_HIZ` → `PROG_SELECT` → `PROG_ENABLE` → `PROG_WRITE` holds until pulse counter done → `PROG_DISABLE` → `PROG_COMPLETE`) → `S_VERIFY`.
+**Controller path:** `S_IDLE` → `S_PROGRAM` (program sub-FSM: `PROG_HIZ` → `PROG_SELECT` waits `op_done` → `PROG_WRITE` until `pulse_done` → `PROG_WAIT_ACK` waits `op_done` → `PROG_COMPLETE`) → `S_VERIFY`.
 
 In `S_PROGRAM`, the controller writes the captured weight into the input buffer at `address_reg[5:0]`, then reads it back for the program phase so the same location supplies **expected_weight** during verify.
 
 **Outputs:**
 
 - `ann_core_word = { data_byte, one_hot(PE,SA,col,row) }` with the data byte from `data_reg` in program/verify (see RTL comment in [`ann_controller`](../../source/Controller/controller.sv)).
-- `pulses = 010` during `PROG_ENABLE` and `PROG_WRITE`.
-- During verify substates `VERIFY_READ` / `VERIFY_WAIT`, `pulses = 001` (read).
+- `pulses = 010` during `PROG_WRITE` (setup/teardown substates hold `pulses` high-Z until the pulse train).
+- During verify substates `VERIFY_IDLE` / `VERIFY_WAIT`, `pulses = 001` (read).
 
 **Evidence:**
 
@@ -41,7 +41,7 @@ In `S_PROGRAM`, the controller writes the captured weight into the input buffer 
 
 ## 3. Verify outcomes and retries (part of `CMD_PROG` flow)
 
-After programming, the controller enters `S_VERIFY` with sub-FSM: `VERIFY_READ` → `VERIFY_WAIT` (countdown) → `VERIFY_CHECK` → `VERIFY_DONE` or loop.
+After programming, the controller enters `S_VERIFY` with sub-FSM: `VERIFY_IDLE` → `VERIFY_WAIT` (countdown) → `VERIFY_CHECK` → `VERIFY_DONE` or loop.
 
 **Match (`weight_read_data == expected_weight`):** `VERIFY_DONE` → return to `S_IDLE` (direct-address single-weight flow).
 
@@ -71,9 +71,9 @@ After programming, the controller enters `S_VERIFY` with sub-FSM: `VERIFY_READ` 
 
 **Stimulus:** `valid` with `cmd = CMD_ERASE` and target `address`.
 
-**Controller path:** `S_IDLE` → `S_ERASE` with sub-FSM `ERASE_HIZ` → `ERASE_SELECT` → `ERASE_ENABLE` → `ERASE_PULSE` (hold until `pulse_done`) → `ERASE_DISABLE` → `ERASE_COMPLETE`. From `ERASE_COMPLETE`, either `S_PROGRAM` (retry) or `S_IDLE` if erase retries exhausted.
+**Controller path:** `S_IDLE` → `S_ERASE` with sub-FSM `ERASE_HIZ` → `ERASE_SELECT` (wait `op_done`) → `ERASE_PULSE` until `pulse_done` → `ERASE_WAIT_ACK` (wait `op_done`) → `ERASE_COMPLETE`. From `ERASE_COMPLETE`, either `S_PROGRAM` (retry) or `S_IDLE` if erase retries exhausted.
 
-**Outputs:** `pulses = 011` while erase mux states are active (`ERASE_ENABLE`, `ERASE_PULSE`, `ERASE_DISABLE`).
+**Outputs:** `pulses = 011` during `ERASE_PULSE` (erase train); `op_done` handshakes bracket the pulse phase via `ERASE_SELECT` and `ERASE_WAIT_ACK`.
 
 **Evidence:** `controller_prog_verify_lut_tb` (erase after failed verify); [`target/Controller/prog/prog_verify_report.txt`](../../target/Controller/prog/prog_verify_report.txt); `controller_host_erase_tb` / [`target/Controller/erase/controller_host_erase_report.txt`](../../target/Controller/erase/controller_host_erase_report.txt).
 

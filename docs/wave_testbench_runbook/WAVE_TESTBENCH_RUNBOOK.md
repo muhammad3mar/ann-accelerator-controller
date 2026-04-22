@@ -11,6 +11,11 @@ For **batch** (non-wave) top-level testbenches, see [Regular Testbench Runbook](
 - **Compile:** `python scripts/run_sim.py compile -m Controller -t verif`
 - **Run (wave):** `python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do`
 
+### `controller_prog_verify_lut_10w_tb_waves_tb`
+- **Tests:** Same PROG/VERIFY wave set as `controller_prog_verify_lut_tb_waves_tb`, but only **10 weights** (row 0, cols 0–9 of `weight_matrix.txt`). Covers verify match, read below expected (re-PROG), read above expected (ERASE then PROG), and max **re-PROG** attempts (`prog_retry_cnt`) leading to ERASE on one index, then the TB stops under-driving readback so the run finishes quickly.
+- **Compile:** `python scripts/run_sim.py compile -m Controller -t verif`
+- **Run (wave):** `python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_10w_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_10w_tb_waves.do`
+
 ### `parallel_interface_controller_integration_tb_waves_tb`
 - **Tests:** Integration of PI + controller + input buffer paths.
 - **Compile:** `python scripts/run_sim.py compile -m Controller -t verif`
@@ -20,6 +25,11 @@ For **batch** (non-wave) top-level testbenches, see [Regular Testbench Runbook](
 - **Tests:** Host-directed erase on one memristor cell; `pulses` and erase sub-FSM vs mock weight matrix.
 - **Compile:** `python scripts/run_sim.py compile -m Controller -t verif`
 - **Run (wave):** `python scripts/run_sim.py sim -m Controller -tb controller_host_erase_tb_waves_tb --do-file verif/Controller/do/waves/controller_host_erase_tb_waves.do`
+
+### `controller_inf_buffer_flow_tb_waves_tb`
+- **Tests:** INF data-collection to input-buffer flow, compute start after 8 writes, and bit-serial `D0..D7` activity.
+- **Compile:** `python scripts/run_sim.py compile -m Controller -t verif`
+- **Run (wave):** `python scripts/run_sim.py sim -m Controller -tb controller_inf_buffer_flow_tb_waves_tb --do-file verif/Controller/do/waves/controller_inf_buffer_flow_tb_waves.do`
 
 ## Input_Buffer
 
