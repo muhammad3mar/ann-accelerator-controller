@@ -16,10 +16,6 @@ module controller_host_erase_tb;
     localparam int CLK_PERIOD = 5;
     localparam string REPORT_FILE = "target/Controller/erase/controller_host_erase_report.txt";
 
-    // Hierarchical erase sub-state (must match ann_controller erase_state_t order)
-    localparam logic [2:0] DUT_ERASE_PULSE   = 3'd3;
-    localparam logic [2:0] DUT_ERASE_DISABLE = 3'd4;
-
     localparam logic [15:0] ADDR_A = 16'h01E7;
     localparam logic [7:0]  WEIGHT_A = 8'h03;
     localparam logic [15:0] ADDR_B = 16'h0100;
@@ -51,6 +47,7 @@ module controller_host_erase_tb;
 
     logic [1:0] idx_A_b, idx_A_sb, idx_B_b, idx_B_sb;
     logic [2:0] idx_A_r, idx_A_c, idx_B_r, idx_B_c;
+    logic [3:0] cell_A_value, cell_B_value;
 
     always_comb begin
         ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
@@ -62,6 +59,8 @@ module controller_host_erase_tb;
     always_comb begin
         parse_ann_address(ADDR_A, idx_A_b, idx_A_sb, idx_A_r, idx_A_c);
         parse_ann_address(ADDR_B, idx_B_b, idx_B_sb, idx_B_r, idx_B_c);
+        cell_A_value = ann_weight_matrix[idx_A_b][idx_A_sb][idx_A_r][idx_A_c];
+        cell_B_value = ann_weight_matrix[idx_B_b][idx_B_sb][idx_B_r][idx_B_c];
     end
 
     parallel_interface u_pi (
@@ -104,14 +103,12 @@ module controller_host_erase_tb;
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (in_prog_core_phase) begin
-                if (op_done_cnt >= controller_pkg::TPROG - 1) begin
-                    op_done <= 1;
-                    op_done_cnt <= 0;
-                end else begin
-                    op_done <= 0;
-                    op_done_cnt <= op_done_cnt + 1;
-                end
+            if (dut.state == S_PROGRAM && (dut.prog_state == PROG_SELECT || dut.prog_state == PROG_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
+            end else if (dut.state == S_ERASE && (dut.erase_state == ERASE_SELECT || dut.erase_state == ERASE_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
             end else if (busy && pulses == PULSE_MODE_READ) begin
                 if (op_done_cnt >= PULSE_TOTAL_READ - 1) begin
                     op_done <= 1;
@@ -155,7 +152,7 @@ module controller_host_erase_tb;
             automatic logic [2:0] lr, lc;
             ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
             ann_weight_matrix[lb][lsb][lr][lc] <= ann_core_word[27:24];
-        end else if (prev_erase_state == DUT_ERASE_PULSE && dut.erase_state == DUT_ERASE_DISABLE) begin
+        end else if (prev_erase_state == ERASE_PULSE && dut.erase_state == ERASE_WAIT_ACK) begin
             automatic logic [1:0] lb, lsb;
             automatic logic [2:0] lr, lc;
             ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);

@@ -1,0 +1,17 @@
+//------------------------------------------------------------------------------
+// Compact PROG/VERIFY report (10 weights)
+// idx0 equal | idx1 read< | idx2 read> | idx3-4,6-9 happy | idx5 max re-PROG (prog_retry_cnt) -> ERASE
+//------------------------------------------------------------------------------
+  PASS idx=0 addr=0x0000 weight=2
+  PASS idx=1 addr=0x0008 weight=2
+  PASS idx=2 addr=0x0010 weight=5
+  PASS idx=3 addr=0x0018 weight=10
+  PASS idx=4 addr=0x0020 weight=12
+  PASS idx=5 addr=0x0028 weight=10
+  PASS idx=6 addr=0x0030 weight=5
+  PASS idx=7 addr=0x0038 weight=2
+  PASS idx=8 addr=0x0040 weight=2
+  PASS idx=9 addr=0x0048 weight=2
+//------------------------------------------------------------------------------
+// Summary: 0 errors
+//------------------------------------------------------------------------------

@@ -144,6 +144,10 @@ After running simulations, check the `target/` directory:
 - **`target/Controller/prog/prog_verify_report.txt`**: PROG→VERIFY sweep report from `controller_prog_verify_lut_tb`
 - **`target/Controller/programming_inputs/weight_matrix.txt`**: Input weight matrix file (used by program/verify benches)
 
+### `weight_pulse_lut.mem` (PROG repeat count)
+
+Entries are **R** (hex, one line per weight 0..15): on first PROG, the controller plays the macro train `M = pulse_train_total(TPROG, PULSE_NUM_PROG, PULSE_GAP)` **R** times with **`PULSE_GAP` HIZ between copies** (`pulse_total = R*M + (R-1)*PULSE_GAP`). Values below 1 are treated as 1. Re-PROG after verify mismatch uses a 1-cycle train. See `target/Controller/programming_inputs/weight_pulse_lut_table.txt`.
+
 ## Troubleshooting
 
 ### ModelSim Not Found

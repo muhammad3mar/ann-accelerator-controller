@@ -1,8 +1,13 @@
 # weight_pulse_lut_table.txt — human-readable copy of weight_pulse_lut.mem
-# PROG_WRITE pulse cycles for first program attempt (weights 0..15).
-# Reprogram (prog_retry_cnt > 0) always uses 1 cycle when USE_WEIGHT_PULSE_LUT is enabled.
 #
-# weight -> cycles (decimal)
+# Semantics (pulsed PROG): each entry R (1..15, clamped) is how many times the controller
+# plays the full macro train built from TPROG, PULSE_NUM_PROG, and PULSE_GAP (same as
+# non-LUT PROG). Between copies there are PULSE_GAP HIZ cycles so repeats are visible
+# on the pulses bus. Total PROG_WRITE cycles = R*M + (R-1)*PULSE_GAP with
+# M = pulse_train_total(TPROG, PULSE_NUM_PROG, PULSE_GAP).
+# Reprogram (prog_retry_cnt > 0) uses a 1-cycle train regardless of LUT.
+#
+# weight -> R (repeat count for first PROG)
 0  -> 2
 1  -> 5
 2  -> 3

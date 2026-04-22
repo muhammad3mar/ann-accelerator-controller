@@ -127,21 +127,19 @@ module controller_prog_verify_lut_tb;
     logic in_prog_core_phase;
     assign in_prog_core_phase = (pulses == PULSE_MODE_PROG) && (buf_reg_ctrl == CTRL_WEIGHT_READ);
 
-    // op_done mock
+    // op_done mock: DUT waits on op_done in PROG_SELECT, PROG_WAIT_ACK, ERASE_SELECT, ERASE_WAIT_ACK.
     int op_done_cnt;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             op_done <= 0;
             op_done_cnt <= 0;
         end else begin
-            if (in_prog_core_phase) begin
-                if (op_done_cnt >= controller_pkg::TPROG - 1) begin
-                    op_done <= 1;
-                    op_done_cnt <= 0;
-                end else begin
-                    op_done <= 0;
-                    op_done_cnt <= op_done_cnt + 1;
-                end
+            if (dut.state == S_PROGRAM && (dut.prog_state == PROG_SELECT || dut.prog_state == PROG_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
+            end else if (dut.state == S_ERASE && (dut.erase_state == ERASE_SELECT || dut.erase_state == ERASE_WAIT_ACK)) begin
+                op_done <= 1'b1;
+                op_done_cnt <= 0;
             end else if (busy && (pulses == 3'b001 || pulses == 3'b011 || pulses == 3'b100)) begin
                 if (op_done_cnt >= 3) begin
                     op_done <= 1;
@@ -285,14 +283,27 @@ module controller_prog_verify_lut_tb;
         addr = weight_addresses[weight_idx];
         packet = build_host_ann_word(wval, addr);
 
-        host_cmd = CMD_HIZ;
-        host_data = 0; @(posedge clk); @(posedge clk);
+        // Issue next packet immediately once controller is idle.
+        timeout = 0;
+        while (busy && timeout < 5000) begin
+            @(posedge clk);
+            timeout++;
+        end
+        if (timeout >= 5000) $error("Timeout waiting idle before weight %0d", weight_idx);
+
         host_data = packet;
         host_cmd = CMD_PROG;
         @(posedge clk);
         host_cmd = CMD_HIZ;
         host_data = 0;
-        @(posedge clk);
+
+        // Wait for command acceptance (busy rises), then operation completion (busy drops).
+        timeout = 0;
+        while (!busy && timeout < 5000) begin
+            @(posedge clk);
+            timeout++;
+        end
+        if (timeout >= 5000) $error("Timeout waiting busy high for weight %0d", weight_idx);
 
         timeout = 0;
         while (busy && timeout < 5000) begin
@@ -300,7 +311,6 @@ module controller_prog_verify_lut_tb;
             timeout++;
         end
         if (timeout >= 5000) $error("Timeout for weight %0d", weight_idx);
-        repeat(3) @(posedge clk);
     endtask
 
     //--------------------------------------------------------------------------

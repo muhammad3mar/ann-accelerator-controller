@@ -56,7 +56,7 @@ MODULES = {
         "verif_list": "verif/Controller/file_list/controller_verif_list.f",
         "rtl_dir": "source/Controller",
         "verif_dir": "verif/Controller",
-        "testbenches": ["controller_addr_pulse_tb", "controller_prog_verify_lut_tb", "parallel_interface_controller_integration_tb", "controller_host_erase_tb", "controller_inf_buffer_flow_tb", "controller_host_read_reorder_tb"]
+        "testbenches": ["controller_addr_pulse_tb", "controller_prog_verify_lut_tb", "controller_prog_verify_lut_10w_tb", "parallel_interface_controller_integration_tb", "controller_host_erase_tb", "controller_inf_buffer_flow_tb", "controller_host_read_reorder_tb"]
     },
     "Input_Buffer": {
         "rtl_list": "source/Input_Buffer/input_buffer_rtl_list.f",

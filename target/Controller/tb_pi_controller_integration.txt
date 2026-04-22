@@ -49,7 +49,7 @@ PASS 01_READ
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x0000  |  parallel_addr idx: blk=0 sub_blk=0 col=0 row=0
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 14 posedge cycles (then idle)
+  // DUT: controller busy for 22 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
   //   ann_core_word: exp=0x0c110101  saw_last_nonzero=0x0c110101  saw_match_exp=1
   // input_buffer after 02_PROG — buffer_reg[0:63], 8x8 row-major (hex):
@@ -79,7 +79,7 @@ PASS 02_PROG
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x0305  |  parallel_addr idx: blk=3 sub_blk=0 col=0 row=5
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 8 posedge cycles (then idle)
+  // DUT: controller busy for 9 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
   //   ann_core_word: exp=0x00810120  saw_last_nonzero=0x00810120  saw_match_exp=1
   // input_buffer after 03_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
@@ -169,7 +169,7 @@ PASS 05_READ
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x0108  |  parallel_addr idx: blk=1 sub_blk=0 col=1 row=0
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 13 posedge cycles (then idle)
+  // DUT: controller busy for 27 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
   //   ann_core_word: exp=0x0e210201  saw_last_nonzero=0x0e210201  saw_match_exp=1
   // input_buffer after 06_PROG — buffer_reg[0:63], 8x8 row-major (hex):
@@ -199,7 +199,7 @@ PASS 06_PROG
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x0240  |  parallel_addr idx: blk=2 sub_blk=1 col=0 row=0
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 7 posedge cycles (then idle)
+  // DUT: controller busy for 8 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
   //   ann_core_word: exp=0x00420101  saw_last_nonzero=0x00420101  saw_match_exp=1
   // input_buffer after 07_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
@@ -259,7 +259,7 @@ PASS 08_READ
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x01ff  |  parallel_addr idx: blk=1 sub_blk=3 col=7 row=7
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 13 posedge cycles (then idle)
+  // DUT: controller busy for 45 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
   //   ann_core_word: exp=0x0f288080  saw_last_nonzero=0x0f288080  saw_match_exp=1
   // input_buffer after 09_PROG — buffer_reg[0:63], 8x8 row-major (hex):
@@ -289,7 +289,7 @@ PASS 09_PROG
   //     rsrv[5:0] - blk[1:0] - sub_blk[1:0] - col[2:0] - row[2:0]
   //   address (hex): 0x00fc  |  parallel_addr idx: blk=0 sub_blk=3 col=7 row=4
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
-  // DUT: controller busy for 7 posedge cycles (then idle)
+  // DUT: controller busy for 8 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
   //   ann_core_word: exp=0x00188010  saw_last_nonzero=0x00188010  saw_match_exp=1
   // input_buffer after 10_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
