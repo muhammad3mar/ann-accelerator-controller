@@ -1,0 +1,375 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+% ---------- Colors ----------
+\definecolor{techblue}{RGB}{0,51,102}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,90,160}
+
+% ---------- Headers ----------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textcolor{techblue}{ANN Accelerator Controller}}
+\rhead{\textcolor{techblue}{User Manual}}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\color{techblue}\Large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\color{techblue}\large\bfseries}{\thesubsection}{0.6em}{}
+
+% ---------- Code style ----------
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  keywordstyle=\color{codekw}\bfseries,
+  columns=fullflexible,
+  showstringspaces=false
+}
+\lstdefinestyle{verilog}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  keywordstyle=\color{codekw}\bfseries,
+  morekeywords={module,input,output,logic,parameter,int,bit,string},
+  showstringspaces=false
+}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% ============================================================
+\begin{document}
+
+% ---------- Title Page ----------
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+{\color{techblue}\Huge\bfseries ANN Accelerator Controller\par}
+\vspace{0.5cm}
+{\Large User Manual\par}
+\vspace{0.3cm}
+{\large A SystemVerilog Controller for a Y-Flash Memristor Array\par}
+\vspace{2cm}
+\rule{\textwidth}{0.8pt}\par
+\vspace{0.6cm}
+{\large
+\begin{tabular}{rl}
+\textbf{Team:} & Mohammad Abu Ammar \& Lana Bakrieh \\[4pt]
+\textbf{Supervisor:} & Nir Ben-Haim \\[4pt]
+\textbf{Institution:} & Technion --- VLSI Laboratory \\
+\end{tabular}\par}
+\vspace{0.6cm}
+\rule{\textwidth}{0.8pt}\par
+\vfill
+{\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Project Goal \& Overview}
+
+The \textbf{ANN Accelerator Controller} is a digital control unit, written in
+SystemVerilog, that drives an Analog Neural Network (ANN) implemented on a
+\textbf{Y-Flash memristor crossbar array}. It acts as the bridge between a host
+processor and the analog in-memory-computing core.
+
+The controller accepts five commands from a host through a parallel interface
+and translates them into precisely timed \emph{pulse trains} that the analog
+array requires:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Programming} a quantized weight into a selected memristor cell.
+  \item \textbf{Verifying} the programmed value with a closed feedback loop and
+        automatically re-programming or erasing on mismatch.
+  \item \textbf{Erasing} a cell.
+  \item \textbf{Reading} a stored weight back from the array.
+  \item \textbf{Inference}: collecting an $8\times8$ input image into an input
+        buffer and streaming it bit-serially into the array for
+        matrix--vector multiplication.
+\end{itemize}
+
+The central design challenge --- and the project's main contribution --- is the
+\textbf{closed-loop program/verify algorithm}. Because memristor programming is
+analog and imprecise, the controller reads back each weight after programming.
+If the cell is \emph{under-programmed}, it re-applies program pulses (up to
+\texttt{MAX\_PROG\_RETRIES}); if it is \emph{over-programmed}, it erases the
+cell and retries. A lookup table (LUT) sets the number of program-pulse
+repetitions per target weight value, allowing weight-dependent pulse shaping.
+
+% ============================================================
+\section{Architecture Components}
+
+The system consists of three RTL modules and three supporting packages. The
+top-level module is \texttt{ann\_controller}.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{l l Y}
+\toprule
+\textbf{Role} & \textbf{Module name} & \textbf{Source file} \\
+\midrule
+Parallel Interface & \texttt{parallel\_interface} &
+  \texttt{rtl/Parallel\_Interface/parallel\_interface.sv} \\
+ANN Controller (top) & \texttt{ann\_controller} &
+  \texttt{rtl/Controller/controller.sv} \\
+Input Buffer & \texttt{input\_buffer} &
+  \texttt{rtl/Input\_Buffer/input\_buffer.sv} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Parallel Interface (\texttt{parallel\_interface})}
+Decodes the 32-bit host word \texttt{host\_data} into an 8-bit data byte and a
+16-bit address, passes through the 3-bit command \texttt{host\_cmd}, and asserts
+\texttt{valid} only when the command is active and the one-hot address tail is
+well formed. The host word layout is
+\texttt{host\_data[31:24]} = data byte and
+\texttt{host\_data[23:0]} = one-hot \{PE, SA, column, row\}.
+
+\subsection{ANN Controller (\texttt{ann\_controller})}
+The heart of the system. It implements a 9-state main FSM
+(\texttt{S\_IDLE, S\_RESET, S\_PROGRAM, S\_VERIFY, S\_ERASE, S\_READ,
+S\_COLLECT\_DATA, S\_COMPUTE, S\_RESULT}) plus three sub-FSMs for the
+\texttt{PROGRAM}, \texttt{VERIFY}, and \texttt{ERASE} sequences. It generates
+the 3-bit \texttt{pulses} mode bus and the packed 32-bit \texttt{ann\_core\_word}
+(data byte + one-hot address) toward the analog core, and orchestrates the
+input buffer during inference.
+
+\subsection{Input Buffer (\texttt{input\_buffer})}
+A $64\times8$-bit memory. During inference it is loaded with an $8\times8$
+image; during compute it outputs eight channels \texttt{D0--D7}, one bit per
+channel per cycle (bit-serial, LSB-first). During weight verification it returns
+the full byte at the addressed location.
+
+% ============================================================
+\section{Parameter Configuration}
+
+All defaults are defined in \texttt{controller\_pkg} and the supporting
+packages. The top module is parameterizable:
+
+\begin{lstlisting}[style=verilog]
+module ann_controller #(
+    parameter int ADDR_WIDTH            = controller_pkg::DEFAULT_ADDR_WIDTH,   // 8
+    parameter int WEIGHT_WIDTH          = controller_pkg::DEFAULT_WEIGHT_WIDTH, // 16
+    parameter bit USE_WEIGHT_PULSE_LUT  = 1'b1,
+    parameter string WEIGHT_PULSE_LUT_FILE =
+        "target/Controller/programming_inputs/weight_pulse_lut.mem"
+) ( ... );
+\end{lstlisting}
+
+\begin{longtable}{l l Y}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Description} \\
+\midrule
+\endhead
+\texttt{ADDR\_WIDTH}            & 8   & Host address width (default). \\
+\texttt{WEIGHT\_WIDTH}          & 16  & Weight data width (default). \\
+\texttt{USE\_WEIGHT\_PULSE\_LUT}& 1   & Enable LUT-driven program-pulse repeat count. \\
+\texttt{WEIGHT\_PULSE\_LUT\_FILE} & \emph{(path)} & \texttt{\$readmemh} LUT file: weight $\rightarrow$ repeat count. \\
+\midrule
+\multicolumn{3}{l}{\textit{Address map (\texttt{controller\_pkg}, total \texttt{WEIGHT\_ADDR\_WIDTH}=10)}} \\
+\texttt{BLOCK\_ID\_WIDTH}     & 2 & PE / block select (\texttt{address[9:8]}). \\
+\texttt{SUB\_BLOCK\_ID\_WIDTH}& 2 & Sub-array select (\texttt{address[7:6]}). \\
+\texttt{COL\_ID\_WIDTH}       & 3 & Column within sub-block (\texttt{address[5:3]}). \\
+\texttt{ROW\_ID\_WIDTH}       & 3 & Row within sub-block (\texttt{address[2:0]}). \\
+\midrule
+\multicolumn{3}{l}{\textit{Pulse generation (\texttt{controller\_pkg})}} \\
+\texttt{TREAD}  & 2 & READ burst width (clock cycles). \\
+\texttt{TPROG}  & 2 & PROGRAM burst width. \\
+\texttt{TERASE} & 2 & ERASE burst width. \\
+\texttt{TINF}   & 8 & INFERENCE burst width (min 8 for bit-serial). \\
+\texttt{PULSE\_GAP} & 1 & Idle (HiZ) cycles between bursts. \\
+\texttt{PULSE\_NUM\_*} & 1 & Number of bursts per operation. \\
+\texttt{MAX\_PROG\_RETRIES} & 3 & Re-PROG attempts before falling back to ERASE. \\
+\midrule
+\multicolumn{3}{l}{\textit{Buffer / array sizing}} \\
+\texttt{BUFFER\_SIZE}        & 64 & Input-buffer depth ($8\times8$ image). \\
+\texttt{BUFFER\_DATA\_WIDTH} & 8  & Buffer word width. \\
+\texttt{TOTAL\_WEIGHT\_LOCATIONS} & 1024 & $4\times4\times8\times8$ array cells. \\
+\texttt{DEFAULT\_NUM\_WEIGHTS} & 640 & Default $10\times64$ weight matrix. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================
+\section{Top-Level I/O Interface}
+
+The following table lists every port of the top-level module
+\texttt{ann\_controller} with its exact direction, bit-width, and function
+inferred from the RTL.
+
+\begin{longtable}{l c c Y}
+\caption{\texttt{ann\_controller} port list}\\
+\toprule
+\textbf{Signal} & \textbf{Dir} & \textbf{Width} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Signal} & \textbf{Dir} & \textbf{Width} & \textbf{Description} \\
+\midrule
+\endhead
+
+\multicolumn{4}{l}{\textit{Global}} \\
+\texttt{clk}    & In & 1 & System clock. \\
+\texttt{rst\_n} & In & 1 & Active-low asynchronous reset. \\
+\midrule
+
+\multicolumn{4}{l}{\textit{Controller $\leftrightarrow$ Parallel Interface}} \\
+\texttt{valid}   & In & 1  & Asserted when a command/data beat is ready. \\
+\texttt{data}    & In & 8  & Data byte from the parallel interface (weight/pixel payload). \\
+\texttt{address} & In & 16 & Decoded address \{reserved[15:10], block[9:8], sub\_block[7:6], col[5:3], row[2:0]\}. \\
+\texttt{cmd}     & In & 3  & Command (\texttt{CMD\_HIZ/READ/PROG/ERASE/INF}). \\
+\midrule
+
+\multicolumn{4}{l}{\textit{Controller $\leftrightarrow$ ANN Core}} \\
+\texttt{ann\_reset}        & Out & 1  & Reset pulse toward the ANN core (asserted in \texttt{S\_RESET}). \\
+\texttt{op\_done}          & In  & 1  & Core handshake: advances PROG/ERASE sub-FSMs. \\
+\texttt{ann\_core\_word}   & Out & 32 & Packed bus: [31:24] data byte, [23:0] one-hot \{PE,SA,col,row\}. \\
+\texttt{pulses}            & Out & 3  & Pulse-mode bus (HIZ/READ/PROG/ERASE/INF) gated by burst timing. \\
+\texttt{weight\_read\_data}& In  & 4  & Quantized weight read back from the memristor during VERIFY. \\
+\midrule
+
+\multicolumn{4}{l}{\textit{Controller $\leftrightarrow$ Input Buffer}} \\
+\texttt{buf\_reg\_add}    & Out & 6 & Buffer address. \\
+\texttt{buf\_reg\_ctrl}   & Out & 3 & Buffer control (\texttt{CTRL\_IDLE/DATA\_LOAD/COMPUTE/RESULT\_OUT/WEIGHT\_READ}). \\
+\texttt{buf\_read\_write} & Out & 1 & 1 = write to buffer, 0 = read. \\
+\texttt{buf\_bit\_sel}    & Out & 3 & Bit index 0--7 for bit-serial D0--D7 output (LSB-first). \\
+\texttt{buf\_data\_out}   & Out & 8 & Data written into the buffer (from host / parallel interface). \\
+\texttt{buf\_ready}       & In  & 1 & Buffer ready/valid flag. \\
+\texttt{buf\_data}        & In  & 8 & Full byte read from the buffer at the current address. \\
+\midrule
+
+\multicolumn{4}{l}{\textit{Status}} \\
+\texttt{busy} & Out & 1 & High whenever the controller is not in \texttt{S\_IDLE}. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Command Encoding}
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{l c Y}
+\toprule
+\textbf{Command} & \texttt{cmd[2:0]} & \textbf{Operation} \\
+\midrule
+\texttt{CMD\_HIZ}   & \texttt{000} & Idle / high-impedance, no pulses. \\
+\texttt{CMD\_READ}  & \texttt{001} & Read a weight from the addressed cell. \\
+\texttt{CMD\_PROG}  & \texttt{010} & Program a weight (LUT-shaped pulse train) then auto-verify. \\
+\texttt{CMD\_ERASE} & \texttt{011} & Erase the addressed cell. \\
+\texttt{CMD\_INF}   & \texttt{100} & Collect $8\times8$ data and run bit-serial inference. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Execution \& Simulation Guide}
+
+The project is driven by \texttt{scripts/run\_sim.py}, which wraps ModelSim's
+\texttt{vlog} (compile) and \texttt{vsim} (simulate). Run all commands from the
+project root.
+
+\subsection{Prerequisites}
+\begin{itemize}[leftmargin=1.4em]
+  \item ModelSim / QuestaSim ASE (Intel FPGA 17.0) with \texttt{vlog}/\texttt{vsim} on \texttt{PATH}.
+  \item Python 3.8+ (plus \texttt{numpy}, \texttt{scikit-learn} for stimulus generation).
+\end{itemize}
+
+\subsection{List available modules and testbenches}
+\begin{lstlisting}[style=shell]
+python scripts/run_sim.py list
+\end{lstlisting}
+
+\subsection{Compile}
+\begin{lstlisting}[style=shell]
+# RTL only
+python scripts/run_sim.py compile -m Controller -t rtl
+# Full verification set (RTL + testbenches)
+python scripts/run_sim.py compile -m Controller -t verif
+\end{lstlisting}
+
+\subsection{Run a single testbench (console / batch)}
+\begin{lstlisting}[style=shell]
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
+\end{lstlisting}
+
+\subsection{Run with GUI + waveforms}
+Passing \texttt{--do-file} opens the ModelSim GUI and loads the wave layout.
+Use the \texttt{*\_waves\_tb} wrapper testbench with its matching \texttt{.do}:
+\begin{lstlisting}[style=shell]
+python scripts/run_sim.py sim -m Controller \
+  -tb controller_prog_verify_lut_tb_waves_tb \
+  --do-file tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
+\end{lstlisting}
+
+\subsection{Run all testbenches for a module}
+\begin{lstlisting}[style=shell]
+python scripts/run_sim.py run_all -m Controller
+python scripts/run_sim.py run_all -m Input_Buffer -m Parallel_Interface
+\end{lstlisting}
+
+\subsection{Clean generated artifacts}
+\begin{lstlisting}[style=shell]
+python scripts/run_sim.py clean -a              % work/ + target/ outputs
+python scripts/run_sim.py clean -w              % work/ only
+python scripts/run_sim.py clean -t -m Controller
+\end{lstlisting}
+
+\subsection{Detailed runbooks}
+Per-testbench compile/run commands (batch and GUI wave) are maintained under
+\texttt{docs/verification/}:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{TESTBENCH\_CATALOG.md} --- what each testbench checks
+  \item \texttt{REGULAR\_TESTBENCH\_RUNBOOK.md} --- batch (\texttt{vsim -c}) runs
+  \item \texttt{WAVE\_TESTBENCH\_RUNBOOK.md} --- GUI + \texttt{--do-file} wave runs
+\end{itemize}
+
+\subsection{Available testbenches}
+\begin{longtable}{l Y}
+\toprule
+\textbf{Module} & \textbf{Testbenches} \\
+\midrule
+\endhead
+Controller & \texttt{controller\_addr\_pulse\_tb},
+             \texttt{controller\_prog\_verify\_lut\_tb},
+             \texttt{controller\_prog\_verify\_lut\_10w\_tb},
+             \texttt{parallel\_interface\_controller\_integration\_tb},
+             \texttt{controller\_host\_erase\_tb},
+             \texttt{controller\_inf\_buffer\_flow\_tb},
+             \texttt{controller\_host\_read\_reorder\_tb} \\
+\midrule
+Input\_Buffer & \texttt{input\_buffer\_bit\_serial\_tb},
+                \texttt{input\_buffer\_reset\_behavior\_tb},
+                \texttt{input\_buffer\_full\_overwrite\_tb} \\
+\midrule
+Parallel\_Interface & \texttt{parallel\_interface\_extract\_tb} \\
+\bottomrule
+\end{longtable}
+
+\vspace{1em}
+\noindent\textbf{Output location.} Reports and logs are written under
+\texttt{target/<module>/} (e.g.
+\texttt{target/Controller/prog/prog\_verify\_report.txt}).
+
+\end{document}

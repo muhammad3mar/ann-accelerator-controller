@@ -1,0 +1,191 @@
+% =============================================================================
+% Chapter 3 --- System Architecture
+% =============================================================================
+
+\chapter{System Architecture}
+\label{ch:architecture}
+
+This chapter presents the controller stack at the block-diagram level:
+the three RTL modules, the transaction-word format they agree on, and
+the host command set. Module-internal behavior --- FSM state graphs,
+pulse-train arithmetic, the LUT-driven programming path --- is deferred
+to \Cref{ch:rtl}.
+
+\section{Top-Level Organization}
+\label{sec:arch-topology}
+
+The stack sits between a host CPU and the analog Y-Flash core. The host
+presents a 32-bit data payload and a multi-bit command token; the
+controller decodes that traffic, maintains the closed-loop programming
+and verification policy, stages inference pixels, and drives the analog
+core over a structured output word and a pulse-mode bus that selects the
+active operation (read, program, erase, or inference). The three-module
+organization is shown in \Cref{fig:top-level-block-diagram}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{example-image.png}
+    \caption{Top-level block diagram. The host drives a transaction
+        word and a command token into the combinational
+        \emph{Parallel Interface}, which qualifies the packet and
+        produces a validated bus consumed by the \emph{ANN Controller}.
+        The controller sequences commands toward the analog ANN core
+        over a packed core word and a pulse-mode bus, and it
+        simultaneously drives the \emph{Input Buffer} that stores
+        inference pixels and the expected-weight nibble used during
+        verify. A single status bit from the core (\emph{op\_done})
+        closes the loop in the program and erase sub-FSMs.}
+    \label{fig:top-level-block-diagram}
+\end{figure}
+
+\paragraph{Parallel Interface.}
+A purely combinational host decoder. It slices the host payload into a
+data byte and a one-hot address tail, decodes the tail into a compact
+packed address, forwards the command token, and computes a single
+\emph{valid} qualifier that asserts only when the command is not idle
+\emph{and} every field of the one-hot tail is structurally legal.
+Invalid packets never propagate past the interface, so the controller
+can assume legal addressing whenever \emph{valid} is high. Lifting all
+packet-level validation into a single combinational stage concentrates
+the protocol contract in one location and keeps the downstream FSM
+simpler.
+
+\paragraph{ANN Controller.}
+The only sequential module in the stack. The controller hosts a
+nine-state main FSM (idle, reset, program, verify, read, erase, collect,
+compute, result) plus three cooperating sub-FSMs that handle programming,
+verification, and erase. Two registered captures latch the
+host-supplied address and payload on the transition out of idle, so
+multi-cycle operations are immune to subsequent host activity. One large
+combinational block drives every module output; two clocked blocks
+register the FSM states, counters, and captured registers.
+
+\paragraph{Input Buffer.}
+A synchronous register-array store that plays two roles. During
+inference, it accumulates a pixel window written during \emph{collect}
+cycles and exposes the pixels through eight parallel bit-serial lanes
+during \emph{compute}. The intended inference workload is MNIST digit
+classification, whose $28\times28$ grayscale images are streamed eight
+pixels per beat through the buffer, so the window width and lane count
+are sized for one MNIST row at a time. During programming, the same
+buffer holds the expected-weight nibble for each cell so the verify
+comparator can fetch it without an extra host transaction. A single
+physical store serving both roles saves area and simplifies addressing
+inside the FSM.
+
+\section{Host-to-Core Transaction Word}
+\label{sec:arch-word}
+
+The 32-bit transaction word combines a payload byte with four
+concatenated one-hot address fields, summarized in
+\Cref{tab:ann-core-word-fields} and illustrated in
+\Cref{fig:ann-core-word-layout}. The same layout is used at the host
+input and the core output; internally the controller operates on a
+compact 16-bit packed binary representation of the same address.
+
+\begin{table}[h]
+    \centering
+    \caption{Fields of the host-to-core transaction word.}
+    \label{tab:ann-core-word-fields}
+    \begin{tabularx}{\linewidth}{l l l X}
+        \toprule
+        \textbf{Bits} & \textbf{Width} & \textbf{Field} & \textbf{Meaning} \\
+        \midrule
+        High byte & 8 & Payload &
+            Quantized weight nibble (lower half) on programming, or one
+            pixel byte on inference. \\
+        Upper nibble  & 4 & \textit{PE} (one-hot) &
+            Processing-element / block select. \\
+        Lower nibble  & 4 & \textit{SA} (one-hot) &
+            Sub-array / sub-block select. \\
+        Upper byte (low) & 8 & \textit{col\_ID} (one-hot) &
+            Column select within the sub-block. \\
+        Lower byte & 8 & \textit{row\_ID} (one-hot) &
+            Row select within the sub-block. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{example-image.png}
+    \caption{Pictorial layout of the 32-bit transaction word and the
+        internal round-trip used by the controller: the host one-hot
+        tail is decoded into a 16-bit packed binary address, the FSM
+        captures and operates on the packed address, and the outbound
+        core word is rebuilt by single-bit left-shifts into the one-hot
+        domain just before reaching the core.}
+    \label{fig:ann-core-word-layout}
+\end{figure}
+
+\paragraph{Why one-hot at the boundary.}
+The one-hot encoding at the host interface mirrors how the analog core
+physically selects a cell: only the row and column whose deselect signal
+is released conduct, while every other device in the array is held in
+its undisturbed state (\Cref{sec:bg-yflash}). Aligning the host-visible
+transaction format with the device-level selection mechanism allows the
+address to pass through the stack with minimal transformation while
+still being structurally validated at the boundary.
+
+\section{Command Set}
+\label{sec:arch-commands}
+
+The host command tokens are enumerated in \Cref{tab:cmd-set}. Each
+command class drives a specific main-FSM branch and a distinct pulse-mode
+encoding for the duration of the active phase.
+
+\begin{table}[h]
+    \centering
+    \caption{Host command set. Each command class is encoded as a 3-bit
+        token on the host \texttt{cmd} input; the same 3-bit value is
+        re-used at the core-facing pulse-mode bus, so command decode at
+        the boundary and pulse-mode generation at the core share a
+        single encoding space.}
+    \label{tab:cmd-set}
+    \begin{tabularx}{\linewidth}{l c X}
+        \toprule
+        \textbf{Command} & \textbf{Encoding} & \textbf{Meaning} \\
+        \midrule
+        \texttt{HIZ}  & \texttt{3'b000} &
+            Idle. Host bus is inactive; no transaction starts. The same
+            encoding drives the pulse-mode bus to high impedance between
+            bursts. \\
+        \texttt{READ} & \texttt{3'b001} &
+            Read the addressed cell over a read pulse train. \\
+        \texttt{PROG} & \texttt{3'b010} &
+            Program the addressed cell with the quantized weight in the
+            payload; enters the closed-loop program--verify--erase
+            policy. \\
+        \texttt{ERASE}& \texttt{3'b011} &
+            Host-initiated erase of the addressed cell. Distinct from
+            the verify-initiated erase taken on an over-programmed
+            readback. \\
+        \texttt{INF}  & \texttt{3'b100} &
+            Inference. Pixel bytes are streamed over consecutive beats;
+            the controller stages them in the buffer and then runs a
+            compute phase. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Module Partitioning Philosophy}
+\label{sec:arch-partitioning}
+
+The three-module decomposition is a deliberate architectural partition,
+not a code-organization choice. Each module has a single responsibility
+with a narrow, structurally validated interface: the interface is
+purely combinational and is the only module that touches host-side
+encoding; the controller is the only module that contains state, so
+every sequential decision in the stack is concentrated in one place;
+the input buffer is a synchronous data store with no knowledge of the
+high-level operation, exposing a small mode-qualified port set.
+
+The benefit is twofold. First, each module can be verified in isolation
+against a focused contract --- one-hot validity for the interface, FSM
+transition correctness for the controller, output-and-retention checks
+for the buffer --- before integration. Second, replacing or extending
+any one module in a future revision (adding a serial host interface,
+pipelining the controller, swapping the register array for SRAM) does
+not require touching the other two. Bit-level conventions are
+centralized in per-module SystemVerilog packages that the testbenches
+also reuse, so the protocol is captured in exactly one place.

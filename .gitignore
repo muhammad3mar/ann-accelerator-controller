@@ -1,5 +1,74 @@
-# ModelSim console transcripts from scripts/run_sim.py (sim / run_all)
-target/**/*_tb_log.txt
-wlf*
+# ============================================================
+#  ANN Accelerator Controller - .gitignore
+# ============================================================
+
+# ---- ModelSim / QuestaSim ----
+work/
+**/work/
 *.wlf
+wlf*
+vsim.wlf
 transcript
+*.vstf
+vish_stacktrace.vstf
+tcl_stacktrace.txt
+*_stacktrace.*
+.modelsim
+modelsim.ini
+*.mti
+*.qdb
+*.qpg
+*.qtl
+_info
+_lib*.qdb
+_lib*.qpg
+_lib*.qtl
+
+# ---- Vivado / Xilinx ----
+*.jou
+*.str
+*.pb
+.Xil/
+vivado*.backup.*
+*.cache/
+*.runs/
+*.hw/
+*.ip_user_files/
+*.sim/
+
+# ---- Generated simulation logs / reports ----
+target/**/*_tb_log.txt
+target/**/*_log.txt
+results/**/*_log.txt
+
+# ---- Academic report (local PDFs / LaTeX; not versioned) ----
+report/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*.csv
+
+# ---- LaTeX build artifacts ----
+*.aux
+*.lof
+*.lot
+*.toc
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

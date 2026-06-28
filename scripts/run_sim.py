@@ -24,7 +24,7 @@ Examples:
     python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb
 
     # ModelSim GUI + waves (--do-file implies GUI; path is relative to project root)
-    python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
+    python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
 
     # Clean all generated files
     python scripts/run_sim.py clean -a
@@ -52,24 +52,24 @@ VSIM_CMD = "vsim"
 # Module definitions
 MODULES = {
     "Controller": {
-        "rtl_list": "source/Controller/controller_rtl_list.f",
-        "verif_list": "verif/Controller/file_list/controller_verif_list.f",
-        "rtl_dir": "source/Controller",
-        "verif_dir": "verif/Controller",
+        "rtl_list": "rtl/Controller/controller_rtl_list.f",
+        "verif_list": "tb/Controller/file_list/controller_verif_list.f",
+        "rtl_dir": "rtl/Controller",
+        "verif_dir": "tb/Controller",
         "testbenches": ["controller_addr_pulse_tb", "controller_prog_verify_lut_tb", "controller_prog_verify_lut_10w_tb", "parallel_interface_controller_integration_tb", "controller_host_erase_tb", "controller_inf_buffer_flow_tb", "controller_host_read_reorder_tb"]
     },
     "Input_Buffer": {
-        "rtl_list": "source/Input_Buffer/input_buffer_rtl_list.f",
-        "verif_list": "verif/Input_Buffer/file_list/input_buffer_verif_list.f",
-        "rtl_dir": "source/Input_Buffer",
-        "verif_dir": "verif/Input_Buffer",
+        "rtl_list": "rtl/Input_Buffer/input_buffer_rtl_list.f",
+        "verif_list": "tb/Input_Buffer/file_list/input_buffer_verif_list.f",
+        "rtl_dir": "rtl/Input_Buffer",
+        "verif_dir": "tb/Input_Buffer",
         "testbenches": ["input_buffer_bit_serial_tb", "input_buffer_reset_behavior_tb", "input_buffer_full_overwrite_tb"]
     },
     "Parallel_Interface": {
-        "rtl_list": "source/Parallel_Interface/parallel_interface_rtl_list.f",
-        "verif_list": "verif/Parallel_Interface/file_list/parallel_interface_verif_list.f",
-        "rtl_dir": "source/Parallel_Interface",
-        "verif_dir": "verif/Parallel_Interface",
+        "rtl_list": "rtl/Parallel_Interface/parallel_interface_rtl_list.f",
+        "verif_list": "tb/Parallel_Interface/file_list/parallel_interface_verif_list.f",
+        "rtl_dir": "rtl/Parallel_Interface",
+        "verif_dir": "tb/Parallel_Interface",
         "testbenches": ["parallel_interface_extract_tb"]
     }
 }
@@ -398,7 +398,7 @@ def main():
     sim_parser.add_argument('--do-file',
                            default=None,
                            metavar='PATH',
-                           help='Optional ModelSim DO/TCL script (e.g. verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do). '
+                           help='Optional ModelSim DO/TCL script (e.g. tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do). '
                                 'Implies GUI. Path is relative to project root.')
     sim_parser.add_argument('-d', '--duration',
                            help='Simulation duration (e.g., 1000ns)')

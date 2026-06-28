@@ -1,0 +1,114 @@
+% =============================================================================
+% Chapter 1 --- Introduction
+% =============================================================================
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Motivation: The Memory Wall and In-Memory Computing}
+\label{sec:intro-motivation}
+
+The energy and latency costs of moving data between memory and arithmetic
+units dominate modern computing workloads, ANN inference and training
+foremost among them. This \emph{memory wall} is intrinsic to any
+architecture that keeps storage and computation
+separate~\cite{Ielmini2018RRAM, Verma2019IMC, Sebastian2020IMC}, and the
+penalty is largest for ANN workloads whose dominant kernel ---
+matrix--vector multiplication (MVM) over large weight matrices --- is
+data-movement-bound.
+
+\emph{In-memory computing} (IMC) confronts the bottleneck by performing
+the computation directly inside the memory array, exploiting both the
+physical properties of the device and the parallelism of array-level
+organization~\cite{Sebastian2020IMC, Verma2019IMC}. Non-volatile
+resistive-switching devices --- RRAM, PCM, and floating-gate memristors
+--- can store a quantized synaptic weight as a programmable conductance,
+turning a 2D crossbar into a one-shot MVM
+engine~\cite{Ielmini2018RRAM, Wang2022YFlash}.
+
+\section{Project Context and Scope}
+\label{sec:intro-context}
+
+This report documents the Technion VLSI Laboratory final project
+\textbf{``Design Controller for an Artificial Neural Network (ANN)
+Accelerator and its Peripherals''}. The project addresses the digital
+control layer that surrounds an analog IMC core: a controller that
+decodes host traffic, sequences program, read, erase, and inference
+operations, and drives an analog ANN core based on Y-Flash floating-gate
+memristors through a packed transaction word and a multi-bit pulse-mode
+bus. The target inference workload for the accelerator is image
+classification on the MNIST dataset --- a standard benchmark of
+$28\times28$ grayscale images of handwritten digits ($0$--$9$), with
+each pixel quantized to one byte. The $784$ input pixels of an MNIST
+image are streamed eight at a time into the input buffer
+(\Cref{sec:rtl-buffer}) and consumed by the analog core through eight
+bit-serial lanes, so the choice of MNIST sets the size of the
+per-cycle activation window and the bit-width of the controller's
+collect/compute datapath.
+
+The design is motivated by a direct consequence of the device physics: a
+single \emph{write-once} operation cannot be relied upon, because
+device-to-device and cycle-to-cycle variability displace the resulting
+conductance from the target. A closed-loop
+\emph{program--verify--(re-program or erase)} control policy is therefore
+required to drive stored weights toward their intended
+values~\cite{Ielmini2018RRAM, Sebastian2020IMC, Wang2022YFlash}. The
+central piece of digital control is consequently a hierarchical FSM that
+mediates between the host and the analog core and that implements this
+recovery logic. The project scope is confined to RTL implementation and
+functional verification; netlist generation, timing closure, and
+power/area analysis are out of scope.
+
+\section{Contributions}
+\label{sec:intro-contributions}
+
+The engineering contributions of this work are organized along three
+axes:
+
+\begin{itemize}
+    \item \textbf{A controller-centric RTL architecture}, factored into a
+          combinational host interface, a hierarchical FSM controller with
+          three cooperating sub-FSMs for programming, verification, and
+          erase, and a synchronous input buffer that stages inference
+          pixels and stores expected weights for the verify path. The
+          controller implements a data-driven pulse-shaping mechanism in
+          which the first programming attempt for each cell is derived
+          from a look-up table (LUT) indexed by the expected weight.
+    \item \textbf{A closed-loop recovery policy} that resolves the
+          write--verify problem at the digital control layer. After every
+          programming attempt the controller reads the cell back,
+          compares the readback against the expected weight, and branches
+          into a short retry pulse train (under-programmed), an erase
+          followed by reprogramming (over-programmed, or after retry
+          exhaustion), or termination on a successful verify.
+    \item \textbf{A directed verification environment} that exercises
+          this recovery policy without access to the physical analog
+          core. The environment models the memristor array with a
+          behavioral shadow weight matrix, generates an analog-side
+          handshake that follows the controller's own sub-FSM state, and
+          deliberately injects under- and over-programmed readbacks
+          during the verify window so that the recovery branches are
+          observed in simulation. This is the methodological idea that
+          lets the project deliver high confidence in the RTL prior to
+          integration with the real analog ANN.
+\end{itemize}
+
+\section{Report Organization}
+\label{sec:intro-organization}
+
+\Cref{ch:background} reviews IMC, the Y-Flash device, and the
+write--verify problem that motivates the controller architecture.
+\Cref{ch:architecture} presents the three-module stack, the transaction
+word, and the host command set. \Cref{ch:rtl} is the technical heart of
+the report: each module is described as an architectural unit, with
+emphasis on the main FSM, the three sub-FSMs, and the LUT-based pulse
+shaper. \Cref{ch:verification} documents the verification strategy and
+the behavioral mock plus fault-injection methodology.
+\Cref{ch:results} consolidates the simulation evidence.
+\Cref{ch:limitations} catalogs the limitations of the present work and
+proposes a roadmap for follow-on verification. \Cref{ch:conclusion}
+closes the report. Comprehensive supporting material --- full FSM
+diagrams, module port tables, addressing/packing conventions, pulse
+timing arithmetic, testbench mechanics, and RTL source listings --- is
+collected in the project repository (see Supplementary Material at the
+end of the report).

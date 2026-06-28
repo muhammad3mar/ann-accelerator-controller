@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // Compact PROG/VERIFY report (10 weights)
-// idx0 equal | idx1 read< | idx2 read> | idx3-4,6-9 happy | idx5 max re-PROG (prog_retry_cnt) -> ERASE
+// idx0 equal | idx1 read< | idx2 read> | idx3-4,6-9 happy | idx5 force ERASE-retry exhaustion flag
 //------------------------------------------------------------------------------
   PASS idx=0 addr=0x0000 weight=2
   PASS idx=1 addr=0x0008 weight=2

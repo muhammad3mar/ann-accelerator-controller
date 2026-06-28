@@ -1,0 +1,754 @@
+% =============================================================================
+% Chapter 4 --- RTL Module Design
+% =============================================================================
+
+\chapter{RTL Module Design}
+\label{ch:rtl}
+
+This chapter describes each module as an architectural unit: what it must
+do, how its datapath and control logic are organized to do it, and the
+trade-offs behind each major decision. The emphasis is on the
+\emph{hardware block flow} (e.g.\ \texttt{PROG}~$\rightarrow$
+\texttt{VERIFY}~$\rightarrow$ \texttt{ERASE}~$\rightarrow$ \texttt{RE-PROG})
+that implements the closed-loop recovery policy. Cycle-accurate transition
+equations, complete state graphs, and port lists are documented in the
+project repository (see Supplementary Material).
+
+\section{Parallel Interface}
+\label{sec:rtl-pi}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{pi_io_block.png}
+    \caption{Parallel Interface I/O block diagram. The module exposes a
+        host-side port set (\signame{host\_data}, \signame{host\_cmd})
+        and a controller-side port set (\signame{address},
+        \signame{data}, \signame{cmd}, \signame{valid}); all signals are
+        combinational, so the entire block can be timed as a single
+        decode stage.}
+    \label{fig:pi-io-block}
+\end{figure}
+
+The parallel interface is a purely combinational host decoder. It slices
+the host packet into a payload byte, a forwarded command token, a packed
+binary address, and a single qualification bit \emph{valid}. \emph{valid}
+asserts only when the host command is non-idle \emph{and} each of the four
+one-hot fields (\textit{PE}, \textit{SA}, \textit{col\_ID},
+\textit{row\_ID}) is \emph{strictly} one-hot --- all-zero and multi-hot
+patterns are both rejected. \Cref{fig:host-address-split} shows how the
+32-bit host transaction word is sliced at the interface boundary, and
+\Cref{fig:translated-address} shows the packed binary address that the
+downstream controller actually sees.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{host_address_split.png}
+    \caption{32-bit host transaction word split. The high byte carries
+        the payload (weight nibble or pixel byte); the remaining
+        24~bits are partitioned into four concatenated one-hot fields
+        --- \textit{PE} (4~bits), \textit{SA} (4~bits), \textit{col\_ID}
+        (8~bits), and \textit{row\_ID} (8~bits) --- each of which must
+        be \emph{strictly} one-hot for the interface to assert
+        \signame{valid}.}
+    \label{fig:host-address-split}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{translated_address.png}
+    \caption{Translated, packed address format passed to the controller.
+        Each one-hot field of the host word is reduced to its binary
+        index, and the four indices are concatenated into a 16-bit
+        packed address: \textit{PE} occupies bits $[15{:}12]$,
+        \textit{SA} bits $[11{:}8]$, \textit{col\_ID} bits $[7{:}4]$,
+        and \textit{row\_ID} bits $[3{:}0]$. Storage and arithmetic
+        inside the controller use this packed form; the one-hot
+        encoding is rebuilt by single-bit left-shifts only at the
+        core-facing output.}
+    \label{fig:translated-address}
+\end{figure}
+
+Concentrating packet validation in a single combinational stage is a
+deliberate decision: it lifts the entire ``what if the address is illegal''
+class of edge cases out of the downstream FSM, leaving the controller free
+to assume single-cell selection whenever it begins a transaction. The tail
+decoder reduces each one-hot field to its binary index in a single
+combinational pass, producing a compact 16-bit packed address that the
+controller stores and operates on internally. The one-hot form is rebuilt
+by a single-bit left-shift per field at the controller output, only at the
+very last step before the core.
+
+\paragraph{Why translate to packed binary.}
+The translation pays for itself three ways. \emph{Storage}: a binary index
+needs 2--3 bits where the one-hot field needs 4--8, so the captured
+address register and every downstream counter shrinks accordingly.
+\emph{Arithmetic}: verify-side comparators, buffer addressing, and
+internal counters treat the cell index as an integer, which is a few bits
+of slicing on the packed form versus non-trivial encoders interspersed
+through the FSM on the one-hot form. \emph{Validation as a one-time
+event}: once the boundary has accepted the packet, the controller can
+assume structural legality and does not re-check.
+
+\section{ANN Controller}
+\label{sec:rtl-controller}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{controller_io_block.png}
+    \caption{ANN Controller I/O block diagram. Host-side inputs
+        (\signame{address}, \signame{data}, \signame{cmd},
+        \signame{valid}) arrive pre-validated from the parallel
+        interface; analog-side inputs (\signame{op\_done},
+        \signame{weight\_read\_data}) close the program/erase and
+        verify loops. The controller emits the packed core word
+        (\signame{addr\_out}, \signame{data\_out}), the three-bit
+        pulse-mode bus (\signame{pulses}), the buffer-control port
+        set, and a small bank of status flags
+        (\signame{erase\_retry\_exhausted},
+        \signame{verify\_failed}).}
+    \label{fig:controller-io-block}
+\end{figure}
+
+As mentioned earlier (\Cref{sec:arch-topology}), the controller is the
+only sequential block in the stack: the parallel interface decodes
+combinationally and the input buffer is a passive register-array store,
+so every multi-cycle decision in the system --- command sequencing,
+closed-loop recovery, pulse-train shaping --- is concentrated in this
+module. It is built around a central combinational block that drives
+all module outputs and produces every next-state value, plus two
+clocked blocks that register the main FSM state, the sub-FSM states,
+the pulse counters, and the captured host bus. The ``one big
+combinational block, two clocked blocks'' style gives the synthesis
+tool a single coherent picture of next-state and output logic and keeps
+the timing of every output predictable from the same source.
+
+\subsection{Registered Capture of Host Data}
+\label{sec:rtl-controller-capture}
+
+The host-supplied address and payload byte are latched on the transition
+out of idle. Outside that single transition, both registers retain their
+values, so every multi-cycle state (program, verify, read, erase) operates
+on a stable snapshot of the transaction and is immune to subsequent host
+activity. The inference path is the only deliberate exception: during
+\texttt{COLLECT}, the live host data byte is forwarded so that the host
+can stream a sequence of pixel bytes across consecutive beats.
+
+\subsection{Address Round-Trip and Payload Multiplexing}
+\label{sec:rtl-controller-addr}
+
+When the controller is active it decomposes the captured packed address
+back into the four binary indices and rebuilds the outbound transaction
+word combinationally: a single-bit left-shift by each index produces the
+four one-hot fields the analog core expects. In idle the outbound word is
+forced to zero so that the core sees a quiet bus between operations. The
+payload byte multiplexer selects the registered byte during
+program/verify/read/erase (so the same value is presented for the entire
+multi-cycle operation), the live host byte during the collect phase of
+inference, and zero in every other state.
+
+\subsection{Main FSM: Hardware Block Flow}
+\label{sec:rtl-controller-mainfsm}
+
+The main FSM has nine states. The combinational block applies a uniform
+set of default outputs and then overrides them per-state in a
+\sv{unique case} body, so that every state has a single, well-defined
+set of bus values. The architectural flow is presented in two
+complementary views: \Cref{fig:top-level-fsm} isolates the command-decode
+decision taken in \texttt{S\_IDLE} (which selects the operation branch),
+and \Cref{fig:main-fsm-body} shows the full set of nine states together
+with the closed-loop recovery policy that links them. Cycle-by-cycle
+transition rules are catalogued in the repository.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{top_level_fsm.png}
+    \caption{Command decode and state routing from \texttt{S\_IDLE}.
+        While \signame{valid} is low or \signame{cmd} equals
+        \texttt{CMD\_HIZ}, the FSM holds in \texttt{S\_IDLE}; otherwise
+        a \sv{unique case} on \signame{cmd} routes into exactly one
+        operation branch (\texttt{S\_PROGRAM}, \texttt{S\_ERASE},
+        \texttt{S\_READ}, or \texttt{S\_COLLECT\_DATA}).}
+    \label{fig:top-level-fsm}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Top-level command decode from \texttt{S\_IDLE}. Each branch
+        is entered combinationally on the first cycle that
+        \signame{valid} is high; subsequent transitions of the
+        destination state are documented in \Cref{tab:main-fsm-states}.}
+    \label{tab:top-level-fsm-states}
+    \begin{tabularx}{\linewidth}{l X X}
+        \toprule
+        \textbf{State} & \textbf{Purpose} &
+            \textbf{Transition Condition \& Next State} \\
+        \midrule
+        \texttt{S\_IDLE} &
+            Quiescent; combinationally decodes \signame{cmd} when
+            \signame{valid} is asserted, latches the host address and
+            payload, and routes into the matching operation branch. &
+            \signame{!valid} or \texttt{CMD\_HIZ} $\rightarrow$
+            \texttt{S\_IDLE}; \texttt{CMD\_PROG} $\rightarrow$
+            \texttt{S\_PROGRAM}; \texttt{CMD\_ERASE} $\rightarrow$
+            \texttt{S\_ERASE}; \texttt{CMD\_READ} $\rightarrow$
+            \texttt{S\_READ}; \texttt{CMD\_INF} $\rightarrow$
+            \texttt{S\_COLLECT\_DATA}. \\
+        \texttt{S\_PROGRAM} (entry) &
+            Closed-loop programming branch; runs the program sub-FSM
+            and hands off to verify on completion. &
+            See \Cref{tab:main-fsm-states}. \\
+        \texttt{S\_ERASE} (entry) &
+            Erase branch; runs the erase sub-FSM. Host/verify flag
+            distinguishes host-initiated from verify-initiated entry. &
+            See \Cref{tab:main-fsm-states}. \\
+        \texttt{S\_READ} (entry) &
+            Single-cell read branch; drives the read pulse train. &
+            See \Cref{tab:main-fsm-states}. \\
+        \texttt{S\_COLLECT\_DATA} (entry) &
+            Inference branch; streams pixel bytes into the buffer and
+            advances to compute and result. &
+            See \Cref{tab:main-fsm-states}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{main_fsm.png}
+    \caption{The 9 states and the closed-loop recovery policy. Edges
+        out of \texttt{S\_VERIFY} and \texttt{S\_ERASE} summarize the
+        decisions taken in the sub-FSMs --- match, under-programmed,
+        over-programmed, retry-exhausted --- which implement the
+        \texttt{PROG}~$\rightarrow$~\texttt{VERIFY}~$\rightarrow$
+        \texttt{ERASE}~$\rightarrow$~\texttt{RE-PROG} recovery policy.}
+    \label{fig:main-fsm-body}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Main-FSM states. The
+        \texttt{PROG}~$\rightarrow$~\texttt{VERIFY}~$\rightarrow$~\texttt{ERASE}~$\rightarrow$~\texttt{RE-PROG}
+        recovery policy is implemented by the branches out of
+        \texttt{S\_VERIFY} and \texttt{S\_ERASE}; sub-FSM-internal
+        sequencing is documented in
+        \Cref{tab:prog-fsm-states,tab:verify-fsm-states,tab:erase-fsm-states}.}
+    \label{tab:main-fsm-states}
+    \begin{tabularx}{\linewidth}{l X X}
+        \toprule
+        \textbf{State} & \textbf{Purpose} &
+            \textbf{Transition Condition \& Next State} \\
+        \midrule
+        \texttt{S\_IDLE} &
+            Quiescent; decodes host command and latches captured
+            address/payload on the transition out of idle. &
+            \signame{!valid} or \texttt{CMD\_HIZ} $\rightarrow$
+            \texttt{S\_IDLE}; otherwise routes per
+            \Cref{tab:top-level-fsm-states}. \\
+        \texttt{S\_RESET} &
+            One-cycle pulse to the core-reset output; currently
+            unreachable from idle and reserved as the attachment point
+            for a future global-reset command
+            (\Cref{ch:limitations}). &
+            Unconditional $\rightarrow$ \texttt{S\_IDLE}. \\
+        \texttt{S\_PROGRAM} &
+            Drives the address onto the core word and runs the program
+            sub-FSM through its physical phases (\texttt{HIZ},
+            \texttt{SELECT}, \texttt{WRITE}, \texttt{WAIT\_ACK},
+            \texttt{COMPLETE}). &
+            On \texttt{PROG\_COMPLETE} $\rightarrow$ \texttt{S\_VERIFY}
+            (the closed-loop entry to verify). \\
+        \texttt{S\_VERIFY} &
+            Holds the buffer in weight-read mode and runs the verify
+            sub-FSM; the \texttt{CHECK} state compares readback against
+            the expected weight. &
+            Match $\rightarrow$ \texttt{S\_IDLE};
+            under-programmed and retries available $\rightarrow$
+            \texttt{S\_PROGRAM} (nudge retry);
+            under-programmed and retries exhausted $\rightarrow$
+            \texttt{S\_ERASE} (verify flag set);
+            over-programmed $\rightarrow$ \texttt{S\_ERASE} (verify
+            flag set). \\
+        \texttt{S\_ERASE} &
+            Runs the erase sub-FSM and drives the erase encoding on
+            the pulse-mode bus. Host/verify flag distinguishes the two
+            entry contexts. &
+            On \texttt{ERASE\_COMPLETE}, branches per
+            \Cref{tab:erase-complete}: host-initiated $\rightarrow$
+            \texttt{S\_IDLE}; verify-initiated with retries
+            available $\rightarrow$ \texttt{S\_PROGRAM};
+            verify-initiated with retries
+            exhausted $\rightarrow$ \texttt{S\_IDLE}. \\
+        \texttt{S\_READ} &
+            Presents the captured address and the read encoding for
+            the duration of the read window. &
+            \signame{pulse\_done} $\rightarrow$ \texttt{S\_IDLE}. \\
+        \texttt{S\_COLLECT\_DATA} &
+            Streams up to eight live pixel bytes into the buffer at
+            successive slots derived from the pixel counter. &
+            After eight beats (pixel-count threshold) $\rightarrow$
+            \texttt{S\_COMPUTE}. \\
+        \texttt{S\_COMPUTE} &
+            Switches the buffer to bit-serial output mode and advances
+            \signame{bit\_sel} from zero to seven so the analog core
+            sees one bit of each of the eight pixels in parallel per
+            cycle. &
+            \signame{pulse\_done} $\rightarrow$ \texttt{S\_RESULT}. \\
+        \texttt{S\_RESULT} &
+            One-cycle wrap-up; switches the buffer to result-out
+            mode. &
+            Unconditional $\rightarrow$ \texttt{S\_IDLE}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Any out-of-range state value falls through the \sv{unique case}
+\sv{default} arm and returns the FSM to \texttt{S\_IDLE}, providing a
+fail-safe path against a glitched state register.
+
+\subsection{Sub-FSMs and the Closed-Loop Recovery Policy}
+\label{sec:rtl-controller-subfsms}
+
+Three sub-FSMs run inside the main FSM and together implement the
+closed-loop recovery policy. Their states correspond to the physically
+distinct phases of a Y-Flash operation, so each sub-state has a natural
+hardware interpretation rather than an abstract control role.
+
+\subsubsection{Program Sub-FSM}
+\label{sec:rtl-controller-prog}
+
+A five-state sequence that mirrors the physical phases of a programming
+operation: \texttt{HIZ} (bus settle, one cycle high-impedance)
+$\rightarrow$ \texttt{SELECT} (drive address, wait for analog
+\emph{op\_done} acknowledging cell selection, simultaneously write the
+expected weight nibble into the buffer for the subsequent verify)
+$\rightarrow$ \texttt{WRITE} (drive the program encoding, advance the
+pulse counter through the configured pulse train, exit on
+\emph{pulse\_done}) $\rightarrow$ \texttt{WAIT\_ACK} (idle bus while the
+in-cell transient settles, exit on second \emph{op\_done})
+$\rightarrow$ \texttt{COMPLETE} (hand control to the main FSM with
+next-state $=$ verify, reset the sub-FSM to \texttt{HIZ}). The pulse
+train of the \texttt{WRITE} state is selected by the LUT-based shaper on
+the first attempt and falls back to a short single-cycle nudge train on
+retries (\Cref{sec:rtl-controller-pulses}).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.65\textwidth]{prog_fsm.png}
+    \caption{Program sub-FSM. Five sub-states map onto the physical
+        phases of a Y-Flash programming operation: \texttt{HIZ},
+        \texttt{SELECT}, \texttt{WRITE}, \texttt{WAIT\_ACK},
+        \texttt{COMPLETE}.}
+    \label{fig:prog-subfsm-body}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Program sub-FSM states. The pulse train of
+        \texttt{PROG\_WRITE} is selected by the LUT-based shaper on the
+        first attempt and falls back to a short single-cycle nudge
+        train on retries (\Cref{sec:rtl-controller-pulses}).}
+    \label{tab:prog-fsm-states}
+    \begin{tabularx}{\linewidth}{l X X}
+        \toprule
+        \textbf{State} & \textbf{Purpose} &
+            \textbf{Transition Condition \& Next State} \\
+        \midrule
+        \texttt{PROG\_HIZ} &
+            One-cycle bus settle; pulse-mode bus held at high
+            impedance. &
+            Unconditional $\rightarrow$ \texttt{PROG\_SELECT}. \\
+        \texttt{PROG\_SELECT} &
+            Drive the address onto the core word, wait for the analog
+            \signame{op\_done} acknowledging cell selection, and
+            simultaneously write the expected weight nibble into the
+            buffer for the subsequent verify. &
+            \signame{op\_done} $\rightarrow$ \texttt{PROG\_WRITE}. \\
+        \texttt{PROG\_WRITE} &
+            Drive the program pulse-mode encoding while the pulse
+            counter advances through the configured pulse train (LUT
+            macro-repeat on the first attempt, single-cycle nudge on
+            retries). &
+            \signame{pulse\_done} $\rightarrow$
+            \texttt{PROG\_WAIT\_ACK}. \\
+        \texttt{PROG\_WAIT\_ACK} &
+            Idle bus while the in-cell programming transient settles
+            on the analog side. &
+            Second \signame{op\_done} $\rightarrow$
+            \texttt{PROG\_COMPLETE}. \\
+        \texttt{PROG\_COMPLETE} &
+            Hand control back to the main FSM with next main
+            state $=$ \texttt{S\_VERIFY} and reset the program
+            sub-FSM. &
+            Unconditional $\rightarrow$ \texttt{PROG\_HIZ}
+            (and main FSM $\rightarrow$ \texttt{S\_VERIFY}). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{Verify Sub-FSM and the Recovery Branch}
+\label{sec:rtl-controller-verify-check}
+
+A four-state sequence: \texttt{IDLE} (entry, with a short-circuit path
+to \texttt{CHECK} for the degenerate single-cycle read window)
+$\rightarrow$ \texttt{WAIT} (pulse-train active, increment index counter
+each cycle until the configured length is reached) $\rightarrow$
+\texttt{CHECK} (apply the recovery decision, below) $\rightarrow$
+\texttt{DONE} (on success, return the main FSM to idle).
+
+\texttt{CHECK} is the architectural heart of the controller: it compares
+the analog-side readback against the expected weight in the input buffer
+and branches into one of three outcomes --- match, under-programmed,
+over-programmed --- that drive the entire recovery policy. The branch
+into \texttt{ERASE} on an over-programmed readback follows directly from
+the device physics: there is no monotonic way to subtract injected
+charge with a program pulse on a Y-Flash cell, so the only valid
+recovery from over-programming is to erase the cell and reprogram it
+from a known low-conductance state. The detailed branch logic is
+documented row-by-row in \Cref{tab:verify-fsm-states}.
+
+The per-cell retry counter is cleared on a successful verify, on an
+over-programmed readback (the failure mode is not retry exhaustion), and
+on completion of a verify-initiated erase. Together these resets scope
+the counter to a single cell at a time.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.65\textwidth]{verify_fsm.png}
+    \caption{\texttt{CHECK} state branching logic: match,
+        under-programmed, over-programmed. The three outcomes drive the
+        closed-loop recovery policy --- success returns to idle,
+        under-programmed retries (or falls back to erase when the
+        per-cell retry budget is exhausted), and over-programmed
+        triggers an erase followed by reprogramming.}
+    \label{fig:verify-subfsm-body}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Verify sub-FSM states. The four states correspond to the
+        readback pulse-train window (\texttt{IDLE}, \texttt{WAIT}), the
+        comparison decision (\texttt{CHECK}), and the closing
+        handshake to the main FSM (\texttt{DONE}). Branches in
+        \texttt{CHECK} reach back into \texttt{S\_PROGRAM} or
+        \texttt{S\_ERASE} of the main FSM
+        (\Cref{tab:main-fsm-states}).}
+    \label{tab:verify-fsm-states}
+    \begin{tabularx}{\linewidth}{l X X}
+        \toprule
+        \textbf{State} & \textbf{Purpose} &
+            \textbf{Transition Condition \& Next State} \\
+        \midrule
+        \texttt{VERIFY\_IDLE} &
+            Entry state for the verify pulse-train window; provides a
+            short-circuit path into \texttt{CHECK} for the degenerate
+            single-cycle read configuration. &
+            Pulse-train length $\le 1$ $\rightarrow$
+            \texttt{VERIFY\_CHECK}; otherwise $\rightarrow$
+            \texttt{VERIFY\_WAIT}. \\
+        \texttt{VERIFY\_WAIT} &
+            Pulse-train active; the verify index counter is incremented
+            each cycle until the configured pulse-train length is
+            reached. &
+            Counter reaches configured length $\rightarrow$
+            \texttt{VERIFY\_CHECK}. \\
+        \texttt{VERIFY\_CHECK} &
+            Compare the analog readback against the expected weight
+            held in the buffer and branch into one of three outcomes
+            that drive the recovery policy. &
+            Match (readback $=$ expected) $\rightarrow$
+            \texttt{VERIFY\_DONE};
+            under-programmed (readback $<$ expected) with retries
+            available $\rightarrow$ main FSM \texttt{S\_PROGRAM} (nudge
+            retry);
+            under-programmed and retries
+            exhausted $\rightarrow$ main FSM \texttt{S\_ERASE} (verify
+            flag set);
+            over-programmed (readback $>$ expected) $\rightarrow$ main
+            FSM \texttt{S\_ERASE} (verify flag set). \\
+        \texttt{VERIFY\_DONE} &
+            Successful verify; return the main FSM to idle and clear
+            the per-cell retry counter. &
+            Unconditional $\rightarrow$ \texttt{VERIFY\_IDLE} (and main
+            FSM $\rightarrow$ \texttt{S\_IDLE}). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{Erase Sub-FSM}
+\label{sec:rtl-controller-erase}
+
+A five-state sequence whose structure mirrors the program sub-FSM,
+reflecting the symmetric structure of the two physical operations on the
+device: \texttt{HIZ} $\rightarrow$ \texttt{SELECT} $\rightarrow$
+\texttt{PULSE} (erase encoding on the pulse-mode bus) $\rightarrow$
+\texttt{WAIT\_ACK} (in-cell discharge transient) $\rightarrow$
+\texttt{COMPLETE}. The exit from \texttt{COMPLETE} is governed by the
+host/verify flag and the global retry counter; the per-state breakdown
+is given in \Cref{tab:erase-fsm-states}, and the exit-decision matrix
+is summarized in \Cref{tab:erase-complete}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.65\textwidth]{erase_fsm.png}
+    \caption{Erase sub-FSM. The state graph is symmetric with the
+        program sub-FSM (\Cref{fig:prog-subfsm-body}), reflecting the
+        equivalent physical sequencing of the two device operations.
+        The host/verify flag set on entry steers the exit from
+        \texttt{ERASE\_COMPLETE} between a return to idle
+        (host-initiated, or verify-initiated with the retry budget
+        exhausted) and a re-entry into \texttt{S\_PROGRAM}
+        (verify-initiated with retries available).}
+    \label{fig:erase-subfsm-body}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Erase sub-FSM states. The structure mirrors
+        \Cref{tab:prog-fsm-states} state-for-state; the only
+        substantive difference is the closing branch in
+        \texttt{ERASE\_COMPLETE}, detailed in
+        \Cref{tab:erase-complete}.}
+    \label{tab:erase-fsm-states}
+    \begin{tabularx}{\linewidth}{l X X}
+        \toprule
+        \textbf{State} & \textbf{Purpose} &
+            \textbf{Transition Condition \& Next State} \\
+        \midrule
+        \texttt{ERASE\_HIZ} &
+            One-cycle bus settle; pulse-mode bus held at high
+            impedance. &
+            Unconditional $\rightarrow$ \texttt{ERASE\_SELECT}. \\
+        \texttt{ERASE\_SELECT} &
+            Drive the address onto the core word and wait for the
+            analog \signame{op\_done} acknowledging cell selection. &
+            \signame{op\_done} $\rightarrow$ \texttt{ERASE\_PULSE}. \\
+        \texttt{ERASE\_PULSE} &
+            Drive the erase pulse-mode encoding while the pulse counter
+            advances through the configured erase pulse train. &
+            \signame{pulse\_done} $\rightarrow$
+            \texttt{ERASE\_WAIT\_ACK}. \\
+        \texttt{ERASE\_WAIT\_ACK} &
+            Idle bus while the in-cell band-to-band tunneling discharge
+            transient settles. &
+            Second \signame{op\_done} $\rightarrow$
+            \texttt{ERASE\_COMPLETE}. \\
+        \texttt{ERASE\_COMPLETE} &
+            Closing branch; selects the next main state from the
+            host/verify flag and the global retry budget. &
+            Host-initiated $\rightarrow$ \texttt{S\_IDLE};
+            verify-initiated and retries
+            available $\rightarrow$ \texttt{S\_PROGRAM};
+            verify-initiated and retries
+            exhausted $\rightarrow$ \texttt{S\_IDLE}. See
+            \Cref{tab:erase-complete}. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Exit rules from \texttt{ERASE\_COMPLETE}.}
+    \label{tab:erase-complete}
+    \begin{tabularx}{\linewidth}{l l X}
+        \toprule
+        \textbf{Condition} & \textbf{Next main state} & \textbf{Effect} \\
+        \midrule
+        Host-initiated erase & Idle &
+            One-shot host operation; no retry. \\
+        Verify-initiated, retries available & Program &
+            Recovery loop; re-enters the program state. Global retry
+            counter increments. \\
+        Verify-initiated, retries exhausted & Idle &
+            Cell declared a hard failure; the erase-retry-exhausted
+            flag is asserted to the upper layer. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Pulse Generation and LUT-Based Programming}
+\label{sec:rtl-controller-pulses}
+
+Every active state that touches the analog core is pulse-shaped. The
+controller maintains three coherent artifacts: a combinational per-state
+pulse-length value, a registered cycle counter, and a combinational
+pulse-completion signal. Outside the active states the pulse-length is
+zero and the completion signal is held low, so no spurious completion can
+ever advance the FSM.
+
+The pulse-mode output to the core defaults to its idle (high-impedance)
+encoding. For each active state, a per-state Boolean --- derived either
+from a standard burst pattern or, for the LUT-based programming case,
+from a macro-repeat pattern --- gates the active encoding onto the bus
+during burst cycles and falls back to idle during inter-burst windows.
+The bus is therefore a time-multiplexed burst train and never enters an
+undefined state. The physical structure of a single burst is illustrated
+in \Cref{fig:pulse-train-example}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{pulse_train_example.png}
+    \caption{Physical pulse-train structure on the three-bit pulse-mode
+        bus. A burst is the concatenation of \signame{pulse\_num}
+        discrete active pulses, each $T_{prog}$ cycles wide, separated
+        by single-cycle \texttt{HIZ} (\texttt{3'b000}) idle gaps. The
+        active mode (\texttt{3'b010} for program in the illustration)
+        is driven only while the gating Boolean is high; between
+        pulses, and after the burst completes, the bus reverts to
+        \texttt{HIZ}. Total burst length is therefore
+        $\texttt{pulse\_num}\cdot T_{prog} + (\texttt{pulse\_num}-1)\cdot
+        \texttt{PULSE\_GAP}$. \emph{Numeric example, LUT-driven first
+        \texttt{PROG}:} for an expected weight of $w_e = 3$ the LUT
+        emits a macro-repeat count $R = 6$ (see
+        \texttt{weight\_pulse\_lut.mem} in the repository). With the
+        baseline configuration $T_{prog} = 2$,
+        $\texttt{pulse\_num} = 1$, and $\texttt{PULSE\_GAP} = 1$, the
+        inner macro is two cycles long; the controller plays
+        $R = 6$ back-to-back copies of that macro separated by
+        single-cycle \texttt{HIZ} gaps, yielding a total
+        \texttt{PROG\_WRITE} duration of
+        $6\cdot 2 + 5\cdot 1 = 17$ cycles, of which $12$ are active
+        (\texttt{PULSE\_MODE\_PROG} on the bus) and $5$ are idle
+        \texttt{HIZ} gaps between copies.}
+    \label{fig:pulse-train-example}
+\end{figure}
+
+\paragraph{Data-driven first programming attempt.}
+On the first programming attempt for a given cell, the controller shapes
+the program pulse based on the expected weight value. A look-up table
+indexed by the four-bit expected weight returns a macro-repeat count:
+how many copies of the standard program burst to concatenate, separated
+by idle windows. The LUT is loaded from a memory image at elaboration
+time and can be replaced without modifying the RTL --- this is the
+mechanism by which the controller absorbs device-characterization data
+without re-synthesis. \Cref{fig:lut-macro-repeat} shows the resulting
+structure.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{example-image.png}
+    \caption{LUT-based macro-repeat structure for the first programming
+        attempt. The inner macro is one standard burst; the controller
+        concatenates a number of macros given by the LUT entry for the
+        expected weight, separated by idle windows. Retry attempts on the
+        same cell switch to a single-cycle nudge train, on the assumption
+        that the first attempt has already moved the cell most of the
+        way to target.}
+    \label{fig:lut-macro-repeat}
+\end{figure}
+
+The architectural justification for the LUT path is three-fold:
+per-weight pulse shaping can be re-calibrated by editing the LUT image
+without revisiting the RTL, which gives the device-characterization team
+a clean handoff point; the combination of a LUT-scaled first attempt
+with a short retry pulse is consistent with the device-physics observation
+that incremental programming pulses are more controllable than repeated
+large ones~\cite{Sebastian2020IMC}; and if the LUT mechanism is disabled
+at elaboration, the controller falls back to a fixed-length program
+burst and the recovery policy still operates --- the first-attempt
+success rate simply drops.
+
+\subsection{Inference Path}
+\label{sec:rtl-controller-inf}
+
+The inference path is a four-state sequence: \emph{collect-data} (eight
+pixel bytes streamed into the buffer at row-major addresses derived from
+the running pixel count), \emph{compute} (buffer switched to bit-serial
+mode, bit-select line advanced from zero to seven so the analog core sees
+one bit of each of the eight pixels in parallel per cycle),
+\emph{result} (one-cycle wrap-up in result-out mode), and \emph{idle}.
+Unlike the program/erase paths, inference does not consume
+\emph{op\_done}: it is a read-only operation with no in-cell transient
+that needs an explicit acknowledgement, so the duration of the compute
+phase is set entirely by the configured inference pulse length.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{example-image.png}
+    \caption{Inference dataflow. Eight pixel bytes are streamed in
+        collect, written into the buffer in row-major order, then exposed
+        bit-serially across eight parallel lanes during compute. The
+        bit-select line advances from zero to seven so the analog core
+        receives one bit of each pixel per cycle.}
+    \label{fig:inference-dataflow}
+\end{figure}
+
+\subsection{Recovery Loop, End to End}
+\label{sec:rtl-controller-recovery}
+
+\Cref{fig:recovery-loop-conceptual} consolidates the closed-loop policy
+in a single picture: programming enters verify; verify either returns to
+idle on a match, re-enters programming on an under-programmed readback
+within the retry budget, or enters erase on either an over-programmed
+readback or retry-budget overflow; erase either returns to idle
+(host-initiated, or retry-budget overflow) or re-enters programming after
+a fresh erase. The diagram is the architectural answer to the
+write--verify problem of \Cref{sec:bg-writeverify}: every failure mode of
+an analog programming attempt is mapped to a well-defined digital
+recovery path, so that the controller delivers a stable weight matrix in
+the face of bounded device non-idealities.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{example-image.png}
+    \caption{Closed-loop recovery policy. The
+        \texttt{PROG}~$\rightarrow$~\texttt{VERIFY}~$\rightarrow$
+        \texttt{ERASE}~$\rightarrow$~\texttt{RE-PROG} loop maps every
+        analog failure mode to a deterministic digital recovery path.}
+    \label{fig:recovery-loop-conceptual}
+\end{figure}
+
+This recovery policy is the central reason that the controller is more
+complex than a conventional write-path controller, and it shapes the
+verification environment of \Cref{ch:verification}: every branch must be
+exercised in simulation, and the only practical way to do that without a
+physical analog core is to inject faults at the readback port.
+
+\section{Input Buffer}
+\label{sec:rtl-buffer}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{buffer_io_block.png}
+    \caption{Input Buffer I/O block diagram. The controller drives the
+        mode-qualified port set (\signame{mode}, \signame{addr},
+        \signame{data\_in}, \signame{bit\_sel}), and the buffer
+        exposes a combinational byte-read port (\signame{data\_out}),
+        eight parallel bit-serial lanes
+        (\signame{bit\_serial}$[7{:}0]$), and a one-bit
+        \signame{ready} qualifier. The same physical register array
+        serves the inference pixel window and the verify-side
+        expected-weight store.}
+    \label{fig:buffer-io-block}
+\end{figure}
+
+The input buffer is a synchronous register-array store. The choice of
+registers rather than an SRAM macro is deliberate at this stage of the
+project: the buffer is small, the per-bit access pattern required by the
+bit-serial lanes is trivial to implement on registers, and the design
+remains portable across synthesis flows without depending on a memory
+compiler. A production follow-on could swap the array for an SRAM macro
+behind the same port set.
+
+The buffer supports three concurrent paths qualified by a mode input:
+
+\begin{itemize}
+    \item \textbf{Write path} (data-load mode). A single-port write
+          accepts one byte per cycle when the address is in range. The
+          shared write address generator is reused by both the
+          programming and inference paths, which keeps the controller
+          $\leftrightarrow$ buffer interface narrow.
+    \item \textbf{Byte read path} (compute, result-out, or weight-read
+          modes). A combinational byte-read used by verify and host-read
+          operations. Making this combinational keeps the verify
+          comparator on a single clock edge.
+    \item \textbf{Bit-serial output} (compute mode). Eight parallel
+          one-bit lanes, where lane $k$ exposes bit \emph{bit\_sel} of
+          the entry at address \texttt{addr}$+k$. The controller drives
+          \emph{bit\_sel} from zero to seven during the compute phase,
+          so the array sees the buffer's eight-pixel window LSB-first
+          across eight cycles.
+\end{itemize}
+
+A one-bit \emph{ready} output summarizes access legality (address in
+range \emph{and} mode matches direction), giving the controller a clean
+cycle-by-cycle indication that the current transaction was accepted.
