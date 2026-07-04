@@ -25,7 +25,7 @@ module controller_host_read_reorder_tb;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
     logic        ann_reset, op_done, busy;
-    logic [31:0] ann_core_word;
+    logic [31:0] ann_address;
     logic [2:0]  pulses;
     logic [5:0]  buf_reg_add;
     logic [2:0]  buf_reg_ctrl;
@@ -48,7 +48,7 @@ module controller_host_read_reorder_tb;
     logic [2:0] dec_row, dec_col;
 
     always_comb begin
-        ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
+        ann_address_decode(ann_address, dec_blk, dec_sb, dec_row, dec_col);
         actual_from_ann = ann_weight_matrix[dec_blk][dec_sb][dec_row][dec_col];
     end
 
@@ -63,7 +63,7 @@ module controller_host_read_reorder_tb;
         .clk(clk), .rst_n(rst_n),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
-        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .op_done(op_done), .ann_address(ann_address), .pulses(pulses),
         .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
@@ -125,8 +125,8 @@ module controller_host_read_reorder_tb;
         end else if (in_prog_core_phase) begin
             automatic logic [1:0] lb, lsb;
             automatic logic [2:0] lr, lc;
-            ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
-            ann_weight_matrix[lb][lsb][lr][lc] <= ann_core_word[27:24];
+            ann_address_decode(ann_address, lb, lsb, lr, lc);
+            ann_weight_matrix[lb][lsb][lr][lc] <= ann_address[27:24];
         end
     end
 
@@ -197,12 +197,12 @@ module controller_host_read_reorder_tb;
             while (busy) begin
                 if (dut.state == S_READ) begin
                     saw_read_state = 1;
-                    saw_word = ann_core_word;
+                    saw_word = ann_address;
                     saw_adc  = weight_read_data_mock;
                     if (!logged_s_read_line) begin
                         logged_s_read_line = 1;
-                        $fdisplay(fd, "[%0t] DUT in S_READ: pulses=%03b ann_core_word=0x%08h (0b%s) weight_read_data(mock)=%0d",
-                                  $time, pulses, ann_core_word, ann_word_bin32(ann_core_word), weight_read_data_mock);
+                        $fdisplay(fd, "[%0t] DUT in S_READ: pulses=%03b ann_address=0x%08h (0b%s) weight_read_data(mock)=%0d",
+                                  $time, pulses, ann_address, ann_word_bin32(ann_address), weight_read_data_mock);
                     end
                 end
                 @(posedge clk);
@@ -218,10 +218,10 @@ module controller_host_read_reorder_tb;
             $fdisplay(fd, "FAIL: weight_read_data %0d != expected programmed %0d", saw_adc, exp_w);
         end else if (saw_word !== host_pkt) begin
             fail_c++;
-            $fdisplay(fd, "FAIL: ann_core_word 0x%08h != expected packed host 0x%08h", saw_word, host_pkt);
+            $fdisplay(fd, "FAIL: ann_address 0x%08h != expected packed host 0x%08h", saw_word, host_pkt);
         end else begin
             pass_c++;
-            $fdisplay(fd, "PASS: READ returned consistent ann_core_word and mock ADC data");
+            $fdisplay(fd, "PASS: READ returned consistent ann_address and mock ADC data");
         end
         $fdisplay(fd, "");
     endtask
@@ -256,8 +256,8 @@ module controller_host_read_reorder_tb;
         $fdisplay(fd, "//==============================================================================");
         $fdisplay(fd, "// controller_host_read_reorder_tb");
         $fdisplay(fd, "// Program %0d weights, then CMD_READ in non-sequential order (by program index).", N_WEIGHTS);
-        $fdisplay(fd, "// ann_core_word fields: data[31:24]-PE[23:20]-SA[19:16]-col[15:8]-row[7:0] (binary in samples)");
-        $fdisplay(fd, "// Pulse: READ=001. Mock ADC = ann_weight_matrix cell selected by ann_core_word decode.");
+        $fdisplay(fd, "// ann_address fields: data[31:24]-PE[23:20]-SA[19:16]-col[15:8]-row[7:0] (binary in samples)");
+        $fdisplay(fd, "// Pulse: READ=001. Mock ADC = ann_weight_matrix cell selected by ann_address decode.");
         $fdisplay(fd, "//==============================================================================");
         $fdisplay(fd, "");
 

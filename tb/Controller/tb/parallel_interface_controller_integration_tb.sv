@@ -24,7 +24,7 @@ module parallel_interface_controller_integration_tb;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
     logic        ann_reset, op_done, busy;
-    logic [31:0] ann_core_word;
+    logic [31:0] ann_address;
     logic [2:0]  pulses;
     logic [5:0]  buf_reg_add;
     logic [2:0]  buf_reg_ctrl;
@@ -43,7 +43,7 @@ module parallel_interface_controller_integration_tb;
         .clk(clk), .rst_n(rst_n),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
-        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .op_done(op_done), .ann_address(ann_address), .pulses(pulses),
         .weight_read_data(buf_data[3:0]),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
@@ -104,7 +104,7 @@ module parallel_interface_controller_integration_tb;
         sb  = a[7:6];
         cl  = a[5:3];
         rw  = a[2:0];
-        return pack_ann_core_word(d, blk, sb, rw, cl);
+        return pack_ann_address(d, blk, sb, rw, cl);
     endfunction
 
     function automatic string cmd_name(input logic [2:0] c);
@@ -234,9 +234,9 @@ module parallel_interface_controller_integration_tb;
                 pulse_ok = 1;
             if (pulses !== 3'b000)
                 saw_pulse = pulses;
-            if (ann_core_word !== '0)
-                saw_word = ann_core_word;
-            if (ann_core_word === exp)
+            if (ann_address !== '0)
+                saw_word = ann_address;
+            if (ann_address === exp)
                 word_ok = 1;
             @(posedge clk);
             to++;
@@ -246,7 +246,7 @@ module parallel_interface_controller_integration_tb;
         $fdisplay(fd, "  // DUT: controller busy for %0d posedge cycles (then idle)", busy_cycles);
         $fdisplay(fd, "  //   pulses: expected %s (%b)  |  last non-zero saw %s (%b)  pulse_ok=%0b",
             pulse_name(exp_pulse), exp_pulse, pulse_name(saw_pulse), saw_pulse, pulse_ok);
-        $fdisplay(fd, "  //   ann_core_word: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b",
+        $fdisplay(fd, "  //   ann_address: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b",
             exp, saw_word, word_ok);
         dump_buffer_snapshot(ctx);
         $fdisplay(fd, "  // Return to idle: busy=%0b", busy);
@@ -315,9 +315,9 @@ module parallel_interface_controller_integration_tb;
                         pulse_ok = 1;
                     if (pulses !== 3'b000)
                         saw_pulse = pulses;
-                    if (ann_core_word !== '0)
-                        saw_word = ann_core_word;
-                    if (ann_core_word === exp)
+                    if (ann_address !== '0)
+                        saw_word = ann_address;
+                    if (ann_address === exp)
                         word_ok = 1;
                     @(posedge clk);
                     to++;
@@ -329,7 +329,7 @@ module parallel_interface_controller_integration_tb;
         $fdisplay(fd, "  // DUT: controller busy for %0d posedge cycles (INF COLLECT + COMPUTE + ...)", busy_cycles);
         $fdisplay(fd, "  //   pulses: expected %s (%b)  |  last non-zero saw %s (%b)  pulse_ok=%0b",
             pulse_name(PULSE_MODE_INF), PULSE_MODE_INF, pulse_name(saw_pulse), saw_pulse, pulse_ok);
-        $fdisplay(fd, "  //   ann_core_word: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b  (INF may toggle word during COLLECT vs COMPUTE)",
+        $fdisplay(fd, "  //   ann_address: exp=0x%08h  saw_last_nonzero=0x%08h  saw_match_exp=%0b  (INF may toggle word during COLLECT vs COMPUTE)",
             exp, saw_word, word_ok);
         dump_buffer_snapshot(ctx);
         $fdisplay(fd, "  // Return to idle: busy=%0b", busy);
@@ -357,7 +357,7 @@ module parallel_interface_controller_integration_tb;
         $fdisplay(fd, "// PI + controller + input_buffer integration (verbose report)");
         $fdisplay(fd, "//");
         $fdisplay(fd, "// Per case: host 32b + host_cmd | PI->controller (valid,data,address,cmd) |");
-        $fdisplay(fd, "//   busy cycle count | pulses + ann_core_word (exp vs saw) | input_buffer 8x8 dump | idle.");
+        $fdisplay(fd, "//   busy cycle count | pulses + ann_address (exp vs saw) | input_buffer 8x8 dump | idle.");
         $fdisplay(fd, "");
         wait(rst_n);
         repeat(6) @(posedge clk);

@@ -16,7 +16,7 @@ add wave -noupdate $TB/cmd
 add wave -noupdate $TB/ann_reset
 add wave -noupdate $TB/op_done
 add wave -noupdate $TB/busy
-add wave -noupdate $TB/ann_core_word
+add wave -noupdate $TB/ann_address
 add wave -noupdate $TB/pulses
 add wave -noupdate $TB/buf_reg_add
 add wave -noupdate $TB/buf_reg_ctrl

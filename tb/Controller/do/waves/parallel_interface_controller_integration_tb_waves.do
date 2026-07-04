@@ -26,7 +26,7 @@ add wave -noupdate -radix symbolic $DUT/erase_state
 
 add wave -noupdate -divider {Pulses_and_ANN_word}
 add wave -noupdate -radix binary $TB/pulses
-add wave -noupdate -radix binary $TB/ann_core_word
+add wave -noupdate -radix binary $TB/ann_address
 
 configure wave -namecolwidth 260
 configure wave -valuecolwidth 100

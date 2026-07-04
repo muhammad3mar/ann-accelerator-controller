@@ -1,7 +1,7 @@
 // PI + controller + input_buffer integration (verbose report)
 //
 // Per case: host 32b + host_cmd | PI->controller (valid,data,address,cmd) |
-//   busy cycle count | pulses + ann_core_word (exp vs saw) | input_buffer 8x8 dump | idle.
+//   busy cycle count | pulses + ann_address (exp vs saw) | input_buffer 8x8 dump | idle.
 
 
 //==============================================================================
@@ -21,7 +21,7 @@
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 2 posedge cycles (then idle)
   //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x00281080  saw_last_nonzero=0x00281080  saw_match_exp=1
+  //   ann_address: exp=0x00281080  saw_last_nonzero=0x00281080  saw_match_exp=1
   // input_buffer after 01_READ — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  00 00 00 00 00 00 00 00
   //   row1  00 00 00 00 00 00 00 00
@@ -51,7 +51,7 @@ PASS 01_READ
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 22 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x0c110101  saw_last_nonzero=0x0c110101  saw_match_exp=1
+  //   ann_address: exp=0x0c110101  saw_last_nonzero=0x0c110101  saw_match_exp=1
   // input_buffer after 02_PROG — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  0c 00 00 00 00 00 00 00
   //   row1  00 00 00 00 00 00 00 00
@@ -81,7 +81,7 @@ PASS 02_PROG
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 9 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
-  //   ann_core_word: exp=0x00810120  saw_last_nonzero=0x00810120  saw_match_exp=1
+  //   ann_address: exp=0x00810120  saw_last_nonzero=0x00810120  saw_match_exp=1
   // input_buffer after 03_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  0c 00 00 00 00 00 00 00
   //   row1  00 00 00 00 00 00 00 00
@@ -111,7 +111,7 @@ PASS 03_ERASE
   // INF: buffer loads 8 pixels (CTRL_DATA_LOAD), then COMPUTE issues INF pulses.
   // DUT: controller busy for 18 posedge cycles (INF COLLECT + COMPUTE + ...)
   //   pulses: expected INF (100)  |  last non-zero saw INF (100)  pulse_ok=1
-  //   ann_core_word: exp=0xaa120420  saw_last_nonzero=0x00120420  saw_match_exp=1  (INF may toggle word during COLLECT vs COMPUTE)
+  //   ann_address: exp=0xaa120420  saw_last_nonzero=0x00120420  saw_match_exp=1  (INF may toggle word during COLLECT vs COMPUTE)
   // input_buffer after 04_INF — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  00 00 00 00 00 00 00 00
@@ -141,7 +141,7 @@ PASS 04_INF
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 2 posedge cycles (then idle)
   //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x00410110  saw_last_nonzero=0x00410110  saw_match_exp=1
+  //   ann_address: exp=0x00410110  saw_last_nonzero=0x00410110  saw_match_exp=1
   // input_buffer after 05_READ — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  00 00 00 00 00 00 00 00
@@ -171,7 +171,7 @@ PASS 05_READ
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 27 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x0e210201  saw_last_nonzero=0x0e210201  saw_match_exp=1
+  //   ann_address: exp=0x0e210201  saw_last_nonzero=0x0e210201  saw_match_exp=1
   // input_buffer after 06_PROG — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  0e 00 00 00 00 00 00 00
@@ -201,7 +201,7 @@ PASS 06_PROG
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 8 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
-  //   ann_core_word: exp=0x00420101  saw_last_nonzero=0x00420101  saw_match_exp=1
+  //   ann_address: exp=0x00420101  saw_last_nonzero=0x00420101  saw_match_exp=1
   // input_buffer after 07_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  0e 00 00 00 00 00 00 00
@@ -231,7 +231,7 @@ PASS 07_ERASE
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 2 posedge cycles (then idle)
   //   pulses: expected READ (001)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x00810101  saw_last_nonzero=0x00810101  saw_match_exp=1
+  //   ann_address: exp=0x00810101  saw_last_nonzero=0x00810101  saw_match_exp=1
   // input_buffer after 08_READ — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  0e 00 00 00 00 00 00 00
@@ -261,7 +261,7 @@ PASS 08_READ
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 45 posedge cycles (then idle)
   //   pulses: expected PROG (010)  |  last non-zero saw READ (001)  pulse_ok=1
-  //   ann_core_word: exp=0x0f288080  saw_last_nonzero=0x0f288080  saw_match_exp=1
+  //   ann_address: exp=0x0f288080  saw_last_nonzero=0x0f288080  saw_match_exp=1
   // input_buffer after 09_PROG — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  0e 00 00 00 00 00 00 00
@@ -291,7 +291,7 @@ PASS 09_PROG
   // PI holds one-cycle beat: @(posedge) then host_cmd=HIZ (valid deasserts).
   // DUT: controller busy for 8 posedge cycles (then idle)
   //   pulses: expected ERASE (011)  |  last non-zero saw ERASE (011)  pulse_ok=1
-  //   ann_core_word: exp=0x00188010  saw_last_nonzero=0x00188010  saw_match_exp=1
+  //   ann_address: exp=0x00188010  saw_last_nonzero=0x00188010  saw_match_exp=1
   // input_buffer after 10_ERASE — buffer_reg[0:63], 8x8 row-major (hex):
   //   row0  aa aa aa aa aa aa aa aa
   //   row1  0e 00 00 00 00 00 00 00

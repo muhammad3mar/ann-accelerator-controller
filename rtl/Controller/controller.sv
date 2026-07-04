@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 
-
+`include "../common/macros.svh"
 
 import controller_pkg::*;
 import input_buffer_pkg::*;
@@ -32,7 +32,7 @@ module ann_controller #(
     //======================================================================
     // Controller <-> ANN Core
     //======================================================================
-    // ann_core_word: [31:24] = host data byte (quantized weight in [27:24] for PROG);
+    // ann_address: [31:24] = host data byte (quantized weight in [27:24] for PROG);
     //                [23:0] = {PE, SA, col, row} one-hot (see host_addr_to_ann_addr_out)
     // pulses: operation / pulse mode toward core (READ/PROG/ERASE/INF)
     //======================================================================
@@ -40,7 +40,7 @@ module ann_controller #(
     // Core handshake: asserted to advance PROG_SELECT->PROG_WRITE, PROG_WAIT_ACK->PROG_COMPLETE,
     // ERASE_SELECT->ERASE_PULSE, ERASE_WAIT_ACK->ERASE_COMPLETE (see program/erase sub-FSMs).
     input  logic                     op_done,
-    output logic [31:0]              ann_core_word,
+    output logic [31:0]              ann_address,
     output logic [2:0]               pulses,
 
     // ADC/quantizer input for verification read (from ANN core)
@@ -197,9 +197,9 @@ module ann_controller #(
 
     always_comb begin
         if (state == S_IDLE)
-            ann_core_word = 32'b0;
+            ann_address = 32'b0;
         else
-            ann_core_word = pack_ann_core_word(data_byte_for_ann, block_id, sub_block_id, row_id, col_id);
+            ann_address = pack_ann_address(data_byte_for_ann, block_id, sub_block_id, row_id, col_id);
     end
 
     //--------------------------------------------------------------------------

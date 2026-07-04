@@ -28,7 +28,7 @@ module controller_inf_buffer_flow_tb;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
     logic        ann_reset, op_done, busy;
-    logic [31:0] ann_core_word;
+    logic [31:0] ann_address;
     logic [2:0]  pulses;
     logic [5:0]  buf_reg_add;
     logic [2:0]  buf_reg_ctrl;
@@ -52,7 +52,7 @@ module controller_inf_buffer_flow_tb;
         .clk(clk), .rst_n(rst_n),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
-        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .op_done(op_done), .ann_address(ann_address), .pulses(pulses),
         .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),

@@ -19,7 +19,7 @@ This file gives a short description of each generated artifact under `target/`: 
   Human-readable LUT table companion for `weight_pulse_lut.mem`. It documents expected pulse mapping entries used by LUT-based verification.
 
 - `controller_addr_pulse_verify.txt`  
-  Directed address/pulse verification report from `controller_addr_pulse_tb`. It checks packed `ann_core_word` fields and pulse mode selection for each command case (PROG/READ/ERASE/INF).
+  Directed address/pulse verification report from `controller_addr_pulse_tb`. It checks packed `ann_address` fields and pulse mode selection for each command case (PROG/READ/ERASE/INF).
 
 ## `target/Controller/prog`
 
@@ -34,7 +34,7 @@ This file gives a short description of each generated artifact under `target/`: 
 ## `target/Controller/read`
 
 - `controller_host_read_reorder_report.txt`  
-  From `controller_host_read_reorder_tb`: programmed weights and addresses, then out-of-order host `CMD_READ` transactions with expected packet, `ann_core_word` (binary field breakdown in the log), and mock memristor read data per step.
+  From `controller_host_read_reorder_tb`: programmed weights and addresses, then out-of-order host `CMD_READ` transactions with expected packet, `ann_address` (binary field breakdown in the log), and mock memristor read data per step.
 
 ## `target/Controller/inf`
 

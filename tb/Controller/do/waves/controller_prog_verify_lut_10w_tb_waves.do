@@ -24,7 +24,7 @@ add wave -noupdate -radix unsigned $DUT/expected_weight
 
 add wave -noupdate -divider {DUT_pulse_mode_ann_core}
 add wave -noupdate -radix binary $TB/pulses
-add wave -noupdate -radix binary $TB/ann_core_word
+add wave -noupdate -radix binary $TB/ann_address
 
 add wave -noupdate -divider {DUT_main_FSM}
 add wave -noupdate -radix symbolic $DUT/state

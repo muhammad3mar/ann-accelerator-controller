@@ -250,8 +250,8 @@ package controller_pkg;
         endcase
     endfunction
 
-    // Decode {PE, SA, col, row} one-hot tail from ann_core_word[23:0]
-    function automatic void ann_core_word_decode(
+    // Decode {PE, SA, col, row} one-hot tail from ann_address[23:0]
+    function automatic void ann_address_decode(
         input logic [31:0] word,
         output logic [BLOCK_ID_WIDTH-1:0] o_block_id,
         output logic [SUB_BLOCK_ID_WIDTH-1:0] o_sub_block_id,
@@ -265,7 +265,7 @@ package controller_pkg;
     endfunction
 
     // Pack host data byte [31:24] with one-hot address [23:0] for ANN core
-    function automatic logic [31:0] pack_ann_core_word(
+    function automatic logic [31:0] pack_ann_address(
         input logic [7:0] data_byte,
         input logic [BLOCK_ID_WIDTH-1:0] block_id,
         input logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id,
@@ -491,7 +491,7 @@ package controller_pkg;
         return {block_id, sub_block_id, ann_row_id, ann_col_id};
     endfunction
 
-    // Build 32-bit host payload = ann_core_word layout (parallel_interface host_data)
+    // Build 32-bit host payload = ann_address layout (parallel_interface host_data)
     function automatic logic [31:0] host_parallel_packet_to_ann_word(
         input logic [7:0] data_byte,
         input logic [15:0] parallel_addr

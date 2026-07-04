@@ -18,7 +18,7 @@ package parallel_interface_pkg;
     } cmd_t;
 
     //--------------------------------------------------------------------------
-    // Host data word = same layout as controller ann_core_word
+    // Host data word = same layout as controller ann_address
     //--------------------------------------------------------------------------
     //   host_data[31:24] = data byte (weight / payload byte toward ANN core)
     //   host_data[23:0]  = {PE[3:0], SA[3:0], col one-hot[7:0], row one-hot[7:0]}
@@ -77,7 +77,7 @@ package parallel_interface_pkg;
                pi_is_onehot8(tail[7:0]);
     endfunction
 
-    // Decode ann_core_word-style tail → 16-bit address field (parse_ann_address layout)
+    // Decode ann_address-style tail → 16-bit address field (parse_ann_address layout)
     function automatic logic [15:0] ann_tail_to_parallel_addr(logic [23:0] tail);
         logic [1:0] blk, sb;
         logic [2:0] rid, cid;

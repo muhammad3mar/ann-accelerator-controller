@@ -140,7 +140,7 @@ python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_wa
 
 After running simulations, check the `target/` directory:
 
-- **`target/Controller/controller_addr_pulse_verify.txt`**: Address/`ann_core_word` checks from `controller_addr_pulse_tb`
+- **`target/Controller/controller_addr_pulse_verify.txt`**: Address/`ann_address` checks from `controller_addr_pulse_tb`
 - **`target/Controller/prog/prog_verify_report.txt`**: PROG→VERIFY sweep report from `controller_prog_verify_lut_tb`
 - **`target/Controller/programming_inputs/weight_matrix.txt`**: Input weight matrix file (used by program/verify benches)
 

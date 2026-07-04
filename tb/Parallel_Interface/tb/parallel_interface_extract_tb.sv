@@ -2,7 +2,7 @@
 // Parallel Interface - Field Extraction Testbench
 //------------------------------------------------------------------------------
 // Tests: data = host_data[31:24], address = decode(host_data[23:0]), cmd = host_cmd
-//       for several host_data / host_cmd patterns (ann_core_word host layout).
+//       for several host_data / host_cmd patterns (ann_address host layout).
 //------------------------------------------------------------------------------
 
 `timescale 1ns/1ps

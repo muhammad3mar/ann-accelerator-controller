@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 // Parallel Interface Module
 //------------------------------------------------------------------------------
-// Host presents the same 32-bit layout as ann_core_word:
+// Host presents the same 32-bit layout as ann_address:
 //   host_data[31:24] = data byte
 //   host_data[23:0]  = one-hot {PE, SA, col, row}
 //
@@ -23,7 +23,7 @@ module parallel_interface(
     //======================================================================
     // Host Interface
     //======================================================================
-    input  logic [31:0]     host_data,  // ann_core_word format
+    input  logic [31:0]     host_data,  // ann_address format
     input  logic [2:0]      host_cmd,   // command (HIZ when idle / no transaction)
 
     //======================================================================

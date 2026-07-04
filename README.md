@@ -40,7 +40,7 @@ Three RTL blocks compose the system (see `tb/Controller/tb/parallel_interface_co
         │ parallel_interface │  decodes one-hot host word → data/address/cmd/valid
         └─────────┬──────────┘
                   │ valid, data[7:0], address[15:0], cmd[2:0]
-        ┌─────────▼──────────┐         pulses[2:0], ann_core_word[31:0]
+        ┌─────────▼──────────┐         pulses[2:0], ann_address[31:0]
         │   ann_controller   │ ───────────────────────────────────────►  ANN / Y-Flash core
         │  (main + sub-FSMs) │ ◄─── op_done, weight_read_data[3:0] ───────
         └─────────┬──────────┘

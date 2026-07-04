@@ -48,6 +48,7 @@ os.chdir(PROJECT_ROOT)
 MODELSIM_PATH = "/c/intelFPGA_lite/17.0/modelsim_ase/win32aloem"
 VLOG_CMD = "vlog"
 VSIM_CMD = "vsim"
+VLIB_CMD = "vlib"
 
 # Module definitions
 MODULES = {
@@ -141,14 +142,23 @@ def normalize_testbench_name(name: str) -> str:
     return n
 
 
+def ensure_work_library():
+    """Create work/ and initialize ModelSim library if needed."""
+    WORK_DIR.mkdir(exist_ok=True)
+    if not (WORK_DIR / "_lib.qdb").exists():
+        return run_command([VLIB_CMD, "work"], cwd=PROJECT_ROOT, check=True)
+    return True
+
+
 def compile_rtl(module_name, file_list):
     """Compile RTL files for a module"""
     print(f"\n{'='*60}")
     print(f"Compiling RTL for {module_name}")
     print(f"{'='*60}")
     
-    # Create work directory if it doesn't exist
-    WORK_DIR.mkdir(exist_ok=True)
+    # Create / initialize ModelSim work library
+    if not ensure_work_library():
+        return False
     
     # Change to module directory for relative paths
     module_dir = PROJECT_ROOT / MODULES[module_name]["rtl_dir"]
@@ -170,8 +180,9 @@ def compile_verif(module_name, file_list):
     print(f"Compiling Verification for {module_name}")
     print(f"{'='*60}")
     
-    # Create work directory if it doesn't exist
-    WORK_DIR.mkdir(exist_ok=True)
+    # Create / initialize ModelSim work library
+    if not ensure_work_library():
+        return False
     
     cmd = [VLOG_CMD, "-sv", "-work", "work", "-f", file_list]
     success = run_command(cmd, cwd=PROJECT_ROOT)
@@ -282,9 +293,8 @@ def clean_work():
             print(f"[X] Error removing work/: {e}")
             return False
     
-    # Recreate empty work directory
-    WORK_DIR.mkdir(exist_ok=True)
-    return True
+    # Recreate and initialize ModelSim work library
+    return ensure_work_library()
 
 
 def clean_target(module_name=None):

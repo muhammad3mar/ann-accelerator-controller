@@ -28,7 +28,7 @@ python scripts/run_sim.py compile -m Parallel_Interface -t verif
 
 ### `controller_addr_pulse_tb`
 
-- **Tests:** `ann_core_word` packing and pulse modes for READ/PROG/ERASE/INF.
+- **Tests:** `ann_address` packing and pulse modes for READ/PROG/ERASE/INF.
 - **Run:** `python scripts/run_sim.py sim -m Controller -tb controller_addr_pulse_tb`
 
 ### `controller_prog_verify_lut_tb`
@@ -54,7 +54,7 @@ python scripts/run_sim.py compile -m Parallel_Interface -t verif
 
 ### `controller_host_read_reorder_tb`
 
-- **Tests:** Program 8 weights at 8 addresses via PI, then host `CMD_READ` in permuted order; mock memristor matrix + `ann_core_word` / `weight_read_data` checks.
+- **Tests:** Program 8 weights at 8 addresses via PI, then host `CMD_READ` in permuted order; mock memristor matrix + `ann_address` / `weight_read_data` checks.
 - **Report:** `target/Controller/read/controller_host_read_reorder_report.txt`
 - **Run:** `python scripts/run_sim.py sim -m Controller -tb controller_host_read_reorder_tb`
 

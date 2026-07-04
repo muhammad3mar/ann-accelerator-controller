@@ -31,7 +31,7 @@ module controller_prog_verify_lut_10w_tb;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
     logic ann_reset, op_done, busy;
-    logic [31:0] ann_core_word;
+    logic [31:0] ann_address;
     logic [2:0] pulses;
     logic [5:0] buf_reg_add;
     logic [2:0] buf_reg_ctrl;
@@ -48,7 +48,7 @@ module controller_prog_verify_lut_10w_tb;
     logic [2:0] dec_row, dec_col;
 
     always_comb begin
-        ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
+        ann_address_decode(ann_address, dec_blk, dec_sb, dec_row, dec_col);
         actual_from_ann = ann_weight_matrix[dec_blk][dec_sb][dec_row][dec_col];
     end
 
@@ -99,7 +99,7 @@ module controller_prog_verify_lut_10w_tb;
     ) dut (
         .clk(clk), .rst_n(rst_n), .valid(valid), .data(data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
-        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .op_done(op_done), .ann_address(ann_address), .pulses(pulses),
         .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
@@ -185,8 +185,8 @@ module controller_prog_verify_lut_10w_tb;
         end else if (in_prog_core_phase) begin
             automatic logic [1:0] lb, lsb;
             automatic logic [2:0] lr, lc;
-            ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
-            ann_weight_matrix[lb][lsb][lr][lc] <= ann_core_word[27:24];
+            ann_address_decode(ann_address, lb, lsb, lr, lc);
+            ann_weight_matrix[lb][lsb][lr][lc] <= ann_address[27:24];
         end
     end
 

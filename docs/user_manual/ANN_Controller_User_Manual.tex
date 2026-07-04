@@ -154,7 +154,7 @@ The heart of the system. It implements a 9-state main FSM
 (\texttt{S\_IDLE, S\_RESET, S\_PROGRAM, S\_VERIFY, S\_ERASE, S\_READ,
 S\_COLLECT\_DATA, S\_COMPUTE, S\_RESULT}) plus three sub-FSMs for the
 \texttt{PROGRAM}, \texttt{VERIFY}, and \texttt{ERASE} sequences. It generates
-the 3-bit \texttt{pulses} mode bus and the packed 32-bit \texttt{ann\_core\_word}
+the 3-bit \texttt{pulses} mode bus and the packed 32-bit \texttt{ann\_address}
 (data byte + one-hot address) toward the analog core, and orchestrates the
 input buffer during inference.
 
@@ -202,7 +202,10 @@ module ann_controller #(
 \texttt{TERASE} & 2 & ERASE burst width. \\
 \texttt{TINF}   & 8 & INFERENCE burst width (min 8 for bit-serial). \\
 \texttt{PULSE\_GAP} & 1 & Idle (HiZ) cycles between bursts. \\
-\texttt{PULSE\_NUM\_*} & 1 & Number of bursts per operation. \\
+\texttt{PULSE\_NUM\_READ}  & 1 & Number of READ bursts per operation. \\
+\texttt{PULSE\_NUM\_PROG}  & 1 & Number of PROGRAM bursts per operation. \\
+\texttt{PULSE\_NUM\_ERASE} & 1 & Number of ERASE bursts per operation. \\
+\texttt{PULSE\_NUM\_INF}   & 1 & Number of INFERENCE bursts per operation. \\
 \texttt{MAX\_PROG\_RETRIES} & 3 & Re-PROG attempts before falling back to ERASE. \\
 \midrule
 \multicolumn{3}{l}{\textit{Buffer / array sizing}} \\
@@ -246,7 +249,7 @@ inferred from the RTL.
 \multicolumn{4}{l}{\textit{Controller $\leftrightarrow$ ANN Core}} \\
 \texttt{ann\_reset}        & Out & 1  & Reset pulse toward the ANN core (asserted in \texttt{S\_RESET}). \\
 \texttt{op\_done}          & In  & 1  & Core handshake: advances PROG/ERASE sub-FSMs. \\
-\texttt{ann\_core\_word}   & Out & 32 & Packed bus: [31:24] data byte, [23:0] one-hot \{PE,SA,col,row\}. \\
+\texttt{ann\_address}   & Out & 32 & Packed bus: [31:24] data byte, [23:0] one-hot \{PE,SA,col,row\}. \\
 \texttt{pulses}            & Out & 3  & Pulse-mode bus (HIZ/READ/PROG/ERASE/INF) gated by burst timing. \\
 \texttt{weight\_read\_data}& In  & 4  & Quantized weight read back from the memristor during VERIFY. \\
 \midrule

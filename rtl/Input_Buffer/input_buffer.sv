@@ -2,8 +2,7 @@
 // Input Buffer - SystemVerilog Implementation
 //------------------------------------------------------------------------------
 
-
-
+`include "../common/macros.svh"
 
 import input_buffer_pkg::*;
 

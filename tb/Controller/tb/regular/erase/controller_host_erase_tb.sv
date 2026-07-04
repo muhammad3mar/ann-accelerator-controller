@@ -29,7 +29,7 @@ module controller_host_erase_tb;
     logic [15:0] address;
     logic [CMD_WIDTH-1:0] cmd;
     logic        ann_reset, op_done, busy;
-    logic [31:0] ann_core_word;
+    logic [31:0] ann_address;
     logic [2:0]  pulses;
     logic [5:0]  buf_reg_add;
     logic [2:0]  buf_reg_ctrl;
@@ -50,7 +50,7 @@ module controller_host_erase_tb;
     logic [3:0] cell_A_value, cell_B_value;
 
     always_comb begin
-        ann_core_word_decode(ann_core_word, dec_blk, dec_sb, dec_row, dec_col);
+        ann_address_decode(ann_address, dec_blk, dec_sb, dec_row, dec_col);
         actual_from_ann = ann_weight_matrix[dec_blk][dec_sb][dec_row][dec_col];
     end
 
@@ -72,7 +72,7 @@ module controller_host_erase_tb;
         .clk(clk), .rst_n(rst_n),
         .valid(valid), .data(pi_data), .address(address), .cmd(cmd),
         .ann_reset(ann_reset),
-        .op_done(op_done), .ann_core_word(ann_core_word), .pulses(pulses),
+        .op_done(op_done), .ann_address(ann_address), .pulses(pulses),
         .weight_read_data(weight_read_data_mock),
         .buf_reg_add(buf_reg_add), .buf_reg_ctrl(buf_reg_ctrl), .buf_read_write(buf_read_write),
         .buf_bit_sel(buf_bit_sel),
@@ -150,12 +150,12 @@ module controller_host_erase_tb;
         end else if (in_prog_core_phase) begin
             automatic logic [1:0] lb, lsb;
             automatic logic [2:0] lr, lc;
-            ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
-            ann_weight_matrix[lb][lsb][lr][lc] <= ann_core_word[27:24];
+            ann_address_decode(ann_address, lb, lsb, lr, lc);
+            ann_weight_matrix[lb][lsb][lr][lc] <= ann_address[27:24];
         end else if (prev_erase_state == ERASE_PULSE && dut.erase_state == ERASE_WAIT_ACK) begin
             automatic logic [1:0] lb, lsb;
             automatic logic [2:0] lr, lc;
-            ann_core_word_decode(ann_core_word, lb, lsb, lr, lc);
+            ann_address_decode(ann_address, lb, lsb, lr, lc);
             ann_weight_matrix[lb][lsb][lr][lc] <= 4'b0;
         end
     end
@@ -202,11 +202,11 @@ module controller_host_erase_tb;
     endfunction
 
     // Log every posedge while DUT is busy after a command (PROG / ERASE / etc.)
-    // pulses: 3-bit mode (b2b1b0, no separators); ann_core_word: data-PE-SA-col-row with '-' between fields
+    // pulses: 3-bit mode (b2b1b0, no separators); ann_address: data-PE-SA-col-row with '-' between fields
     task automatic log_busy_trace(int fd, string phase_title, bit host_erase_only = 0);
         $fdisplay(fd, "// --- %s ---", phase_title);
-        $fdisplay(fd, "// Columns: time(ns) | busy | pulses[2:0] | ann_core_word: data-PE-SA-col-row (binary) | state | erase_state");
-        $fdisplay(fd, "// ann_core_word fields: data[31:24] - PE[23:20] - SA[19:16] - col[15:8] - row[7:0]");
+        $fdisplay(fd, "// Columns: time(ns) | busy | pulses[2:0] | ann_address: data-PE-SA-col-row (binary) | state | erase_state");
+        $fdisplay(fd, "// ann_address fields: data[31:24] - PE[23:20] - SA[19:16] - col[15:8] - row[7:0]");
         $fdisplay(fd, "// state: 0=IDLE 2=PROGRAM 3=VERIFY 4=ERASE ...  | erase_state: 0=HIZ .. 3=PULSE .. 5=COMPLETE");
         while (!busy)
             @(posedge clk);
@@ -217,15 +217,15 @@ module controller_host_erase_tb;
             end
             $fdisplay(fd, "[%0t] | %b | %03b | %08b-%04b-%04b-%08b-%08b | %0d | %0d",
                       $time, busy, pulses,
-                      ann_core_word[31:24], ann_core_word[23:20], ann_core_word[19:16],
-                      ann_core_word[15:8], ann_core_word[7:0],
+                      ann_address[31:24], ann_address[23:20], ann_address[19:16],
+                      ann_address[15:8], ann_address[7:0],
                       dut.state, dut.erase_state);
             @(posedge clk);
         end
         $fdisplay(fd, "[%0t] | %b | %03b | %08b-%04b-%04b-%08b-%08b | %0d | %0d | (idle)",
                   $time, busy, pulses,
-                  ann_core_word[31:24], ann_core_word[23:20], ann_core_word[19:16],
-                  ann_core_word[15:8], ann_core_word[7:0],
+                  ann_address[31:24], ann_address[23:20], ann_address[19:16],
+                  ann_address[15:8], ann_address[7:0],
                   dut.state, dut.erase_state);
         $fdisplay(fd, "");
     endtask

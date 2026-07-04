@@ -9,7 +9,7 @@ This file lists the testbenches currently present in the project and what each o
 ## Controller testbenches
 
 - `controller_addr_pulse_tb`
-  - Verifies `ann_core_word` packing from address/data.
+  - Verifies `ann_address` packing from address/data.
   - Verifies pulse mode behavior for READ/PROG/ERASE/INF.
 
 - `controller_prog_verify_lut_tb`
@@ -24,7 +24,7 @@ This file lists the testbenches currently present in the project and what each o
 
 - `controller_host_erase_tb`
   - Host `CMD_ERASE` on one programmed cell; second cell stays programmed.
-  - Logs `busy` / `pulses` / `ann_core_word` / FSM during erase; mock matrix before/after in `target/Controller/erase/controller_host_erase_report.txt`.
+  - Logs `busy` / `pulses` / `ann_address` / FSM during erase; mock matrix before/after in `target/Controller/erase/controller_host_erase_report.txt`.
 
 - `controller_inf_buffer_flow_tb`
   - INF-focused integration trace: host `CMD_INF` packet stream, collect-phase writes into input buffer, and bit-serial `D0..D7` behavior when compute starts.
@@ -32,7 +32,7 @@ This file lists the testbenches currently present in the project and what each o
 
 - `controller_host_read_reorder_tb`
   - Programs eight 4-bit weights at eight distinct ANN addresses through the PI, then issues `CMD_READ` for those cells in a non-sequential order.
-  - Report under `target/Controller/read/controller_host_read_reorder_report.txt`: programmed map, each host READ command (packet hex), and DUT `S_READ` samples (`pulses`, `ann_core_word`, mock `weight_read_data`).
+  - Report under `target/Controller/read/controller_host_read_reorder_report.txt`: programmed map, each host READ command (packet hex), and DUT `S_READ` samples (`pulses`, `ann_address`, mock `weight_read_data`).
 
 ## Input_Buffer testbenches
 
