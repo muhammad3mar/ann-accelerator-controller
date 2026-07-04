@@ -43,6 +43,10 @@ results/**/*_log.txt
 
 # ---- Academic report (local PDFs / LaTeX; not versioned) ----
 report/
+updated report/
+backup/
+source/
+verif/
 
 # ---- Python ----
 __pycache__/
