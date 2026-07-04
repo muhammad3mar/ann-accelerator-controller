@@ -1,0 +1,148 @@
+% =============================================================================
+% Chapter 2 --- Background
+% =============================================================================
+
+\chapter{Background}
+\label{ch:background}
+
+This chapter establishes only the context required to justify the
+controller's closed-loop architecture: the energetic case for in-memory
+computing (IMC), the physical mechanism by which a crossbar implements a
+matrix--vector multiplication (MVM), the Y-Flash device that this controller
+drives, and the write--verify problem the device's non-idealities impose on
+the surrounding digital logic.
+
+\section{In-Memory Computing and the MVM Kernel}
+\label{sec:bg-imc}
+
+Modern data-centric workloads --- ANN inference foremost among them --- are
+bottlenecked by the energy cost of moving operands between memory and
+arithmetic units rather than by the arithmetic itself; this is the
+\emph{memory wall}~\cite{Sebastian2020IMC, Ielmini2018RRAM, Verma2019IMC}.
+IMC sidesteps the bottleneck by embedding the computation \emph{inside} the
+memory array. For the dominant ANN kernel, MVM over a stored weight
+matrix, the crossbar topology is structurally aligned with the dataflow:
+weights are stored at the crosspoints, input activations are applied on
+the rows, and the per-cell contributions sum physically on the columns.
+
+In algebraic form the array implements $\vec{y} = W\vec{x}$ through two
+physical laws. \textbf{Ohm's law} at each crosspoint produces a current
+$I_{ij} = G_{ij}V_i = w_{ij}x_i$, where the programmable conductance
+$G_{ij}$ encodes the synaptic weight $w_{ij}$. \textbf{Kirchhoff's current
+law} on each column sums these currents into
+$I_j = \sum_i w_{ij}x_i$, yielding one MAC per column per
+read~\cite{Sebastian2020IMC, Verma2019IMC, Ielmini2018RRAM}.
+\Cref{fig:mvm-crossbar-array} sketches the canonical arrangement.
+
+The energy advantage of this organization is intrinsic: an entire MVM row
+is consumed in a single access rather than as one memory cycle per weight.
+The benefit, however, is delivered only when the surrounding periphery ---
+addressing, pulse sequencing, calibration, error
+handling~\cite{Sebastian2020IMC} --- preserves the array-level efficiency.
+Three requirements follow directly for the digital controller: every cell
+must be individually \emph{addressable}, every operation must be
+\emph{pulse-shaped} on the appropriate terminals, and every program must
+be \emph{verifiable} against a target value. The architecture in
+\Cref{ch:architecture} maps onto these three requirements.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{example-image.png}
+    \caption{$M \times N$ memristor crossbar performing an analog
+        matrix--vector multiplication. Row read-voltages $\{V_i\}$ drive
+        programmable conductances $G_{ij}$; per-column currents
+        $I_j = \sum_i G_{ij} V_i$ are digitized at the array periphery.}
+    \label{fig:mvm-crossbar-array}
+\end{figure}
+
+\section{The Y-Flash Floating-Gate Memristor}
+\label{sec:bg-yflash}
+
+Among the candidate IMC devices --- RRAM, PCM, MRAM, and floating-gate
+variants~\cite{Ielmini2018RRAM, Wang2022YFlash} --- the analog core this
+controller drives uses the \emph{Y-Flash} floating-gate memristor, the
+device technology under development in the supervisor's
+group~\cite{Wang2022YFlash}.
+
+The cell is built in a standard single-poly CMOS process without
+additional masks and contains two transistors --- a longer-channel
+\emph{read} transistor and a shorter-channel \emph{injection} transistor
+--- that share a common floating gate and a common drain. Three operations
+are exposed through distinct external bias configurations: \textbf{Read}
+at $V_R < 2.5\,\text{V}$ exposes the stored charge as a subthreshold
+current in the \SI{1}{\nano\ampere}--\SI{5}{\micro\ampere} range;
+\textbf{Program} at $V_P > 4\,\text{V}$ injects hot electrons onto the
+floating gate, raising threshold and reducing conductance; \textbf{Erase}
+at $V_E > 7\,\text{V}$ discharges the gate via band-to-band
+tunneling~\cite{Wang2022YFlash}. The selection is performed at the cell
+itself --- de-biasing the source defeats programming on un-selected
+cells --- which makes the device naturally compatible with per-cell
+one-hot row/column selection from the digital side. The physical
+arrangement of the two-transistor cell and the shared floating gate is
+sketched in \Cref{fig:yflash-structure}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{yflash_structure.png}
+    \caption{Physical structure of the Y-Flash floating-gate memristor.
+        The cell pairs a longer-channel \emph{read} transistor with a
+        shorter-channel \emph{injection} transistor that share a single
+        floating gate and a common drain, and is fabricated in a
+        standard single-poly CMOS process without additional masks. The
+        three operations --- Read at low gate bias, Program by
+        channel-hot-electron injection onto the floating gate, and Erase
+        by band-to-band tunneling --- are selected entirely by the
+        external bias configuration, while per-cell selection is
+        achieved at the source terminal so that un-selected cells in the
+        same row or column remain undisturbed.}
+    \label{fig:yflash-structure}
+\end{figure}
+
+Two properties of the device dictate the structure of the digital
+controller. First, all three operations rely on tunneling or hot-carrier
+injection, whose effective amplitude depends \emph{exponentially} on
+applied voltage and pulse duration: the controller is therefore
+responsible for accurate pulse-time shaping, not just bias selection.
+Second, the analog conductance is tunable across a continuum of
+intermediate states with low cycle-to-cycle variability relative to
+filamentary alternatives~\cite{Wang2022YFlash}, but the post-programming
+conductance is still displaced from its target by an amount that depends
+on local fabrication state, charge history, and pulse shape. These
+displacements are what motivate the closed-loop control policy.
+
+\section{The Write--Verify Problem}
+\label{sec:bg-writeverify}
+
+No single unconditional program pulse can be relied upon to place a
+resistive cell at its intended conductance. Sebastian et~al.\ describe
+the canonical mitigation as an iterative \emph{write--read--decide}
+strategy: each program pulse is interleaved with a verify read, the
+readback is compared against the target, and subsequent pulses are
+adapted (or replaced by an erase) until the cell converges or a retry
+budget is exhausted~\cite{Sebastian2020IMC, Ielmini2018RRAM,
+Wang2022YFlash}. Three architectural consequences for the controller
+follow:
+
+\begin{itemize}
+    \item \textbf{One-hot addressing at the boundary.} The host
+          transaction selects exactly one cell per block through
+          concatenated one-hot fields, mirroring the per-cell deselect
+          mechanism the Y-Flash exposes during program and
+          erase~\cite{Wang2022YFlash}.
+    \item \textbf{A multi-bit pulse-mode bus.} Read, program, erase, and
+          inference each map to a distinct time-multiplexed burst encoding
+          rather than a generic write bit-pattern, matching the
+          device-level distinction between the three bias
+          configurations.
+    \item \textbf{A hierarchical FSM with explicit recovery branches.}
+          The controller must implement a program--verify--(re-program or
+          erase) loop with a bounded retry budget, so that a single
+          mis-programmed cell cannot bring down the system: it is either
+          re-programmed, erased and re-attempted, or declared a
+          failure~\cite{Ielmini2018RRAM, Sebastian2020IMC,
+          Wang2022YFlash}.
+\end{itemize}
+
+These three consequences are the design contract of the digital
+controller. The remainder of the report describes the RTL that implements
+that contract.
