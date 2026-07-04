@@ -1,0 +1,34 @@
+Reading C:/intelFPGA_lite/17.0/modelsim_ase/tcl/vsim/pref.tcl
+
+# 10.5b
+
+# vsim -c -do "run -all; quit" work.input_buffer_reset_behavior_tb 
+# Start time: 12:51:55 on Apr 21,2026
+# Loading sv_std.std
+# Loading work.input_buffer_pkg
+# Loading work.input_buffer_reset_behavior_tb_sv_unit
+# Loading work.input_buffer_reset_behavior_tb
+# Loading work.input_buffer_sv_unit
+# Loading work.input_buffer
+# run -all
+# ----------------------------------------------------
+# Input Buffer Reset Behavior Test
+# ----------------------------------------------------
+# A) Reset while DATA_LOAD is active
+#   PASS: addr 20 cleared to 0 after reset during load
+# B) Baseline bit-serial before reset
+#   PASS: bit-serial matches loaded bytes before reset
+# C) Reset while COMPUTE/bit-serial is active
+#   PASS: D0..D7 forced low during reset
+#   PASS: buffer content cleared after reset during compute
+# 
+# ** Note: $finish    : verif/Input_Buffer/tb/input_buffer_reset_behavior_tb.sv(207)
+#    Time: 405 ns  Iteration: 0  Instance: /input_buffer_reset_behavior_tb
+# End time: 12:51:55 on Apr 21,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# //==============================================================================
+# // TB REPORT  input_buffer_reset_behavior_tb
+# // Reset during CTRL_DATA_LOAD and during COMPUTE/bit-serial
+# //==============================================================================
+# SUMMARY: 4 passed, 0 failed
+# RESULT: PASS

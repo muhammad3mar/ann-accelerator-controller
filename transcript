@@ -1,0 +1,28 @@
+# vsim -do "C:/Users/Asus X415/Desktop/ann-accelerator-controller/tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do" work.controller_prog_verify_lut_tb_waves_tb 
+# Start time: 15:05:19 on Jul 04,2026
+# Loading sv_std.std
+# Loading work.parallel_interface_pkg
+# Loading work.controller_pkg
+# Loading work.controller_prog_verify_lut_tb_waves_tb_sv_unit
+# Loading work.controller_prog_verify_lut_tb_waves_tb
+# Loading work.input_buffer_pkg
+# Loading work.controller_prog_verify_lut_tb_sv_unit
+# Loading work.controller_prog_verify_lut_tb
+# Loading work.parallel_interface_sv_unit
+# Loading work.parallel_interface
+# Loading work.controller_sv_unit
+# Loading work.ann_controller
+# Loading work.input_buffer_sv_unit
+# Loading work.input_buffer
+# do {C:/Users/Asus X415/Desktop/ann-accelerator-controller/tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do}
+# /controller_prog_verify_lut_tb_waves_tb
+# /controller_prog_verify_lut_tb_waves_tb/u_tb
+# /controller_prog_verify_lut_tb_waves_tb/u_tb/dut
+# [38000] Loaded 640 weights from target/Controller/programming_inputs/weight_matrix.txt
+# [38000] Programming 640 weights (PROG->VERIFY cycle)...
+# [73370000] Verification complete: 0 errors
+# [73370000] Report: target/Controller/prog/prog_verify_report.txt
+# ** Note: $finish    : tb/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv(424)
+#    Time: 73410 ns  Iteration: 1  Instance: /controller_prog_verify_lut_tb_waves_tb/u_tb
+# 1
+# Break in Module controller_prog_verify_lut_tb at tb/Controller/tb/regular/prog/controller_prog_verify_lut_tb.sv line 424
