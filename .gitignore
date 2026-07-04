@@ -40,6 +40,9 @@ vivado*.backup.*
 target/**/*_tb_log.txt
 target/**/*_log.txt
 results/**/*_log.txt
+transcript
+vsim.wlf
+*.wlf
 
 # ---- Academic report (local PDFs / LaTeX; not versioned) ----
 report/
