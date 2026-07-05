@@ -40,6 +40,11 @@ vivado*.backup.*
 target/**/*_tb_log.txt
 target/**/*_log.txt
 results/**/*_log.txt
+# Keep Input_Buffer verification outputs versioned under target/input_buffer/
+!target/input_buffer/
+!target/input_buffer/**
+!target/Input_Buffer/
+!target/Input_Buffer/**
 transcript
 vsim.wlf
 *.wlf
