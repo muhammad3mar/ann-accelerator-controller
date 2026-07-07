@@ -55,6 +55,7 @@ updated report/
 backup/
 source/
 verif/
+docs/user_manual/
 
 # ---- Python ----
 __pycache__/
@@ -84,3 +85,4 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+.cursor/
