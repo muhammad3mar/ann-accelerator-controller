@@ -133,7 +133,7 @@ python scripts/run_sim.py compile -m Controller -t verif
 
 ```bash
 # Open ModelSim GUI with waveform viewer
-python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file verif/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
+python scripts/run_sim.py sim -m Controller -tb controller_prog_verify_lut_tb_waves_tb --do-file tb/Controller/do/waves/controller_prog_verify_lut_tb_waves.do
 ```
 
 ## Output Files
@@ -181,28 +181,45 @@ If simulation fails:
 
 ```
 project/
-├── scripts/
-│   ├── run_sim.py          # Main simulation script
-│   └── README_SIM.md       # This file
-├── source/
+├── data/
+│   ├── extract_digits_to_csv.py
+│   └── README.md
+├── docs/
+│   └── verification/          # Testbench runbooks and catalog
+├── rtl/
 │   ├── Controller/
+│   │   ├── controller.sv
 │   │   └── controller_rtl_list.f
 │   ├── Input_Buffer/
+│   │   ├── input_buffer.sv
 │   │   └── input_buffer_rtl_list.f
 │   └── Parallel_Interface/
+│       ├── parallel_interface.sv
 │       └── parallel_interface_rtl_list.f
-├── verif/
+├── scripts/
+│   ├── run_sim.py               # Main simulation script
+│   └── README_SIM.md            # This file
+├── tb/
 │   ├── Controller/
+│   │   ├── do/waves/            # ModelSim wave .do files
 │   │   ├── file_list/
 │   │   │   ├── controller_list.f
 │   │   │   └── controller_verif_list.f
 │   │   └── tb/
-│   │       └── regular/prog/...
-│   └── ...
+│   │       ├── regular/         # Batch testbenches
+│   │       └── waves/           # GUI wave wrapper testbenches
+│   ├── Input_Buffer/
+│   │   ├── do/waves/
+│   │   ├── file_list/
+│   │   └── tb/
+│   └── Parallel_Interface/
+│       ├── file_list/
+│       └── tb/
 └── target/
     ├── Controller/
     │   ├── prog/
     │   └── programming_inputs/
     │       └── weight_matrix.txt
-    └── ...
+    ├── input_buffer/            # Input_Buffer sim logs (*_log.txt)
+    └── parallel_interface/      # Parallel_Interface sim logs
 ```
