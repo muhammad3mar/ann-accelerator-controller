@@ -86,11 +86,11 @@ module ann_controller #(
     //--------------------------------------------------------------------------
     // VERIFY and ERASE sub-FSM Signals
     //--------------------------------------------------------------------------
-    // Retry counter (counts how many ERASE attempts for current weight)
-    logic [1:0] retry_cnt;     // 0..3
+    // Retry counter: ERASE rounds in verify-failure recovery (0..3); abort when >= 3
+    logic [1:0] retry_cnt;
 
-    // Re-program counter (counts PROG retries without ERASE when read < expected)
-    logic [1:0] prog_retry_cnt;  // 0..MAX_PROG_RETRIES
+    // Re-program counter: PROG retries without ERASE when read < expected (0..MAX_PROG_RETRIES)
+    logic [1:0] prog_retry_cnt;
 
     // S_VERIFY read pulse train: VERIFY_IDLE is cycle 0; VERIFY_WAIT uses verify_pulse_idx 1..PULSE_TOTAL_READ-1
     logic [7:0] verify_pulse_idx;
@@ -100,10 +100,11 @@ module ann_controller #(
     logic [3:0]  expected_weight;     // from buffer/host
     // VERIFY_CHECK: set when mismatch forces entry to S_ERASE (max reprog or over-programmed)
     logic        verify_failure_starts_erase;
-    // ERASE_COMPLETE: set when erase retry_cnt reached limit and controller aborts to idle
-    logic        erase_max_retries_exhausted;
+    // erase_failure_flag: pulsed for one cycle in ERASE_COMPLETE when verify-failure
+    // recovery has exhausted erase retries (retry_cnt >= 3) and the FSM returns to S_IDLE.
+    logic        erase_failure_flag;
 
-   
+    // Asserted when under-programmed verify requests a stronger re-program pulse
     logic        program_stronger;
 
     // Host CMD_ERASE from S_IDLE: after erase sub-FSM, return to idle (no PROG/VERIFY).
@@ -117,11 +118,11 @@ module ann_controller #(
     logic [7:0]  data_reg;             // Current data from parallel interface (captured with address)
     logic [WEIGHT_ADDR_WIDTH-1:0] weight_addr_reg;  // Parsed ANN address
     
-    // Address parsing outputs
-    logic [BLOCK_ID_WIDTH-1:0]      block_id;              
-    logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id;          
-    logic [ROW_ID_WIDTH-1:0]       row_id;                
-    logic [COL_ID_WIDTH-1:0]       col_id;
+    // Address parsing outputs (binary PE / SA / row / col indices)
+    logic [PE_ID_WIDTH-1:0]      pe_id;
+    logic [SA_ID_WIDTH-1:0]      sa_id;
+    logic [ROW_ID_WIDTH-1:0]     row_id;
+    logic [COL_ID_WIDTH-1:0]     col_id;
 
     //--------------------------------------------------------------------------
     // Data Collection Tracking for INF Command
@@ -151,7 +152,8 @@ module ann_controller #(
     logic                           weight_prog_done;       // All weights programmed flag
 
     // Buffer address and weight selection (kept for ERASE/VERIFY)
-    logic [BUF_ADDR_WIDTH-1:0]     buf_addr_reg;          
+    logic [BUF_ADDR_WIDTH-1:0]     buf_addr_reg;
+    // Selects lower (0) or upper (1) nibble of buffer byte via buffer_idx_reg[0]
     logic                           weight_sel;
     
     // Weight data extraction from buffer
@@ -175,8 +177,8 @@ module ann_controller #(
     //--------------------------------------------------------------------------
     `comb(
         // All commands use direct address from host packet
-        parse_ann_address(address_reg, block_id, sub_block_id, row_id, col_id);
-        weight_addr_reg = {block_id, sub_block_id, row_id, col_id};
+        parse_ann_address(address_reg, pe_id, sa_id, row_id, col_id);
+        weight_addr_reg = {pe_id, sa_id, row_id, col_id};
     )
 
     //--------------------------------------------------------------------------
@@ -199,7 +201,7 @@ module ann_controller #(
         if (state == S_IDLE)
             ann_address = 32'b0;
         else
-            ann_address = pack_ann_address(data_byte_for_ann, block_id, sub_block_id, row_id, col_id);
+            ann_address = pack_ann_address(data_byte_for_ann, pe_id, sa_id, row_id, col_id);
     end
 
     //--------------------------------------------------------------------------
@@ -521,7 +523,7 @@ module ann_controller #(
         next_prog_state  = prog_state;
 
         verify_failure_starts_erase = 1'b0;
-        erase_max_retries_exhausted = 1'b0;
+        erase_failure_flag = 1'b0;
 
         unique case (state)
 
@@ -743,7 +745,7 @@ module ann_controller #(
                             erase_next = ERASE_HIZ;
                         end else begin
                             // Erase retry budget exhausted; abort verify/recovery and return to idle
-                            erase_max_retries_exhausted = 1'b1;
+                            erase_failure_flag = 1'b1;
                             next_state = S_IDLE;
                             next_prog_state = PROG_HIZ;
                             erase_next = ERASE_HIZ;

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 // Compact Program-Verify TB (10 weights) for fast waveform bring-up.
 // Covers: verify match (equal), read<expected (re-PROG), read>expected (ERASE->PROG),
-// and idx5 forced ERASE-recovery looping until DUT raises erase_max_retries_exhausted.
+// and idx5 forced ERASE-recovery looping until DUT raises erase_failure_flag.
 //
 // Note: ERASE max-retry give-up (retry_cnt) in RTL is not reachable in this direct-address flow because
 // PROG_COMPLETE clears retry_cnt whenever buffer_idx_reg < weight_count_reg-1 (default 640), so erase
@@ -41,7 +41,7 @@ module controller_prog_verify_lut_10w_tb;
     logic D0, D1, D2, D3, D4, D5, D6, D7;
     logic buf_ready;
 
-    logic [3:0] ann_weight_matrix [0:NUM_BLOCKS-1][0:NUM_SUB_BLOCKS-1][0:SUB_BLOCK_ROWS-1][0:SUB_BLOCK_COLS-1];
+    logic [3:0] ann_weight_matrix [0:NUM_PE-1][0:NUM_SA-1][0:SA_ROWS-1][0:SA_COLS-1];
     logic [3:0] weight_read_data_mock;
     logic [3:0] actual_from_ann;
     logic [1:0] dec_blk, dec_sb;
@@ -70,7 +70,7 @@ module controller_prog_verify_lut_10w_tb;
     logic in_verify_phase;
     assign in_verify_phase = busy && (pulses == 3'b001 || pulses == 3'b000);
 
-    // Keep idx5 mismatch-active until erase_max_retries_exhausted is observed, then release.
+    // Keep idx5 mismatch-active until erase_failure_flag is observed, then release.
     logic w5_release_under;
     controller_state_t prev_dut_state;
     logic w5_seen_erase_exhausted;
@@ -121,7 +121,7 @@ module controller_prog_verify_lut_10w_tb;
             w5_seen_erase_exhausted <= 1'b0;
         else if (current_weight_idx != 5)
             w5_seen_erase_exhausted <= 1'b0;
-        else if (dut.erase_max_retries_exhausted)
+        else if (dut.erase_failure_flag)
             w5_seen_erase_exhausted <= 1'b1;
     end
 
@@ -177,10 +177,10 @@ module controller_prog_verify_lut_10w_tb;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            for (int b = 0; b < NUM_BLOCKS; b++)
-                for (int sb = 0; sb < NUM_SUB_BLOCKS; sb++)
-                    for (int r = 0; r < SUB_BLOCK_ROWS; r++)
-                        for (int c = 0; c < SUB_BLOCK_COLS; c++)
+            for (int b = 0; b < NUM_PE; b++)
+                for (int sb = 0; sb < NUM_SA; sb++)
+                    for (int r = 0; r < SA_ROWS; r++)
+                        for (int c = 0; c < SA_COLS; c++)
                             ann_weight_matrix[b][sb][r][c] <= 4'b0;
         end else if (in_prog_core_phase) begin
             automatic logic [1:0] lb, lsb;
@@ -191,22 +191,22 @@ module controller_prog_verify_lut_10w_tb;
     end
 
     function automatic logic [15:0] matrix_coords_to_address(int matrix_row, int matrix_col);
-        logic [BLOCK_ID_WIDTH-1:0] block_id;
-        logic [SUB_BLOCK_ID_WIDTH-1:0] sub_block_id;
+        logic [PE_ID_WIDTH-1:0] pe_id;
+        logic [SA_ID_WIDTH-1:0] sa_id;
         logic [ROW_ID_WIDTH-1:0] row_id;
         logic [COL_ID_WIDTH-1:0] col_id;
-        logic [3:0] col_within_block;
-        block_id = matrix_col[5:4];
-        col_within_block = matrix_col[3:0];
+        logic [3:0] col_within_pe;
+        pe_id = matrix_col[5:4];
+        col_within_pe = matrix_col[3:0];
         if (matrix_row < 8) begin
-            sub_block_id = col_within_block[3] ? 2'd1 : 2'd0;
+            sa_id = col_within_pe[3] ? 2'd1 : 2'd0;
             row_id = matrix_row[2:0];
         end else begin
-            sub_block_id = col_within_block[3] ? 2'd3 : 2'd2;
+            sa_id = col_within_pe[3] ? 2'd3 : 2'd2;
             row_id = {2'b0, matrix_row[0]};
         end
-        col_id = col_within_block[2:0];
-        return {6'b0, block_id, sub_block_id, col_id, row_id};
+        col_id = col_within_pe[2:0];
+        return {6'b0, pe_id, sa_id, col_id, row_id};
     endfunction
 
     task automatic load_weights_10();

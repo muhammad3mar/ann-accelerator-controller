@@ -52,10 +52,10 @@ module input_buffer(
     //--------------------------------------------------------------------------
     logic [BUFFER_DATA_WIDTH-1:0] buffer_reg [0:BUFFER_SIZE-1];
 
-    // Internal control signals
-    logic                           write_en;                  
-    logic                           read_en;                   
-    logic [BUFFER_ADDR_WIDTH-1:0]  addr;                      // Current address
+    // Internal control signals derived from reg_ctrl / buf_read_write
+    logic                           write_en;  // Asserted for CTRL_DATA_LOAD writes
+    logic                           read_en;   // Asserted for COMPUTE / RESULT_OUT / WEIGHT_READ reads
+    logic [BUFFER_ADDR_WIDTH-1:0]  addr;      // Current buffer address (= buf_reg_add)
 
     //--------------------------------------------------------------------------
     // Control Signal Decoding 

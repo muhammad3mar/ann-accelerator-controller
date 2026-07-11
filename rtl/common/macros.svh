@@ -4,7 +4,7 @@
 
 
 //------------------------------------------------------------------------------
-// Combinational Logic Macros
+// Combinational always_comb wrapper: `comb( statements; )
 //------------------------------------------------------------------------------
 
 `define comb(block) \

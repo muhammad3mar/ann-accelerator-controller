@@ -37,7 +37,7 @@ add wave -noupdate -radix symbolic $DUT/verify_state
 
 add wave -noupdate -divider {DUT_erase_subfsm}
 add wave -noupdate -radix symbolic $DUT/erase_state
-add wave -noupdate -radix binary $DUT/erase_max_retries_exhausted
+add wave -noupdate -radix binary $DUT/erase_failure_flag
 
 add wave -noupdate -divider {DUT_PROG_pulse_timing_and_LUT}
 add wave -noupdate -radix unsigned $DUT/lut_entry_expected_weight

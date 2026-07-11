@@ -166,9 +166,10 @@ Full descriptions, batch commands, and wave/GUI commands:
 |-----------|-------|---------|
 | `ADDR_WIDTH` | 8 | Host address width default |
 | `WEIGHT_WIDTH` | 16 | Weight data width default |
-| `WEIGHT_ADDR_WIDTH` | 10 | `{block[2], sub_block[2], row[3], col[3]}` |
+| `WEIGHT_ADDR_WIDTH` | 10 | `{pe[2], sa[2], row[3], col[3]}` |
 | `BUFFER_SIZE` | 64 | Input-buffer depth (8×8 image) |
-| `TREAD/TPROG/TERASE` | 2 | Pulse width (cycles) per burst |
+| `TREAD/TERASE` | 2 | Pulse width (cycles) per burst |
+| `TPROG` | 5 | Program pulse width |
 | `TINF` | 8 | Inference pulse width |
 | `PULSE_GAP` | 1 | Idle cycles between bursts |
 | `MAX_PROG_RETRIES` | 3 | Re-PROG attempts before ERASE fallback |

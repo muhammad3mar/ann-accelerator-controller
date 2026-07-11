@@ -209,7 +209,7 @@ module controller_addr_pulse_tb;
         wait(rst_n);
         repeat(10) @(posedge clk);
 
-        // addr_16 = {reserved[15:10], block_id[9:8], sub_block_id[7:6], col_id[5:3], row_id[2:0]}
+        // addr_16 = {reserved[15:10], pe_id[9:8], sa_id[7:6], col_id[5:3], row_id[2:0]}
 
         run_cmd_test(1,  CMD_PROG,  16'h0000, 8'd5,   "PROG   (PE=0,SA=0,col=0,row=0)");
         run_cmd_test(2,  CMD_READ,  16'h01E7, 8'h00,  "READ   (PE=1,SA=3,col=6,row=7)");

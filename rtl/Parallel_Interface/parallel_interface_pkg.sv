@@ -27,9 +27,10 @@ package parallel_interface_pkg;
     // parallel_interface exposes an explicit host_cmd[2:0] port.
     //
     // Internal controller still receives decoded parallel-style address[15:0]:
-    //   address[15:10]=0, address[9:8]=block, [7:6]=sub_block, [5:3]=col_id, [2:0]=row_id
+    //   address[15:10]=0, address[9:8]=PE, [7:6]=SA, [5:3]=col_id, [2:0]=row_id
     //--------------------------------------------------------------------------
 
+    // Map a strict 4-bit one-hot vector to a 2-bit binary index
     function automatic logic [1:0] pi_onehot4_to_idx(input logic [3:0] oh);
         unique case (oh)
             4'b0001: return 2'd0;
@@ -40,6 +41,7 @@ package parallel_interface_pkg;
         endcase
     endfunction
 
+    // Map a strict 8-bit one-hot vector to a 3-bit binary index
     function automatic logic [2:0] pi_onehot8_to_idx(input logic [7:0] oh);
         unique case (oh)
             8'b00000001: return 3'd0;
@@ -54,6 +56,7 @@ package parallel_interface_pkg;
         endcase
     endfunction
 
+    // True if oh has exactly one bit set among the four LSBs of a 4-bit field
     function automatic logic pi_is_onehot4(input logic [3:0] oh);
         unique case (oh)
             4'b0001, 4'b0010, 4'b0100, 4'b1000: return 1'b1;
@@ -61,6 +64,7 @@ package parallel_interface_pkg;
         endcase
     endfunction
 
+    // True if oh has exactly one bit set among the eight bits of an 8-bit field
     function automatic logic pi_is_onehot8(input logic [7:0] oh);
         unique case (oh)
             8'b00000001, 8'b00000010, 8'b00000100, 8'b00001000,
@@ -69,7 +73,7 @@ package parallel_interface_pkg;
         endcase
     endfunction
 
-    // Host ann-tail validity: each field must be strictly one-hot.
+    // Host ann-tail validity: each PE/SA/col/row field must be strictly one-hot.
     function automatic logic ann_tail_is_valid_onehot(input logic [23:0] tail);
         return pi_is_onehot4(tail[23:20]) &&
                pi_is_onehot4(tail[19:16]) &&
@@ -77,51 +81,50 @@ package parallel_interface_pkg;
                pi_is_onehot8(tail[7:0]);
     endfunction
 
-    // Decode ann_address-style tail → 16-bit address field (parse_ann_address layout)
+    // Decode ann_address-style one-hot tail → 16-bit parallel address (parse_ann_address layout)
     function automatic logic [15:0] ann_tail_to_parallel_addr(logic [23:0] tail);
-        logic [1:0] blk, sb;
+        logic [1:0] pe, sa;
         logic [2:0] rid, cid;
-        blk = pi_onehot4_to_idx(tail[23:20]);
-        sb  = pi_onehot4_to_idx(tail[19:16]);
+        pe  = pi_onehot4_to_idx(tail[23:20]);
+        sa  = pi_onehot4_to_idx(tail[19:16]);
         cid = pi_onehot8_to_idx(tail[15:8]);
         rid = pi_onehot8_to_idx(tail[7:0]);
-        return {6'b0, blk, sb, cid, rid};
+        return {6'b0, pe, sa, cid, rid};
     endfunction
 
-    // Build host_data word from legacy 16-bit parallel address + 8-bit data byte (TB / software)
+    // Build host_data word from 16-bit parallel address + 8-bit data byte (TB / software)
     function automatic logic [31:0] build_host_ann_word(
         input logic [7:0] data_byte,
         input logic [15:0] parallel_addr
     );
-        logic [1:0] blk, sb;
+        logic [1:0] pe, sa;
         logic [2:0] rid, cid;
         logic [3:0] pe_oh, sa_oh;
         logic [7:0] col_oh, row_oh;
-        blk = parallel_addr[9:8];
-        sb  = parallel_addr[7:6];
+        pe = parallel_addr[9:8];
+        sa = parallel_addr[7:6];
         cid = parallel_addr[5:3];
         rid = parallel_addr[2:0];
-        pe_oh  = 4'(1 << blk);
-        sa_oh  = 4'(1 << sb);
+        pe_oh  = 4'(1 << pe);
+        sa_oh  = 4'(1 << sa);
         col_oh = 8'(1 << cid);
         row_oh = 8'(1 << rid);
         return {data_byte, pe_oh, sa_oh, col_oh, row_oh};
     endfunction
 
-    // Legacy names used by older TB sources (map to ann layout)
+    // Extract data byte from host_data[31:24]
     function automatic logic [7:0] extract_data(logic [31:0] host_data);
         return host_data[31:24];
     endfunction
 
+    // Extract 16-bit parallel address by decoding one-hot ann_address tail
     function automatic logic [15:0] extract_address(logic [31:0] host_data);
         return ann_tail_to_parallel_addr(host_data[23:0]);
     endfunction
 
-    // extract_cmd(host_data) deprecated — cmd comes from host_cmd port; stub returns HIZ
+    // Deprecated stub: command comes from host_cmd port; always returns HIZ
     function automatic logic [2:0] extract_cmd(logic [31:0] host_data);
         return CMD_HIZ;
     endfunction
 
 endpackage
-
-

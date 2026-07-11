@@ -39,7 +39,7 @@ module controller_host_erase_tb;
     logic        D0, D1, D2, D3, D4, D5, D6, D7;
     logic        buf_ready;
 
-    logic [3:0] ann_weight_matrix [0:NUM_BLOCKS-1][0:NUM_SUB_BLOCKS-1][0:SUB_BLOCK_ROWS-1][0:SUB_BLOCK_COLS-1];
+    logic [3:0] ann_weight_matrix [0:NUM_PE-1][0:NUM_SA-1][0:SA_ROWS-1][0:SA_COLS-1];
     logic [3:0] weight_read_data_mock;
     logic [3:0] actual_from_ann;
     logic [1:0] dec_blk, dec_sb;
@@ -142,10 +142,10 @@ module controller_host_erase_tb;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            for (int b = 0; b < NUM_BLOCKS; b++)
-                for (int sb = 0; sb < NUM_SUB_BLOCKS; sb++)
-                    for (int r = 0; r < SUB_BLOCK_ROWS; r++)
-                        for (int c = 0; c < SUB_BLOCK_COLS; c++)
+            for (int b = 0; b < NUM_PE; b++)
+                for (int sb = 0; sb < NUM_SA; sb++)
+                    for (int r = 0; r < SA_ROWS; r++)
+                        for (int c = 0; c < SA_COLS; c++)
                             ann_weight_matrix[b][sb][r][c] <= 4'b0;
         end else if (in_prog_core_phase) begin
             automatic logic [1:0] lb, lsb;
