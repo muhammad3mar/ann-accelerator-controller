@@ -79,10 +79,4 @@ env/
 *.bbl
 *.blg
 
-# ---- OS / Editor ----
-.DS_Store
-Thumbs.db
-*.swp
-.vscode/
-.idea/
-.cursor/
+
